@@ -469,7 +469,7 @@ services:
     image: markoshust/magento-opensearch:2.12-0
     hostname: opensearch2
     ports:
-      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_ELK_ELASTIC:-9200}:9200"
+      - "${LOCAL_LISTEN_ADDR}9201:9201"
     networks:
       app_net:
         ipv4_address: 172.16.238.244
