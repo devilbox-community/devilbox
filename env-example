@@ -497,6 +497,17 @@ OPENSEARCH_SERVER=1.2-0
 
 
 
+###
+### 1.13 Choose Ngrok server image
+###
+### See here for all versions: https://hub.docker.com/r/devilbox/ngrok/tags
+###
+NGROK_SERVER=latest
+#NGROK_SERVER=0.7
+#NGROK_SERVER=0.3
+
+
+
 ################################################################################
 ###
 ### 2. Host Mounts (Your computer)
@@ -951,7 +962,7 @@ RABBIT_DEFAULT_PASS=guest
 
 ################################################################################
 ###
-### 14. RabbitMQ Docker Settings
+### 14. MailHog Docker Settings
 ###
 ################################################################################
 
@@ -971,7 +982,28 @@ MAILHOG_SMTP_ADDR=mailhog:1025
 
 ################################################################################
 ###
-### 14. Custom variables
+### 15. Ngrok Docker Settings
+###
+################################################################################
+
+###
+### Expose Ngrok Port to Host
+###
+HOST_PORT_NGROK=4040
+
+
+###
+### Generic Ngrok Settings
+###
+NGROK_HTTP_TUNNELS=httpd:httpd:80
+NGROK_AUTHTOKEN=
+NGROK_REGION=us
+
+
+
+################################################################################
+###
+### XX. Custom variables
 ###
 ################################################################################
 

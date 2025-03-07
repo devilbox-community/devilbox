@@ -188,7 +188,7 @@ TEMPLATE_CONFIG="$DEVILBOX_PATH/.tests/devilbox-template-config.yaml"
 YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
-readonly VERSION="1.2.1"
+readonly VERSION="1.2.2"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -259,6 +259,10 @@ function main {
       sync-httpd)
         shift;
         SyncHttpdConf "$@"
+      ;;
+      sync-env)
+        shift;
+        SyncEnvConf "$@"
       ;;
       update:docroot|update-docroot)
         shift;
@@ -771,6 +775,7 @@ function Usage {
       echo "${GREEN}" "cloud-patches${NORMAL}    Run EcePatches command from the current project directory"
       echo "${GREEN}" "update-docroot${NORMAL}   Update new document root for all current webapps"
       echo "${GREEN}" "sync-httpd${NORMAL}       Sync Httpd configuration to all current webapps"
+      echo "${GREEN}" "sync-env${NORMAL}         Sync current .env from default env file (prompting for changes)"
     ;;
     --no-ansi)
       echo "DevilBox v${VERSION}"
@@ -808,6 +813,7 @@ function Usage {
       echo " cloud-patches${NORMAL}    Run EcePatches command from the current project directory"
       echo " update-docroot${NORMAL}   Update new document root for all current webapps"
       echo " sync-httpd${NORMAL}       Sync Httpd configuration to all current webapps"
+      echo " sync-env${NORMAL}         Sync current .env from default env file (prompting for changes)"
     ;;
   esac
 }

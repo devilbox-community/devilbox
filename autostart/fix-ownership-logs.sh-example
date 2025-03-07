@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -e
+set -u
+set -o pipefail
+
+# PHP Logs
+PHP_LOGS="/var/log/php"
+
+# Creating logs
+touch "$PHP_LOGS/php-fpm.access"
+touch "$PHP_LOGS/php-fpm.error"
+touch "$PHP_LOGS/mail.log"
+touch "$PHP_LOGS/xdebug.log"
+
+chown -Rf devilbox:devilbox "${PHP_LOGS}"

@@ -59,7 +59,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   php72:
@@ -80,7 +80,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   php73:
@@ -101,7 +101,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   php74:
@@ -122,7 +122,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   php80:
@@ -143,7 +143,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   php81:
@@ -164,7 +164,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   php82:
@@ -185,7 +185,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   php83:
@@ -206,7 +206,7 @@ services:
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
-      # - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
 
   # ------------------------------------------------------------
@@ -290,7 +290,7 @@ services:
   # Ngrok
   # -----------------------------------------------------------------------------------------------
   ngrok:
-    image: devilbox/ngrok:0.3
+    image: devilbox/ngrok:${NGROK_SERVER:-latest}
     hostname: ngrok
     environment:
       - HTTP_TUNNELS=${NGROK_HTTP_TUNNELS:-httpd:httpd:80}
@@ -462,6 +462,31 @@ services:
     volumes:
       - devilbox-opensearch:/usr/share/opensearch/data
 
+  # -----------------------------------------------------------------------------------------------
+  # OpenSearch 2
+  # -----------------------------------------------------------------------------------------------
+  opensearch2:
+    image: markoshust/magento-opensearch:2.12-0
+    hostname: opensearch2
+    ports:
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_ELK_ELASTIC:-9200}:9200"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.243
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    environment:
+      - TZ=${TIMEZONE:-UTC}
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+      - discovery.seed_hosts=opensearch2
+      - bootstrap.memory_lock=true
+      - DISABLE_SECURITY_PLUGIN=true
+    volumes:
+      - devilbox-opensearch2:/usr/share/opensearch/data
+
 ###
 ### Volumes
 ###
@@ -469,3 +494,4 @@ volumes:
   devilbox-rabbit:
   devilbox-elastic:
   devilbox-opensearch:
+  devilbox-opensearch2:
