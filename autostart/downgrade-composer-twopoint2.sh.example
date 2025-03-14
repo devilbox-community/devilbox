@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+set -u
+set -o pipefail
+
+# COMPOSER binary
+COMPOSER_BIN="/usr/local/bin/composer-2"
+
+$COMPOSER_BIN self-update --2.2
