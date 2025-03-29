@@ -65,7 +65,8 @@ jobs:
       - name: "[DEBUG] Show Docker Compose version"
         shell: bash
         run: |
-          docker-compose version
+          # Try both the old hyphenated and new space-separated commands
+          docker-compose version || docker compose version || echo "Docker Compose not available via standard commands"
 
       - name: "[SETUP] Ensure docker-compose compatibility"
         shell: bash
