@@ -11,6 +11,7 @@ Make sure to have a look at [UPDATING.md](https://github.com/cytopia/devilbox/bl
 ### Added
 - Support PHP 8.4
 - Simplified the initialize webapp process of `dvl.sh`
+- Wrapping all PHP related commands with a detection to check and use PHP version
 - New sub-command `ece-tools` for `dvl.sh`
 - New sub-command `cloud-patches` for `dvl.sh`
 - New sub-command `update-docroot` for `dvl.sh`

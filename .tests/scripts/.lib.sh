@@ -327,7 +327,9 @@ sed_command() {
 term_spinner() {
   local pid=$!
   local delay=0.1
+  # shellcheck disable=SC1003
   local spinstr='|/-\'
+  # shellcheck disable=SC2143
   while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
     local temp=${spinstr#?}
     printf " [%c]  " "$spinstr"
@@ -341,7 +343,9 @@ term_spinner() {
 no_term_spinner() {
   local pid=$!
   local delay=0.1
+  # shellcheck disable=SC1003
   local spinstr='|/-\'
+  # shellcheck disable=SC2143
   while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
     printf "."
     sleep 2

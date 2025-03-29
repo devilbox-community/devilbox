@@ -14,7 +14,7 @@ DVLBOX_PATH="$( cd "${SCRIPT_PATH}/../.." && pwd -P )"
 
 RETRIES=10
 # see framework-cakephp-php8.sh for PHP 8+ tests
-DISABLED_VERSIONS=("5.6" "7.0" "7.1" "7.2" "7.3" "7.4" "8.0" "8.1" "8.2" "8.3", "8.4")
+DISABLED_VERSIONS=("5.6" "7.0" "7.1" "7.2" "7.3" "7.4" "8.0" "8.1" "8.2" "8.3" "8.4")
 
 PHP_VERSION="$( get_php_version "${DVLBOX_PATH}" )"
 

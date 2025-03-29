@@ -317,17 +317,501 @@ function RestartServices {
   fi
 }
 
+function GetPhpVersionFromYaml {
+  local debug_mode=${1:-false}
+  
+  # Check in current directory first
+  local yaml_file="$CURRENT_DIR/$CONFIG_FILE"
+  
+  # If not found, check parent directory (common for Magento AWS projects)
+  if [[ ! -f "$yaml_file" ]]; then
+    yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
+  fi
+  
+  # If still not found and we're in htdocs or a subdirectory
+  if [[ ! -f "$yaml_file" ]]; then
+    # Check if current dir matches htdocs name
+    if [[ "$(basename "$CURRENT_DIR")" == "$HTTPD_DOCROOT_DIR" ]]; then
+      # We're in htdocs, try the parent directory
+      yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
+    elif [[ "$(basename "$(dirname "$CURRENT_DIR")")" == "$HTTPD_DOCROOT_DIR" ]]; then
+      # We're in a subdirectory of htdocs, try going up two levels
+      yaml_file="$(dirname "$(dirname "$CURRENT_DIR")")/$CONFIG_FILE"
+    fi
+  fi
+  
+  # Debug mode to help troubleshoot version detection
+  if [[ "$debug_mode" == "true" ]]; then
+    echo "Current directory: $CURRENT_DIR" >&2
+    echo "Document root dir: $HTTPD_DOCROOT_DIR" >&2
+    echo "Checking multiple locations for YAML file" >&2
+    echo "1. Current directory: $CURRENT_DIR/$CONFIG_FILE" >&2
+    echo "2. Parent directory: $(dirname "$CURRENT_DIR")/$CONFIG_FILE" >&2
+    
+    if [[ -f "$yaml_file" ]]; then
+      echo "Found YAML file at: $yaml_file" >&2
+      echo "PHP version in YAML: $("$YQ_BINARY" '.php.version' "$yaml_file")" >&2
+    else
+      echo "YAML file not found in any of the checked locations" >&2
+    fi
+  fi
+
+  # First check if we're in a project with a yaml file
+  if [[ -f "$yaml_file" ]]; then
+    local php_version=$("$YQ_BINARY" '.php.version' "$yaml_file")
+    
+    # If we have a valid PHP version in the yaml file
+    if [[ -n "$php_version" && "$php_version" != "null" ]]; then
+      # Get the PHP_SERVER from .env file (default PHP version)
+      local php_server="$( "${SCRIPT_PATH}/env-getvar.sh" "PHP_SERVER" )"
+      
+      if [[ "$debug_mode" == "true" ]]; then
+        echo "Default PHP server from .env: $php_server" >&2
+      fi
+
+      # If php_version matches the pattern phpXX
+      if [[ "$php_version" =~ ^php[0-9]{2}$ ]]; then
+        # Extract numeric part from php_version (e.g., "74" from "php74")
+        local yaml_version_num="${php_version#php}"
+        
+        # Convert env PHP version to same format (e.g., "7.4" to "74")
+        local env_version_num=$(echo "$php_server" | sed 's/\.//g')
+
+        if [[ "$debug_mode" == "true" ]]; then
+          echo "YAML PHP version num: $yaml_version_num" >&2
+          echo "ENV PHP version num: $env_version_num" >&2
+        fi
+
+        # If versions match, use default "php" container
+        if [[ "$yaml_version_num" == "$env_version_num" ]]; then
+          echo "php"
+        else
+          echo "$php_version"
+        fi
+        return 0
+      else
+        # Invalid PHP version format in yaml
+        if [[ "$debug_mode" == "true" ]]; then
+          echo "Invalid PHP version format in YAML" >&2
+        fi
+        echo "php"
+        return 1
+      fi
+    fi
+  fi
+
+  # Default fallback
+  echo "php"
+  return 1
+}
+
+function CheckPhpContainerFlavor {
+  local php_container="$1"
+  local debug=${2:-false}
+
+  if [[ "$debug" == "true" ]]; then
+    echo "Checking flavor for container: $php_container" >&2
+  fi
+
+  # Skip check for default php container
+  if [[ "$php_container" == "php" ]]; then
+    if [[ "$debug" == "true" ]]; then
+      echo "Default PHP container, assuming work flavor" >&2
+    fi
+    echo "work"
+    return 0
+  fi
+
+  # Get current container image from docker-compose config
+  local container_image=""
+  local config_output=""
+  
+  if hash docker-compose 2>/dev/null; then
+    if [[ "$debug" == "true" ]]; then
+      echo "Using docker-compose to get config" >&2
+    fi
+    config_output=$(cd "$DEVILBOX_PATH" && docker-compose config)
+  else
+    if [[ "$debug" == "true" ]]; then
+      echo "Using docker compose to get config" >&2
+    fi
+    config_output=$(cd "$DEVILBOX_PATH" && docker compose config)
+  fi
+  
+  # First, try to extract service and image using a different pattern
+  if [[ "$debug" == "true" ]]; then
+    echo "Trying to find $php_container in docker-compose config" >&2
+  fi
+  
+  # Save the config to a temp file for easier debugging
+  local temp_config=$(mktemp)
+  echo "$config_output" > "$temp_config"
+  
+  if [[ "$debug" == "true" ]]; then
+    echo "Docker compose config written to temp file at: $temp_config" >&2
+    echo "Checking with grep -A 20 '$php_container:'" >&2
+  fi
+  
+  # Try various patterns to match the container
+  container_image=$(grep -A 20 "$php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
+  
+  if [[ -z "$container_image" ]]; then
+    if [[ "$debug" == "true" ]]; then
+      echo "First attempt failed, trying with different pattern" >&2
+    fi
+    container_image=$(grep -A 20 "  $php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
+  fi
+  
+  if [[ -z "$container_image" ]]; then
+    if [[ "$debug" == "true" ]]; then
+      echo "Second attempt failed, trying with looser pattern" >&2
+    fi
+    # More aggressive pattern
+    container_image=$(grep -A 50 -i "$php_container" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
+  fi
+  
+  # Clean up
+  rm -f "$temp_config"
+
+  if [[ "$debug" == "true" ]]; then
+    echo "Found container image: $container_image" >&2
+  fi
+
+  # Still no image found
+  if [[ -z "$container_image" ]]; then
+    if [[ "$debug" == "true" ]]; then
+      echo "Could not determine container image for $php_container" >&2
+    fi
+    echo "unknown"
+    return 2  # Could not determine image
+  fi
+
+  # Check if container is using work or slim flavor
+  if [[ "$container_image" == *"-slim-"* ]]; then
+    if [[ "$debug" == "true" ]]; then
+      echo "Container using slim flavor" >&2
+    fi
+    echo "slim"
+    return 1  # Not work flavor - THIS IS CRITICAL: must return 1 for slim
+  elif [[ "$container_image" == *"-work-"* ]]; then
+    if [[ "$debug" == "true" ]]; then
+      echo "Container using work flavor" >&2
+    fi
+    echo "work"
+    return 0  # Is work flavor - returning 0 for work
+  fi
+
+  # Default response for unknown flavor
+  if [[ "$debug" == "true" ]]; then
+    echo "Unknown container flavor" >&2
+  fi
+  echo "unknown"
+  return 2  # Unknown flavor
+}
+
+function UpdateContainerFlavor {
+  local php_container="$1"
+  local target_flavor="$2"
+  
+  # Use get_workspace_path to get the correct path
+  local devilbox_path=$(get_workspace_path)
+  local override_file="$devilbox_path/docker-compose.override.yml"
+
+  echo "Updating container flavor for $php_container to $target_flavor" >&2
+  echo "Using Devilbox path: $devilbox_path" >&2
+  echo "Override file: $override_file" >&2
+
+  # Create the override file if it doesn't exist
+  if [[ ! -f "$override_file" ]]; then
+    echo "Override file not found. Creating minimal override file..." >&2
+    
+    # Create a minimal docker-compose.override.yml file
+    cat > "$override_file" <<EOL
+version: '2.3'
+services:
+EOL
+    
+    echo "Created new override file" >&2
+  fi
+
+  # Get current container image using more robust pattern matching
+  local current_image=""
+  local config_output=""
+  
+  if hash docker-compose 2>/dev/null; then
+    config_output=$(cd "$devilbox_path" && docker-compose config 2>/dev/null)
+  else
+    config_output=$(cd "$devilbox_path" && docker compose config 2>/dev/null)
+  fi
+  
+  # Save the config to a temp file for easier debugging
+  local temp_config=$(mktemp)
+  echo "$config_output" > "$temp_config"
+  
+  # Try various patterns to match the container image
+  current_image=$(grep -A 20 "$php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
+  
+  if [[ -z "$current_image" ]]; then
+    current_image=$(grep -A 20 "  $php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
+  fi
+  
+  if [[ -z "$current_image" ]]; then
+    # More aggressive pattern
+    current_image=$(grep -A 50 -i "$php_container" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
+  fi
+  
+  # Clean up
+  rm -f "$temp_config"
+
+  echo "Current image from config: $current_image" >&2
+
+  if [[ -z "$current_image" ]]; then
+    echo "Could not find image for $php_container in docker-compose config" >&2
+    # Try to extract information from container name
+    local version_num=${php_container#php}
+    if [[ "$version_num" =~ ^[0-9]{2}$ ]]; then
+      # Convert to decimal format (74 -> 7.4)
+      local major="${version_num:0:1}"
+      local minor="${version_num:1:1}"
+      local version="$major.$minor"
+      echo "Using version $version derived from container name" >&2
+      current_image="devilboxcommunity/php-fpm:$version-slim-0.155"
+    else
+      # Get default PHP version if container name doesn't contain version
+      local default_php="$( "${SCRIPT_PATH}/env-getvar.sh" "PHP_SERVER" )"
+      echo "Using default PHP version: $default_php" >&2
+      current_image="devilboxcommunity/php-fpm:$default_php-slim-0.155"
+    fi
+    echo "Using derived image: $current_image" >&2
+  fi
+
+  # Extract version and build number
+  local version_build=$(echo "$current_image" | sed -E 's/.*:([0-9.]+)-[a-z]+-([0-9.]+)/\1-\2/')
+  local version=$(echo "$version_build" | cut -d'-' -f1)
+  local build=$(echo "$version_build" | cut -d'-' -f2)
+
+  echo "Extracted version: $version, build: $build" >&2
+
+  # Create new image name
+  local new_image="devilboxcommunity/php-fpm:$version-$target_flavor-$build"
+
+  echo "New image will be: $new_image" >&2
+  echo -ne "${YELLOW}Updating $php_container image to $target_flavor flavor..."
+
+  # Make a backup of the original file
+  if [[ -f "$override_file" && -s "$override_file" ]]; then
+    cp "$override_file" "${override_file}.bak"
+  fi
+  
+  # Process YAML with careful line-by-line approach to maintain structure
+  local temp_file=$(mktemp)
+  local in_container_section=0
+  local image_line_found=0
+  local indent_level=""
+  
+  while IFS= read -r line; do
+    # Detect if we're entering the container section
+    if [[ "$line" =~ ^[[:space:]]*"$php_container:"($|[[:space:]]) ]]; then
+      in_container_section=1
+      # Capture the indent level for this section
+      indent_level=$(echo "$line" | sed -E 's/^([[:space:]]*)'"$php_container"'.*/\1/')
+      echo "$line" >> "$temp_file"
+      continue
+    fi
+    
+    # If we're in the container section and find an image line, replace it
+    if [[ $in_container_section -eq 1 && "$line" =~ ^[[:space:]]*image: ]]; then
+      # Maintain the existing indentation
+      local img_indent=$(echo "$line" | sed -E 's/^([[:space:]]*)image:.*/\1/')
+      echo "${img_indent}image: $new_image" >> "$temp_file"
+      image_line_found=1
+      continue
+    fi
+    
+    # If we encounter another service or the end of the services section, we're exiting our container section
+    if [[ $in_container_section -eq 1 && ( "$line" =~ ^[[:space:]]*[a-zA-Z0-9_-]+:($|[[:space:]]) || "$line" =~ ^[^[:space:]#] ) ]]; then
+      # If we didn't find an image line, add it before moving on
+      if [[ $image_line_found -eq 0 ]]; then
+        # Use parent indentation plus 2 spaces for the image line
+        echo "${indent_level}  image: $new_image" >> "$temp_file"
+        image_line_found=1
+      fi
+      in_container_section=0
+    fi
+    
+    # Write the current line to the output file
+    echo "$line" >> "$temp_file"
+  done < "$override_file"
+  
+  # If we're still in the container section at the end of the file and haven't added an image line
+  if [[ $in_container_section -eq 1 && $image_line_found -eq 0 ]]; then
+    echo "${indent_level}  image: $new_image" >> "$temp_file"
+  fi
+  
+  # If we never found the container section, add it at the end of the file
+  if [[ $in_container_section -eq 0 && $image_line_found -eq 0 ]]; then
+    # Check if there's a services: line
+    if grep -q "^services:" "$override_file"; then
+      # Add to existing services section
+      echo "  $php_container:" >> "$temp_file"
+      echo "    <<: *default-php" >> "$temp_file"
+      echo "    image: $new_image" >> "$temp_file"
+    else
+      # Create a completely new section
+      echo "services:" >> "$temp_file"
+      echo "  $php_container:" >> "$temp_file"
+      echo "    <<: *default-php" >> "$temp_file"
+      echo "    image: $new_image" >> "$temp_file"
+    fi
+  fi
+  
+  # Replace the original file with our new one
+  mv "$temp_file" "$override_file"
+
+  echo -e "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+  echo -ne "${YELLOW}Pulling new image: $new_image..."
+
+  # Pull the new image with error handling
+  if hash docker-compose 2>/dev/null; then
+    if ! (cd "$devilbox_path" && docker-compose pull "$php_container"); then
+      echo -e "...${NORMAL} ${RED}FAILED ✘${NORMAL}\n"
+      echo "Warning: Failed to pull new image. Check Docker connectivity." >&2
+      # Continue anyway - don't return error
+    fi
+  else
+    if ! (cd "$devilbox_path" && docker compose pull "$php_container"); then
+      echo -e "...${NORMAL} ${RED}FAILED ✘${NORMAL}\n"
+      echo "Warning: Failed to pull new image. Check Docker connectivity." >&2
+      # Continue anyway - don't return error
+    fi
+  fi
+
+  echo -e "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+  echo "${YELLOW}Restarting $php_container container...${NORMAL}"
+
+  # Restart the container with error handling
+  if hash docker-compose 2>/dev/null; then
+    if ! (cd "$devilbox_path" && docker-compose up -d "$php_container"); then
+      echo -e "${RED}FAILED ✘${NORMAL}\n"
+      echo "Warning: Failed to restart container $php_container." >&2
+      # Continue anyway - don't return error
+    fi
+  else
+    if ! (cd "$devilbox_path" && docker compose up -d "$php_container"); then
+      echo -e "${RED}FAILED ✘${NORMAL}\n"
+      echo "Warning: Failed to restart container $php_container." >&2
+      # Continue anyway - don't return error
+    fi
+  fi
+
+  echo "${GREEN}Successfully updated container settings${NORMAL}"
+  
+  # Wait for container to be ready
+  echo "${YELLOW}Waiting for $php_container container to be ready...${NORMAL}"
+  sleep 5
+
+  # Clean up backup file if it exists
+  if [[ -f "${override_file}.bak" ]]; then
+    rm -f "${override_file}.bak"
+  fi
+
+  return 0
+}
+
+function CommandRequiringWorkFlavor {
+  local command_type="$1"
+  local php_version="$2"
+  local args="${@:3}"
+
+  # Check if container has work flavor
+  local flavor=$(CheckPhpContainerFlavor "$php_version")
+  local has_work_flavor=$?
+
+  # Debug output
+  echo "Detected PHP container: $php_version with flavor: $flavor (return code: $has_work_flavor)" >&2
+
+  # Fixed condition - check actual flavor string instead of relying only on return code
+  if [[ "$flavor" == "slim" ]] || [[ "$flavor" == "unknown" ]]; then
+    echo -ne "${YELLOW}$command_type requires 'work' flavor, but $php_version is using $flavor flavor.${NORMAL}\n"
+    read -r -p "${CYAN}Would you like to update $php_version to 'work' flavor? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        error "$command_type requires work flavor. Command aborted."
+        return 1
+        ;;
+      *)
+        # Update container flavor and continue if successful
+        if ! UpdateContainerFlavor "$php_version" "work"; then
+          error "Failed to update container flavor. Command aborted."
+          return 1
+        fi
+        # Additional debug output to confirm flavor was updated
+        echo "Container flavor updated successfully, proceeding with command" >&2
+        ;;
+    esac
+  fi
+
+  case "$command_type" in
+    "magento")
+      BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox "$php_version" bash -c "php -dmemory_limit=-1 bin/magento $args"
+      ;;
+    "magerun")
+      BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox "$php_version" bash -c "php -dmemory_limit=-1 /usr/local/bin/magerun $args"
+      ;;
+    "composer")
+      BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox "$php_version" bash -c "composer $args"
+      ;;
+    "ece-tools")
+      BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox "$php_version" bash -c "php -dmemory_limit=-1 ./vendor/bin/ece-tools $args"
+      ;;
+    "ece-patches")
+      BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox "$php_version" bash -c "php -dmemory_limit=-1 ./vendor/bin/ece-patches $args"
+      ;;
+    *)
+      error "Unknown command type: $command_type"
+      return 1
+      ;;
+  esac
+}
+
 function OpenShell {
   if [[ -z "$*" ]]; then
-    BaseComposeCommand exec --user devilbox php bash -l
+    local php_version=$(GetPhpVersionFromYaml)
+
+    if [[ "$php_version" != "php" ]]; then
+      read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+      case "$response" in
+        [nN][oO]|[nN])
+          php_version="php"
+          ;;
+        *)
+          ;;
+      esac
+    fi
+
+    echo "${YELLOW}Opening shell with $php_version${NORMAL}"
+    BaseComposeCommand exec --user devilbox "$php_version" bash -l
   else
     BaseComposeCommand exec --user devilbox "$1" bash -l
   fi
 }
 
 function ExecShell {
-  info "Workdir: $TARGET_WORKDIR"
-  BaseComposeCommand exec --user devilbox php bash -c "cd $TARGET_WORKDIR; $*"
+  local php_version=$(GetPhpVersionFromYaml)
+
+  if [[ "$php_version" != "php" ]]; then
+    read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        php_version="php"
+        ;;
+      *)
+        ;;
+    esac
+  fi
+
+  info "Workdir: $TARGET_WORKDIR using $php_version"
+  BaseComposeCommand exec --user devilbox "$php_version" bash -c "cd $TARGET_WORKDIR; $*"
 }
 
 function ExecShellTTY {
@@ -335,23 +819,88 @@ function ExecShellTTY {
 }
 
 function MagentoCommand {
-  BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox php bash -c "php -dmemory_limit=-1 bin/magento $*"
+  local php_version=$(GetPhpVersionFromYaml)
+
+  if [[ "$php_version" != "php" ]]; then
+    read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        php_version="php"
+        ;;
+      *)
+        ;;
+    esac
+  fi
+
+  CommandRequiringWorkFlavor "magento" "$php_version" "$@"
 }
 
 function MagerunCommand {
-  BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox php bash -c "php -dmemory_limit=-1 /usr/local/bin/magerun $*"
+  local php_version=$(GetPhpVersionFromYaml)
+
+  if [[ "$php_version" != "php" ]]; then
+    read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        php_version="php"
+        ;;
+      *)
+        ;;
+    esac
+  fi
+
+  CommandRequiringWorkFlavor "magerun" "$php_version" "$@"
 }
 
 function ComposerCommand {
-  BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox php bash -c "composer $*"
+  local php_version=$(GetPhpVersionFromYaml)
+
+  if [[ "$php_version" != "php" ]]; then
+    read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        php_version="php"
+        ;;
+      *)
+        ;;
+    esac
+  fi
+
+  CommandRequiringWorkFlavor "composer" "$php_version" "$@"
 }
 
 function EceToolsCommand {
-  BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox php bash -c "php -dmemory_limit=-1 ./vendor/bin/ece-tools $*"
+  local php_version=$(GetPhpVersionFromYaml)
+
+  if [[ "$php_version" != "php" ]]; then
+    read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        php_version="php"
+        ;;
+      *)
+        ;;
+    esac
+  fi
+
+  CommandRequiringWorkFlavor "ece-tools" "$php_version" "$@"
 }
 
 function EcePatchesCommand {
-  BaseComposeCommand exec --workdir "$TARGET_WORKDIR" --user devilbox php bash -c "php -dmemory_limit=-1 ./vendor/bin/ece-patches $*"
+  local php_version=$(GetPhpVersionFromYaml)
+
+  if [[ "$php_version" != "php" ]]; then
+    read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        php_version="php"
+        ;;
+      *)
+        ;;
+    esac
+  fi
+
+  CommandRequiringWorkFlavor "ece-patches" "$php_version" "$@"
 }
 
 function DatabaseImport {
