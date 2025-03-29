@@ -1,5 +1,7 @@
 ---
 # .devilbox.yaml
+# This file is used to automate the initialization of webapps for the Devilbox.
+# Repository: https://github.com/devilbox-community/devilbox
 #
 #:-version: v1
 

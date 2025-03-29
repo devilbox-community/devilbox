@@ -188,7 +188,7 @@ TEMPLATE_CONFIG="$DEVILBOX_PATH/.tests/devilbox-template-config.yaml"
 YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
-readonly VERSION="1.2.2"
+readonly VERSION="1.2.3"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -545,11 +545,36 @@ function InteractiveQuestions {
 }
 
 function InitializeProject {
-  if [[ ! -f "$CURRENT_DIR/$CONFIG_FILE" ]]; then
+  local yaml_file="$CURRENT_DIR/$CONFIG_FILE"
+  local apps_to_bootstrap=()
+
+  # Check if yaml file exists
+  if [[ -f "$yaml_file" ]]; then
+    echo "${YELLOW}Found existing .devilbox.yaml configuration file.${NORMAL}"
+
+    # Check if we need to add a new app or bootstrap existing apps
+    read -r -p "${CYAN}Do you want to (a)dd a new app or (b)ootstrap existing apps? [b]${NORMAL} " response
+
+    case "$response" in
+      [aA])
+        # Scenario 3 - Add new app to existing configuration
+        InteractiveQuestions
+        UpdateYamlWithNewApp "$yaml_file"
+        BootstrapWebApplication "$WEBAPP_STACK"
+        ;;
+
+      [bB]|*)
+        # Scenario 2 - Bootstrap existing apps
+        ReadYamlConfiguration "$yaml_file"
+        BootstrapExistingApps "$yaml_file"
+        ;;
+    esac
+  else
+    # Scenario 1 - No yaml file exists
     InteractiveQuestions
+    BootstrapWebApplication "$WEBAPP_STACK"
+    GenerateYamlConf "$WEBAPP_STACK" "$APPNAME" "$APPDOMAINS" "$WEB_MULTI" "$MAGE_INFRA" "$APPREPOSITORY" "$PHP_VERSION" "$PROXY_PORT"
   fi
-  BootstrapWebApplication "$WEBAPP_STACK"
-  GenerateYamlConf "$WEBAPP_STACK" "$APPNAME" "$APPDOMAINS" "$WEB_MULTI" "$MAGE_INFRA" "$APPREPOSITORY" "$PHP_VERSION" "$PROXY_PORT"
 }
 
 function UpdateConfig {
@@ -561,6 +586,23 @@ function UpdateConfig {
   fi
 
   "$YQ_BINARY$nullInput" "$@"
+}
+
+function ReadYamlConfiguration {
+  local yaml_file="$1"
+
+  # Read stack, infra type, PHP version, etc.
+  WEBAPP_STACK=$("$YQ_BINARY" '.stack' "$yaml_file")
+  MAGE_INFRA=$("$YQ_BINARY" '.infra' "$yaml_file")
+  APPREPOSITORY=$("$YQ_BINARY" '.repo' "$yaml_file")
+  PHP_VERSION=$("$YQ_BINARY" '.php.version' "$yaml_file")
+  PROXY_PORT=$("$YQ_BINARY" '.proxy.port' "$yaml_file")
+
+  echo "${YELLOW}Loaded configuration from yaml file:${NORMAL}"
+  echo "Stack: ${GREEN}$WEBAPP_STACK${NORMAL}"
+  echo "Infrastructure: ${GREEN}$MAGE_INFRA${NORMAL}"
+  echo "PHP Version: ${GREEN}$PHP_VERSION${NORMAL}"
+  echo "Repository: ${GREEN}$APPREPOSITORY${NORMAL}"
 }
 
 function GenerateYamlConf {
@@ -585,11 +627,53 @@ function GenerateYamlConf {
   fi
 }
 
+function UpdateYamlWithNewApp {
+  local yaml_file="$1"
+
+  # Check if app already exists in yaml
+  local app_exists=$("$YQ_BINARY" ".apps[] | select(.name == \"$APPNAME\") | .name" "$yaml_file")
+
+  if [[ -n "$app_exists" ]]; then
+    echo "${YELLOW}App ${GREEN}$APPNAME${YELLOW} already exists in configuration file.${NORMAL}"
+    return
+  fi
+
+  # Add new app to yaml
+  "$YQ_BINARY" -i ".apps += [{\"name\": \"$APPNAME\", \"is_subdomain\": \"$WEB_MULTI\"}]" "$yaml_file"
+
+  echo "${GREEN}Added new app ${BOLD}$APPNAME${NORMAL}${GREEN} to configuration file.${NORMAL}"
+}
+
+function BootstrapExistingApps {
+  local yaml_file="$1"
+  local apps_count=$("$YQ_BINARY" '.apps | length' "$yaml_file")
+
+  echo "${YELLOW}Found ${apps_count} application(s) defined in configuration.${NORMAL}"
+
+  for ((i=0; i<apps_count; i++)); do
+    local app_name=$("$YQ_BINARY" ".apps[$i].name" "$yaml_file")
+    local is_subdomain=$("$YQ_BINARY" ".apps[$i].is_subdomain" "$yaml_file")
+
+    echo "${CYAN}Processing application: ${GREEN}$app_name${NORMAL} (Subdomain: $is_subdomain)"
+
+    APPNAME="$app_name"
+    WEB_MULTI="$is_subdomain"
+
+    if [[ "$is_subdomain" == "Y" ]]; then
+      # For subdomains, we need to find the parent app
+      PARENT_APPNAME=$("$YQ_BINARY" '.apps[] | select(.is_subdomain == "N") | .name' "$yaml_file" | head -1)
+      echo "${YELLOW}Using parent application: ${GREEN}$PARENT_APPNAME${NORMAL}"
+    fi
+
+    BootstrapWebApplication "$WEBAPP_STACK"
+  done
+}
+
 function BootstrapWebApplication {
   # Start configuring everything
   echo -ne "${YELLOW}Please wait, we are configuring your web application"
-  local devilboxConfDir="$WEBAPP_DIR/$APPNAME/$HTTPD_TEMPLATE_DIR"
   local currentStack="$1"
+  local devilboxConfDir="$WEBAPP_DIR/$APPNAME/$HTTPD_TEMPLATE_DIR"
   local templateType
 
   # Creating dirs
@@ -597,39 +681,65 @@ function BootstrapWebApplication {
     mkdir -p "$WEBAPP_DIR"
   fi
 
+  # Check if directory exists but with different name (from git clone)
+  if [[ -n "$APPREPOSITORY" ]] && [[ "$WEB_MULTI" == "N" ]]; then
+    local repo_name=$(basename "$APPREPOSITORY" .git | sed 's/\.git$//')
+    local repo_dir="$WEBAPP_DIR/$repo_name"
+
+    if [[ -d "$repo_dir" ]] && [[ "$repo_name" != "$APPNAME" ]]; then
+      echo -ne "\n${YELLOW}Found repository directory with different name: $repo_name"
+      echo -ne "\n${YELLOW}Renaming to match app name: $APPNAME"
+      mv "$repo_dir" "$WEBAPP_DIR/$APPNAME"
+      echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+    fi
+  fi
+
+  # If directory already exists
   if [[ -d "$WEBAPP_DIR/$APPNAME" ]]; then
-    echo -ne "... The target appname already exists in $WEBAPP_DIR${NORMAL} ${RED}FAILURE[✘]${NORMAL}"
-    echo ""
-    exit 1;
-  fi
+    echo -ne "\n${YELLOW}Directory $APPNAME already exists"
 
-  if [[ "$WEB_MULTI" == "N" ]] && [[ "$MAGE_INFRA" == "aws" ]]; then
-    git clone --quiet "$APPREPOSITORY" "$WEBAPP_DIR/$APPNAME" > /dev/null
-    if [[ "$AWS_BASEDIR" != "$HTTPD_DOCROOT_DIR" ]]; then
-      (cd "$WEBAPP_DIR/$APPNAME" || exit; ln -snf "$AWS_BASEDIR" "$HTTPD_DOCROOT_DIR" > /dev/null)
+    # Always ensure the template directory exists regardless of subdomain status
+    mkdir -p "$devilboxConfDir"
+
+    # For subdomains, we ensure the symbolic link exists
+    if [[ "$WEB_MULTI" == "Y" ]]; then
+      echo -ne "\n${YELLOW}Ensuring subdomain configuration exists"
+
+      # Setup symbolic link to parent app if not already set
+      if [[ ! -L "$WEBAPP_DIR/$APPNAME/$HTTPD_DOCROOT_DIR" ]]; then
+        (cd "$WEBAPP_DIR/$APPNAME" || exit; ln -snf "../$PARENT_APPNAME/$HTTPD_DOCROOT_DIR" "$HTTPD_DOCROOT_DIR" > /dev/null)
+      fi
+    fi
+
+    # For Magento AWS infrastructure, ensure symlinks are correct
+    if [[ "$currentStack" == "magento" ]] && [[ "$MAGE_INFRA" == "aws" ]]; then
+      if [[ ! -L "$WEBAPP_DIR/$APPNAME/$HTTPD_DOCROOT_DIR" ]] && [[ -d "$WEBAPP_DIR/$APPNAME/$AWS_BASEDIR" ]]; then
+        echo -ne "\n${YELLOW}Setting up AWS infrastructure symlinks"
+        (cd "$WEBAPP_DIR/$APPNAME" || exit; ln -snf "$AWS_BASEDIR" "$HTTPD_DOCROOT_DIR" > /dev/null)
+      fi
+    fi
+  else
+    # Create new directory structure
+    mkdir -p "$WEBAPP_DIR/$APPNAME"
+    mkdir -p "$devilboxConfDir"
+
+    # For non-subdomains, clone repository if provided
+    if [[ "$WEB_MULTI" == "N" ]]; then
+      if [[ "$MAGE_INFRA" == "aws" ]]; then
+        git clone --quiet "$APPREPOSITORY" "$WEBAPP_DIR/$APPNAME" > /dev/null
+        if [[ "$AWS_BASEDIR" != "$HTTPD_DOCROOT_DIR" ]]; then
+          (cd "$WEBAPP_DIR/$APPNAME" || exit; ln -snf "$AWS_BASEDIR" "$HTTPD_DOCROOT_DIR" > /dev/null)
+        fi
+      elif [[ "$MAGE_INFRA" == "cloud" ]] || [[ "$MAGE_INFRA" == "" ]]; then
+        git clone --quiet "$APPREPOSITORY" "$WEBAPP_DIR/$APPNAME/$HTTPD_DOCROOT_DIR" > /dev/null
+      fi
+    elif [[ "$WEB_MULTI" == "Y" ]]; then
+      # For subdomains, create symbolic link to parent app
+      (cd "$WEBAPP_DIR/$APPNAME" || exit; ln -snf "../$PARENT_APPNAME/$HTTPD_DOCROOT_DIR" "$HTTPD_DOCROOT_DIR" > /dev/null)
     fi
   fi
 
-  mkdir -p "$WEBAPP_DIR/$APPNAME"
-  mkdir -p "$devilboxConfDir"
-
-  # General Configuration
-  if [[ -f "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-php-multi" ]] && [[ $currentStack != "nodejs" ]] && [[ $currentStack != "bigcommerce" ]] && [[ $currentStack != "shopify" ]]; then
-    cat "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-php-multi" | sed "s/PHP_VERSION/$PHP_VERSION/g" > "$devilboxConfDir/backend.cfg"
-  fi
-
-  if [[ -f "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi" ]] && [[ $currentStack != "magento" ]] && [[ $currentStack != "laravel" ]] && [[ $currentStack != "phpweb" ]]; then
-    cat "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi" | sed "s/PHP_VERSION/$PHP_VERSION/g" | sed "s/PROXY_PORT/$PROXY_PORT/g" > "$devilboxConfDir/backend.cfg"
-  fi
-
-  if [[ "$WEB_MULTI" == "N" ]]; then
-    if [[ "$MAGE_INFRA" == "cloud" ]] || [[ "$MAGE_INFRA" == "" ]]; then
-      git clone --quiet "$APPREPOSITORY" "$WEBAPP_DIR/$APPNAME/$HTTPD_DOCROOT_DIR" > /dev/null
-    fi
-  elif [[ "$WEB_MULTI" == "Y" ]]; then
-    (cd "$WEBAPP_DIR" || exit; ln -snf "../$PARENT_APPNAME/$HTTPD_DOCROOT_DIR" "$WEBAPP_DIR/$APPNAME/$HTTPD_DOCROOT_DIR" > /dev/null)
-  fi
-
+  # Configure based on stack type
   case "$currentStack" in
     magento)
       templateType="magento2"
@@ -651,6 +761,21 @@ function BootstrapWebApplication {
       ;;
   esac
 
+  # Ensure template directory exists before writing config files
+  if [[ ! -d "$devilboxConfDir" ]]; then
+    mkdir -p "$devilboxConfDir"
+  fi
+
+  # General Configuration
+  if [[ -f "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-php-multi" ]] && [[ $currentStack != "nodejs" ]] && [[ $currentStack != "bigcommerce" ]] && [[ $currentStack != "shopify" ]]; then
+    cat "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-php-multi" | sed "s/PHP_VERSION/$PHP_VERSION/g" > "$devilboxConfDir/backend.cfg"
+  fi
+
+  if [[ -f "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi" ]] && [[ $currentStack != "magento" ]] && [[ $currentStack != "laravel" ]] && [[ $currentStack != "phpweb" ]]; then
+    cat "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi" | sed "s/PHP_VERSION/$PHP_VERSION/g" | sed "s/PROXY_PORT/$PROXY_PORT/g" > "$devilboxConfDir/backend.cfg"
+  fi
+
+  # Setup web server configuration
   if [[ "$HTTPD_SERVER" =~ "nginx" ]]; then
     cp "$DEVILBOX_PATH/cfg/vhost-gen/nginx.yml-example-$templateType" "$devilboxConfDir/nginx.yml"
   elif [[ "$HTTPD_SERVER" = "apache-2.2" ]]; then
@@ -733,6 +858,139 @@ function SyncHttpdConf {
   echo ""
 }
 
+function SyncEnvConf {
+  # STEP 1: Handle docker-compose.override.yml synchronization
+  local DOCKER_OVERRIDE_SOURCE="$DEVILBOX_PATH/compose/docker-compose.override.yml-magento2"
+  local DOCKER_OVERRIDE_TARGET="$DEVILBOX_PATH/docker-compose.override.yml"
+
+  if [[ -f "$DOCKER_OVERRIDE_SOURCE" ]] && [[ -f "$DOCKER_OVERRIDE_TARGET" ]]; then
+    echo "${YELLOW}${BOLD}Step 1: Checking docker-compose.override.yml differences${NORMAL}"
+    echo "Comparing $DOCKER_OVERRIDE_SOURCE with $DOCKER_OVERRIDE_TARGET"
+    echo ""
+
+    # Check if files are different
+    if ! diff -q "$DOCKER_OVERRIDE_SOURCE" "$DOCKER_OVERRIDE_TARGET" >/dev/null; then
+      # Show differences
+      diff -u "$DOCKER_OVERRIDE_TARGET" "$DOCKER_OVERRIDE_SOURCE" || true
+      echo ""
+
+      # Prompt user for action
+      read -r -p "${CYAN}Would you like to apply these changes to your docker-compose.override.yml? (y/n): ${NORMAL}" response
+      case "$response" in
+        [yY][eE][sS]|[yY])
+          echo -ne "${YELLOW}[!] Updating docker-compose.override.yml..."
+          cp "$DOCKER_OVERRIDE_SOURCE" "$DOCKER_OVERRIDE_TARGET"
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+          echo ""
+          ;;
+        *)
+          echo -ne "${YELLOW}[!] Skipping docker-compose.override.yml update..."
+          echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+          echo ""
+          ;;
+      esac
+    else
+      echo -ne "${YELLOW}[!] No differences found in docker-compose.override.yml..."
+      echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+      echo ""
+    fi
+  elif [[ -f "$DOCKER_OVERRIDE_SOURCE" ]] && [[ ! -f "$DOCKER_OVERRIDE_TARGET" ]]; then
+    echo -ne "${YELLOW}[!] Creating new docker-compose.override.yml..."
+    cp "$DOCKER_OVERRIDE_SOURCE" "$DOCKER_OVERRIDE_TARGET"
+    echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+    echo ""
+  fi
+
+  # STEP 2: Handle .env synchronization
+  local ENV_SOURCE="$DEVILBOX_PATH/env-example"
+  local ENV_TARGET="$DEVILBOX_PATH/.env"
+
+  echo ""
+  echo "${YELLOW}${BOLD}Step 2: Checking .env file differences${NORMAL}"
+  echo "Comparing $ENV_SOURCE with $ENV_TARGET"
+  echo ""
+
+  if [[ -f "$ENV_SOURCE" ]] && [[ -f "$ENV_TARGET" ]]; then
+    # Create temporary files for comparison with normalized preserved variables
+    local TMP_SOURCE=$(mktemp)
+    local TMP_TARGET=$(mktemp)
+
+    # Copy original files to temp files
+    cp "$ENV_SOURCE" "$TMP_SOURCE"
+    cp "$ENV_TARGET" "$TMP_TARGET"
+
+    # Normalize preserved variables to same values in both files
+    for var in "TLD_SUFFIX" "NEW_UID" "NEW_GID" "HOST_PORT_BIND"; do
+      sed -i.bak "s/^$var=.*/$var=NORMALIZED_VALUE/" "$TMP_SOURCE" && rm -f "${TMP_SOURCE}.bak"
+      sed -i.bak "s/^$var=.*/$var=NORMALIZED_VALUE/" "$TMP_TARGET" && rm -f "${TMP_TARGET}.bak"
+    done
+
+    # Check if files are different (ignoring the preserved variables)
+    if ! diff -q "$TMP_SOURCE" "$TMP_TARGET" >/dev/null; then
+      # Show differences in original files
+      diff -u "$ENV_TARGET" "$ENV_SOURCE" || true
+      echo ""
+
+      # Prompt user for action
+      read -r -p "${CYAN}Would you like to apply these changes to your .env file? (y/n): ${NORMAL}" response
+      case "$response" in
+        [yY][eE][sS]|[yY])
+          echo -ne "${YELLOW}[!] Updating .env file while preserving key variables..."
+
+          # Backup the current values of preserved variables
+          local tld_suffix=$(grep -E "^TLD_SUFFIX=" "$ENV_TARGET" | cut -d '=' -f2-)
+          local new_uid=$(grep -E "^NEW_UID=" "$ENV_TARGET" | cut -d '=' -f2-)
+          local new_gid=$(grep -E "^NEW_GID=" "$ENV_TARGET" | cut -d '=' -f2-)
+          local host_port_bind=$(grep -E "^HOST_PORT_BIND=" "$ENV_TARGET" | cut -d '=' -f2-)
+
+          # Copy the new env file
+          cp "$ENV_SOURCE" "$ENV_TARGET"
+
+          # Restore preserved variables if they were found
+          if [[ ! -z "$tld_suffix" ]]; then
+            sed -i.bak "s/^TLD_SUFFIX=.*/TLD_SUFFIX=${tld_suffix}/" "$ENV_TARGET" && rm -f "${ENV_TARGET}.bak"
+          fi
+
+          if [[ ! -z "$new_uid" ]]; then
+            sed -i.bak "s/^NEW_UID=.*/NEW_UID=${new_uid}/" "$ENV_TARGET" && rm -f "${ENV_TARGET}.bak"
+          fi
+
+          if [[ ! -z "$new_gid" ]]; then
+            sed -i.bak "s/^NEW_GID=.*/NEW_GID=${new_gid}/" "$ENV_TARGET" && rm -f "${ENV_TARGET}.bak"
+          fi
+
+          if [[ ! -z "$host_port_bind" ]]; then
+            sed -i.bak "s/^HOST_PORT_BIND=.*/HOST_PORT_BIND=${host_port_bind}/" "$ENV_TARGET" && rm -f "${ENV_TARGET}.bak"
+          fi
+
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+          echo ""
+          ;;
+        *)
+          echo -ne "${YELLOW}[!] Aborting environment synchronization..."
+          echo -ne "...${NORMAL} ${RED}ABORTED${NORMAL}"
+          echo ""
+          ;;
+      esac
+    else
+      echo -ne "${YELLOW}[!] No meaningful differences found in .env file (ignoring preserved variables)..."
+      echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+      echo ""
+    fi
+
+    # Clean up temporary files
+    rm -f "$TMP_SOURCE" "$TMP_TARGET"
+    
+  elif [[ -f "$ENV_SOURCE" ]] && [[ ! -f "$ENV_TARGET" ]]; then
+    echo -ne "${YELLOW}[!] Creating new .env file..."
+    cp "$ENV_SOURCE" "$ENV_TARGET"
+    echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+    echo ""
+  fi
+
+  success "Environment configuration synchronization complete!"
+}
+
 function DoctorForBox {
   /bin/bash "$DEVILBOX_PATH/check-config.sh"
 }
@@ -813,7 +1071,7 @@ function Usage {
       echo " cloud-patches${NORMAL}    Run EcePatches command from the current project directory"
       echo " update-docroot${NORMAL}   Update new document root for all current webapps"
       echo " sync-httpd${NORMAL}       Sync Httpd configuration to all current webapps"
-      echo " sync-env${NORMAL}         Sync current .env from default env file (prompting for changes)"
+      echo " sync-env${NORMAL}         Sync current .env from default env file & docker-compose.override.yml (prompting for changes)"
     ;;
   esac
 }

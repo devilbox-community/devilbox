@@ -104,7 +104,7 @@ services:
   # PHP
   # ------------------------------------------------------------
   php:
-    image: devilboxcommunity/php-fpm:${PHP_SERVER}-work-0.154
+    image: devilboxcommunity/php-fpm:${PHP_SERVER}-work-0.155
     hostname: php
 
     ##
