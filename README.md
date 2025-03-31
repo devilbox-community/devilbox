@@ -763,7 +763,6 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | Modules                       | <sup>PHP 7.4</sup> | <sup>PHP 8.0</sup> | <sup>PHP 8.1</sup> | <sup>PHP 8.2</sup> | <sup>PHP 8.3</sup> | <sup>PHP 8.4</sup> |
 |-------------------------------|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
 | <sup>amqp</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
-| <sup>apc</sup>                |         |         |         |         |         |         |
 | <sup>apcu</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>bcmath</sup>             |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>blackfire</sup>          |    d    |    d    |    d    |    d    |    d    |    d    |
@@ -775,7 +774,6 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>dba</sup>                |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>dom</sup>                |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>enchant</sup>            |         |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
-| <sup>ereg</sup>               |         |         |         |         |         |         |
 | <sup>exif</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>FFI</sup>                |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>fileinfo</sup>           |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
@@ -789,9 +787,8 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>igbinary</sup>           |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>imagick</sup>            |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>imap</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
-| <sup>interbase</sup>          |         |         |         |         |         |         |
 | <sup>intl</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
-| <sup>ioncube</sup>            |    d    |         |    d    |    d    |         |         |
+| <sup>ioncube</sup>            |    d    |         |    d    |    d    |    d    |    d    |
 | <sup>json</sup>               |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>ldap</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>libxml</sup>             |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
@@ -801,11 +798,8 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>mcrypt</sup>             |    🗸    |    🗸    |         |         |         |         |
 | <sup>memcache</sup>           |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>memcached</sup>          |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
-| <sup>mhash</sup>              |         |         |         |         |         |         |
-| <sup>mongo</sup>              |         |         |         |         |         |         |
 | <sup>mongodb</sup>            |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>msgpack</sup>            |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
-| <sup>mysql</sup>              |         |         |         |         |         |         |
 | <sup>mysqli</sup>             |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>mysqlnd</sup>            |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>OAuth</sup>              |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
@@ -823,7 +817,6 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>pdo_sqlite</sup>         |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>pdo_sqlsrv</sup>         |    d    |    d    |    d    |    d    |    d    |    d    |
 | <sup>pgsql</sup>              |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
-| <sup>phalcon</sup>            |    d    |    d    |    d    |    d    |    d    |    d    |
 | <sup>Phar</sup>               |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>posix</sup>              |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>pspell</sup>             |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
@@ -831,7 +824,6 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>random</sup>             |         |         |         |    ✔    |    ✔    |    ✔    |
 | <sup>rdkafka</sup>            |    d    |    d    |    d    |    d    |    d    |    d    |
 | <sup>readline</sup>           |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
-| <sup>recode</sup>             |         |         |         |         |         |         |
 | <sup>redis</sup>              |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>Reflection</sup>         |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>session</sup>            |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
@@ -841,7 +833,7 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>soap</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>sockets</sup>            |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>sodium</sup>             |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
-| <sup>solr</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
+| <sup>solr</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |         |
 | <sup>sourceguardian</sup>     |    d    |    d    |    d    |    d    |    d    |    d    |
 | <sup>SPL</sup>                |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>sqlite3</sup>            |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
@@ -856,7 +848,6 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>uploadprogress</sup>     |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>uuid</sup>               |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>vips</sup>               |    🗸    |    🗸    |    🗸    |         |         |         |
-| <sup>wddx</sup>               |         |         |         |         |         |         |
 | <sup>Xdebug</sup>             |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>xhprof</sup>             |    d    |    d    |    d    |    d    |    d    |    d    |
 | <sup>xlswriter</sup>          |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
