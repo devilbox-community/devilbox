@@ -63,15 +63,15 @@ OUTPUT="OK-RPROXY-JAVASCRIPT"
 ###
 ### Create vhost-gen config directory
 ###
-run "docker-compose exec --user devilbox -T php rm -rf /shared/httpd/${RPROXY_NAME}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php mkdir -p /shared/httpd/${RPROXY_NAME}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php rm -rf /shared/httpd/${RPROXY_NAME}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mkdir -p /shared/httpd/${RPROXY_NAME}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
 
 
 ###
 ### Apply default vhost-gen reverse proxy configurations
 ###
 run "cp ${DVLBOX_PATH}/cfg/vhost-gen/apache24.yml-example-rproxy ${SCRIPT_PATH}/../www/${RPROXY_NAME}/${HTTPD_TEMPLATE_DIR}/apache24.yml" "${RETRIES}"
-run "cp ${DVLBOX_PATH}/cfg/vhost-gen/nginx.yml-example-rproxy    ${SCRIPT_PATH}/../www/${RPROXY_NAME}/${HTTPD_TEMPLATE_DIR}/nginx.yml" "${RETRIES}"
+run "cp ${DVLBOX_PATH}/cfg/vhost-gen/nginx.yml-example-rproxy-default ${SCRIPT_PATH}/../www/${RPROXY_NAME}/${HTTPD_TEMPLATE_DIR}/nginx.yml" "${RETRIES}"
 
 
 ###
@@ -84,25 +84,25 @@ replace ":${VHOSTGEN_TPL_DEFAULT_PORT}" ":${RPROXY_PORT}" "${SCRIPT_PATH}/../www
 ###
 ### Ensure webserver reloads configuration
 ###
-run "docker-compose exec --user devilbox -T php mv /shared/httpd/${RPROXY_NAME} /shared/httpd/${RPROXY_NAME}.tmp" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mv /shared/httpd/${RPROXY_NAME} /shared/httpd/${RPROXY_NAME}.tmp" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
-run "docker-compose exec --user devilbox -T php mv /shared/httpd/${RPROXY_NAME}.tmp /shared/httpd/${RPROXY_NAME}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mv /shared/httpd/${RPROXY_NAME}.tmp /shared/httpd/${RPROXY_NAME}" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
 
 
 ###
 ### Start rproxy application
 ###
-run "docker-compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${RPROXY_NAME}/js && pm2 start index.js -f'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${RPROXY_NAME}/js && pm2 start index.js -f'" "${RETRIES}" "${DVLBOX_PATH}"
 
 
 ###
 ### Test rhost
 ###
 printf "[TEST] rproxy javascript"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${RPROXY_NAME}.${TLD_SUFFIX}' | tac | tac | grep -E '^${OUTPUT}$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${RPROXY_NAME}.${TLD_SUFFIX}' | tac | tac | grep -E '^${OUTPUT}$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] rproxy javascript\\n"
-	run "docker-compose exec --user devilbox -T php curl -v 'http://${RPROXY_NAME}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
+	run "docker compose exec --user devilbox -T php curl -v 'http://${RPROXY_NAME}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
 	exit 1
 else
 	printf "\\r[OK]   rproxy javascript\\n"

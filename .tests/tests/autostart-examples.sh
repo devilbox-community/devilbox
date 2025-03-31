@@ -41,7 +41,7 @@ fi
 ###
 ### Get autostart files
 ###
-FILES="$( run "docker-compose exec -T --user devilbox php bash -c 'find /startup.1.d/ -name \"*.sh-example\"'" "${RETRIES}" "${DVLBOX_PATH}" "0" )"
+FILES="$( run "docker compose exec -T --user devilbox php bash -c 'find /startup.1.d/ -name \"*.sh-example\"'" "${RETRIES}" "${DVLBOX_PATH}" "0" )"
 
 echo
 echo "#--------------------------------------------------------------------------------"
@@ -50,14 +50,14 @@ echo "#-------------------------------------------------------------------------
 echo
 
 for file in ${FILES}; do
-	run "docker-compose exec -T php bash ${file} 'ACCEPT_EULA=1'" "${RETRIES}" "${DVLBOX_PATH}"
+	run "docker compose exec -T php bash ${file} 'ACCEPT_EULA=1'" "${RETRIES}" "${DVLBOX_PATH}"
 done
 
 
 ###
 ### Get autostart files
 ###
-FILES="$( run "docker-compose exec -T --user devilbox php bash -c 'find /startup.2.d/ -name \"*.sh-example\"'" "${RETRIES}" "${DVLBOX_PATH}" "0" )"
+FILES="$( run "docker compose exec -T --user devilbox php bash -c 'find /startup.2.d/ -name \"*.sh-example\"'" "${RETRIES}" "${DVLBOX_PATH}" "0" )"
 
 echo
 echo "#--------------------------------------------------------------------------------"
@@ -66,5 +66,5 @@ echo "#-------------------------------------------------------------------------
 echo
 
 for file in ${FILES}; do
-	run "docker-compose exec -T php bash ${file}" "${RETRIES}" "${DVLBOX_PATH}"
+	run "docker compose exec -T php bash ${file}" "${RETRIES}" "${DVLBOX_PATH}"
 done

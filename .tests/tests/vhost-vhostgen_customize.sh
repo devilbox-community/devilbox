@@ -70,24 +70,24 @@ VHOST=test-vhost-vhostgen_customize
 ###
 ### Create vhost directory
 ###
-run "docker-compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
-run "docker-compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
 
 
 ###
 ### Add index.htm, index.html and index.php
 ###
-run "docker-compose exec --user devilbox -T php bash -c 'echo \"indexhtm\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.htm'" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php bash -c 'echo \"indexhtml\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.html'" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php bash -c 'echo \"<?php echo \\\"indexphp\\\";\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.php'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'echo \"indexhtm\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.htm'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'echo \"indexhtml\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.html'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'echo \"<?php echo \\\"indexphp\\\";\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.php'" "${RETRIES}" "${DVLBOX_PATH}"
 
 
 ###
 ### Copy default configuration
 ###
-run "docker-compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
 run "cp ${DVLBOX_PATH}/cfg/vhost-gen/apache24.yml-example-vhost ${SCRIPT_PATH}/../www/${VHOST}/${HTTPD_TEMPLATE_DIR}/apache24.yml" "${RETRIES}"
 run "cp ${DVLBOX_PATH}/cfg/vhost-gen/nginx.yml-example-vhost ${SCRIPT_PATH}/../www/${VHOST}/${HTTPD_TEMPLATE_DIR}/nginx.yml" "${RETRIES}"
 
@@ -102,9 +102,9 @@ replace "__INDEX__" "index.html" "${SCRIPT_PATH}/../www/${VHOST}/${HTTPD_TEMPLAT
 ###
 ### Ensure webserver reloads configuration
 ###
-run "docker-compose exec --user devilbox -T php mv /shared/httpd/${VHOST} /shared/httpd/${VHOST}.tmp" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mv /shared/httpd/${VHOST} /shared/httpd/${VHOST}.tmp" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
-run "docker-compose exec --user devilbox -T php mv /shared/httpd/${VHOST}.tmp /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mv /shared/httpd/${VHOST}.tmp /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
 
 
@@ -112,9 +112,9 @@ run "sleep 4"
 ### Ensure index.html will be served by default (as configured)
 ###
 printf "[TEST] index.html should be served"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexhtml$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexhtml$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] index.html should be served\\n"
-    run "docker-compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
+    run "docker compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
 	exit 1
 else
 	printf "\\r[OK]   index.html should be served\\n"

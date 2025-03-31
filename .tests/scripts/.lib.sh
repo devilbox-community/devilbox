@@ -48,7 +48,7 @@ get_php_version() {
 
 	# Check php -v
 	>&2 printf "Fetching PHP version from php -v:   "
-	if ! cli_version="$( run "docker-compose exec -T php php -v \
+	if ! cli_version="$( run "docker compose exec -T php php -v \
 		| grep -Eo '^PHP[[:space:]]+[0-9]+\\.[0-9]+' \
 		| grep -Eo '[0-9]+\\.[0-9]+'" \
 		"${retries}" "${root_path}" "0" )"; then
@@ -285,17 +285,17 @@ create_vhost_dir() {
 
 	# Clean vhost dir
 	cd "${DVLBOX_PATH}"
-	while docker-compose exec --user devilbox -T php curl -sS --fail "http://php/vhosts.php" | grep ">${vhost}<" >/dev/null; do
+	while docker compose exec --user devilbox -T php curl -sS --fail "http://php/vhosts.php" | grep ">${vhost}<" >/dev/null; do
 		echo "Deleting vhost: ${vhost}"
-		run "docker-compose exec --user devilbox -T php bash -c 'rm -rf /shared/httpd/${vhost} && sleep 5;'" "1" "${DVLBOX_PATH}"
+		run "docker compose exec --user devilbox -T php bash -c 'rm -rf /shared/httpd/${vhost} && sleep 5;'" "1" "${DVLBOX_PATH}"
 	done
 
 	# Create vhost dir
 	cd "${DVLBOX_PATH}"
-	while ! docker-compose exec --user devilbox -T php curl -sS --fail "http://php/vhosts.php" | grep ">${vhost}<" >/dev/null; do
+	while ! docker compose exec --user devilbox -T php curl -sS --fail "http://php/vhosts.php" | grep ">${vhost}<" >/dev/null; do
 		echo "Recreating vhost: ${vhost}"
-		run "docker-compose exec --user devilbox -T php bash -c 'rm -rf   /shared/httpd/${vhost} && sleep 5;'" "1" "${DVLBOX_PATH}"
-		run "docker-compose exec --user devilbox -T php bash -c 'mkdir -p /shared/httpd/${vhost} && sleep 5;'" "1" "${DVLBOX_PATH}"
+		run "docker compose exec --user devilbox -T php bash -c 'rm -rf   /shared/httpd/${vhost} && sleep 5;'" "1" "${DVLBOX_PATH}"
+		run "docker compose exec --user devilbox -T php bash -c 'mkdir -p /shared/httpd/${vhost} && sleep 5;'" "1" "${DVLBOX_PATH}"
 	done
 	echo "Vhost is present: ${vhost}"
 }

@@ -116,16 +116,16 @@ echo
 for file in ${FILES}; do
 	name="${file#./}"
 
-	if ! run "docker-compose exec -T php curl -sS --fail -o /dev/null -I -w '%{http_code}' 'http://${VHOST}.${TLD_SUFFIX}/${name}' | tac | tac | grep -E '200'" "${RETRIES}" "${DVLBOX_PATH}"; then
-		run "docker-compose exec -T php curl -sS -o /dev/null -I -w '%{http_code}' 'http://${VHOST}.${TLD_SUFFIX}/${name}'" "1" "${DVLBOX_PATH}"
+	if ! run "docker compose exec -T php curl -sS --fail -o /dev/null -I -w '%{http_code}' 'http://${VHOST}.${TLD_SUFFIX}/${name}' | tac | tac | grep -E '200'" "${RETRIES}" "${DVLBOX_PATH}"; then
+		run "docker compose exec -T php curl -sS -o /dev/null -I -w '%{http_code}' 'http://${VHOST}.${TLD_SUFFIX}/${name}'" "1" "${DVLBOX_PATH}"
 		ERROR=1
 	fi
-	if ! run "docker-compose exec -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/${name}' | tac | tac | grep -E '^(OK|SKIP)$'" "${RETRIES}" "${DVLBOX_PATH}"; then
-		run "docker-compose exec -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/${name}'" "1" "${DVLBOX_PATH}"
+	if ! run "docker compose exec -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/${name}' | tac | tac | grep -E '^(OK|SKIP)$'" "${RETRIES}" "${DVLBOX_PATH}"; then
+		run "docker compose exec -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/${name}'" "1" "${DVLBOX_PATH}"
 		ERROR=1
 	fi
-	if ! run_fail "docker-compose exec -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/${name}' 2>&1 | tac | tac | grep -Ei 'fatal|except|err|war|notice' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
-		run "docker-compose exec -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/${name}'" "1" "${DVLBOX_PATH}"
+	if ! run_fail "docker compose exec -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/${name}' 2>&1 | tac | tac | grep -Ei 'fatal|except|err|war|notice' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
+		run "docker compose exec -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/${name}'" "1" "${DVLBOX_PATH}"
 		ERROR=1
 	fi
 done

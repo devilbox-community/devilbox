@@ -64,9 +64,9 @@ VHOST=test-vhost-dir_index
 ###
 ### Create vhost directory
 ###
-run "docker-compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
-run "docker-compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
 
 
@@ -79,11 +79,11 @@ ERROR=0
 ###
 ### index.htm should be served by default
 ###
-run "docker-compose exec --user devilbox -T php bash -c 'echo \"indexhtm\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.htm'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'echo \"indexhtm\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.htm'" "${RETRIES}" "${DVLBOX_PATH}"
 printf "[TEST] index.htm should be served by default"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexhtm$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexhtm$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] index.htm should be served by default\\n"
-	run "docker-compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
+	run "docker compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
 	ERROR=1
 else
 	printf "\\r[OK]   index.htm should be served by default\\n"
@@ -93,11 +93,11 @@ fi
 ###
 ### index.html should be served by default
 ###
-run "docker-compose exec --user devilbox -T php bash -c 'echo \"indexhtml\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.html'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'echo \"indexhtml\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.html'" "${RETRIES}" "${DVLBOX_PATH}"
 printf "[TEST] index.html should be served by default"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexhtml$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexhtml$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] index.html should be served by default\\n"
-	run "docker-compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
+	run "docker compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
 	ERROR=1
 else
 	printf "\\r[OK]   index.html should be served by default\\n"
@@ -107,11 +107,11 @@ fi
 ###
 ### index.php should be served by default
 ###
-run "docker-compose exec --user devilbox -T php bash -c 'echo \"<?php echo \\\"indexphp\\\";\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.php'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'echo \"<?php echo \\\"indexphp\\\";\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.php'" "${RETRIES}" "${DVLBOX_PATH}"
 printf "[TEST] index.php should be served by default"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexphp$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep -E '^indexphp$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] index.php should be served by default\\n"
-    run "docker-compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
+    run "docker compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}"
 	ERROR=1
 else
 	printf "\\r[OK]   index.php should be served by default\\n"
@@ -123,9 +123,9 @@ fi
 ### index.htm is available via direct path
 ###
 printf "[TEST] index.htm is available via direct path"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/index.htm' | tac | tac | grep -E '^indexhtm$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/index.htm' | tac | tac | grep -E '^indexhtm$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] index.htm is available via direct path\\n"
-    run "docker-compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/index.htm' || true" "1" "${DVLBOX_PATH}"
+    run "docker compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/index.htm' || true" "1" "${DVLBOX_PATH}"
 	ERROR=1
 else
 	printf "\\r[OK]   index.htm is available via direct path\\n"
@@ -136,9 +136,9 @@ fi
 ### index.html is available via direct path
 ###
 printf "[TEST] index.html is available via direct path"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/index.html' | tac | tac | grep -E '^indexhtml$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/index.html' | tac | tac | grep -E '^indexhtml$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] index.html is available via direct path\\n"
-    run "docker-compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/index.html' || true" "1" "${DVLBOX_PATH}"
+    run "docker compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/index.html' || true" "1" "${DVLBOX_PATH}"
 	ERROR=1
 else
 	printf "\\r[OK]   index.html is available via direct path\\n"
@@ -149,9 +149,9 @@ fi
 ### index.php is available via direct path
 ###
 printf "[TEST] index.php is available via direct path"
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/index.php' | tac | tac | grep -E '^indexphp$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}/index.php' | tac | tac | grep -E '^indexphp$' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] index.php is available via direct path\\n"
-    run "docker-compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/index.php' || true" "1" "${DVLBOX_PATH}"
+    run "docker compose exec --user devilbox -T php curl -sS 'http://${VHOST}.${TLD_SUFFIX}/index.php' || true" "1" "${DVLBOX_PATH}"
 	ERROR=1
 else
 	printf "\\r[OK]   index.php is available via direct path\\n"

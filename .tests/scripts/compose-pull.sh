@@ -24,4 +24,4 @@ fi
 # ENTRYPOINT
 # -------------------------------------------------------------------------------------------------
 
-run "docker-compose pull" "60" "${DVLBOX_PATH}"
+run "docker compose pull" "60" "${DVLBOX_PATH}"

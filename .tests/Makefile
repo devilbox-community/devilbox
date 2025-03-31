@@ -55,10 +55,10 @@ endif
 ### Pull currently setup images
 ###
 pull: ../.env
-	cat "../docker-compose.yml" \
-		| perl -0 -pe "s/# version: '2.3'/version: '2.3'/g" \
-		> "../docker-compose.yml.tmp"
-	yes | mv -f "../docker-compose.yml.tmp" "../docker-compose.yml"
+	#cat "../docker-compose.yml" \
+	#	| perl -0 -pe "s/# version: '2.3'/version: '2.3'/g" \
+	#	> "../docker-compose.yml.tmp"
+	#yes | mv -f "../docker-compose.yml.tmp" "../docker-compose.yml"
 	@$(PWD)/scripts/compose-pull.sh
 
 

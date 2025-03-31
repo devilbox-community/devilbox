@@ -69,9 +69,9 @@ VHOST=test-vhost-vhostgen_def_tpl
 ###
 ### Create vhost directory
 ###
-run "docker-compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
-run "docker-compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
 
 
@@ -84,7 +84,7 @@ TEMPLATE1="$( run "curl -sS --fail 'http://localhost:${HOST_PORT_HTTPD}/vhost.d/
 ###
 ### Copy default configuration
 ###
-run "docker-compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/${HTTPD_TEMPLATE_DIR}" "${RETRIES}" "${DVLBOX_PATH}"
 run "cp ${DVLBOX_PATH}/cfg/vhost-gen/apache24.yml-example-vhost ${SCRIPT_PATH}/../www/${VHOST}/${HTTPD_TEMPLATE_DIR}/apache24.yml" "${RETRIES}"
 run "cp ${DVLBOX_PATH}/cfg/vhost-gen/nginx.yml-example-vhost ${SCRIPT_PATH}/../www/${VHOST}/${HTTPD_TEMPLATE_DIR}/nginx.yml" "${RETRIES}"
 
@@ -92,9 +92,9 @@ run "cp ${DVLBOX_PATH}/cfg/vhost-gen/nginx.yml-example-vhost ${SCRIPT_PATH}/../w
 ###
 ### Ensure webserver reloads configuration
 ###
-run "docker-compose exec --user devilbox -T php mv /shared/httpd/${VHOST} /shared/httpd/${VHOST}.tmp" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mv /shared/httpd/${VHOST} /shared/httpd/${VHOST}.tmp" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
-run "docker-compose exec --user devilbox -T php mv /shared/httpd/${VHOST}.tmp /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mv /shared/httpd/${VHOST}.tmp /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
 
 

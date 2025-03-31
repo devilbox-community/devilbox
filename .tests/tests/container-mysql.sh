@@ -52,16 +52,16 @@ DATALEN=200    # Length of the data per value
 
 
 # Install pipe viewer
-run "docker-compose exec --user root     -T php bash -c 'apt update && apt install -y pv'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user root     -T php bash -c 'apt update && apt install -y pv'" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Drop database
-run "docker-compose exec --user devilbox -T php bash -c 'mysql --host=mysql --user=root --password='\\''${MYSQL_ROOT_PASSWORD}'\\'' -e '\\''DROP DATABASE IF EXISTS ${DB_NAME};'\\'''" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'mysql --host=mysql --user=root --password='\\''${MYSQL_ROOT_PASSWORD}'\\'' -e '\\''DROP DATABASE IF EXISTS ${DB_NAME};'\\'''" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Delete mysql.sql file
-run "docker-compose exec --user devilbox -T php bash -c 'rm -f /home/devilbox/mysql.sql'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'rm -f /home/devilbox/mysql.sql'" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Create SQL File
-run "docker-compose exec --user devilbox -T php bash -c '
+run "docker compose exec --user devilbox -T php bash -c '
 (
 	echo \"CREATE DATABASE ${DB_NAME} COLLATE '\\''utf8mb4_bin'\\'';\";
 	echo \"USE ${DB_NAME};\";
@@ -87,13 +87,13 @@ run "docker-compose exec --user devilbox -T php bash -c '
 ) > /home/devilbox/mysql.sql
 '" "${RETRIES}" "${DVLBOX_PATH}"
 printf "\\n"
-run "docker-compose exec --user devilbox -T php bash -c 'ls -lap /home/devilbox/mysql.sql'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'ls -lap /home/devilbox/mysql.sql'" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Import SQL file
-run "docker-compose exec --user devilbox -T php bash -c 'pv -f -i 1 -p -t -e /home/devilbox/mysql.sql | mysql --host=mysql --user=root --password='\\''${MYSQL_ROOT_PASSWORD}'\\'''" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'pv -f -i 1 -p -t -e /home/devilbox/mysql.sql | mysql --host=mysql --user=root --password='\\''${MYSQL_ROOT_PASSWORD}'\\'''" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Compare inserted rows
-COUNT="$( run "docker-compose exec --user devilbox -T php bash -c 'mysql --host=mysql --user=root --password='\\''${MYSQL_ROOT_PASSWORD}'\\'' -e '\\''SELECT COUNT(*) AS cnt FROM ${DB_NAME}.${TBL_NAME};'\\''' | grep -Ei '[0-9]+'" "1" "${DVLBOX_PATH}" )"
+COUNT="$( run "docker compose exec --user devilbox -T php bash -c 'mysql --host=mysql --user=root --password='\\''${MYSQL_ROOT_PASSWORD}'\\'' -e '\\''SELECT COUNT(*) AS cnt FROM ${DB_NAME}.${TBL_NAME};'\\''' | grep -Ei '[0-9]+'" "1" "${DVLBOX_PATH}" )"
 COUNT="$( echo "${COUNT}" | grep -Eo '[0-9]+' )"
 
 if [ "${COUNT}" -ne "$(( ROWS * GROUPED ))" ]; then
