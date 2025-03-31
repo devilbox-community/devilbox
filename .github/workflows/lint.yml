@@ -13,10 +13,10 @@ on:
   # Runs on Pull Requests
   pull_request:
 
-  # Runs on master Branch and Tags
+  # Runs on mainline Branch and Tags
   push:
     branches:
-      - master
+      - mainline
 
 
 # -------------------------------------------------------------------------------------------------
