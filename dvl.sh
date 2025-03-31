@@ -1203,6 +1203,12 @@ function BootstrapExistingApps {
     local app_name=$("$YQ_BINARY" ".apps[$i].name" "$yaml_file")
     local is_subdomain=$("$YQ_BINARY" ".apps[$i].is_subdomain" "$yaml_file")
 
+    # Skip empty app names
+    if [[ -z "$app_name" || "$app_name" == "null" ]]; then
+      echo "${YELLOW}Skipping empty app name entry in configuration file.${NORMAL}"
+      continue
+    fi
+
     echo "${CYAN}Processing application: ${GREEN}$app_name${NORMAL} (Subdomain: $is_subdomain)"
 
     APPNAME="$app_name"
@@ -1211,7 +1217,33 @@ function BootstrapExistingApps {
     if [[ "$is_subdomain" == "Y" ]]; then
       # For subdomains, we need to find the parent app
       PARENT_APPNAME=$("$YQ_BINARY" '.apps[] | select(.is_subdomain == "N") | .name' "$yaml_file" | head -1)
-      echo "${YELLOW}Using parent application: ${GREEN}$PARENT_APPNAME${NORMAL}"
+      if [[ -n "$PARENT_APPNAME" && "$PARENT_APPNAME" != "null" ]]; then
+        echo "${YELLOW}Using parent application: ${GREEN}$PARENT_APPNAME${NORMAL}"
+      else
+        echo "${RED}Warning: No parent application found for subdomain $app_name${NORMAL}"
+        PARENT_APPNAME="unknown_parent"
+      fi
+    fi
+
+    # Check if directory exists but with different name (from git clone)
+    local repo_name=$(basename "$APPREPOSITORY" .git | sed 's/\.git$//')
+    local repo_dir="$WEBAPP_DIR/$repo_name"
+    local app_dir="$WEBAPP_DIR/$APPNAME"
+
+    if [[ -n "$APPREPOSITORY" ]] && [[ "$WEB_MULTI" == "N" ]]; then
+      if [[ -d "$repo_dir" ]] && [[ "$repo_name" != "$APPNAME" ]]; then
+        echo -ne "${YELLOW}Found repository directory with different name: $repo_name"
+        echo -ne "\n${YELLOW}Renaming to match app name: $APPNAME"
+        mv "$repo_dir" "$app_dir"
+        echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+
+        # If the yaml file was in the renamed directory, update its path
+        if [[ "$yaml_file" == "$repo_dir"* ]]; then
+          local rel_path="${yaml_file#$repo_dir}"
+          yaml_file="$app_dir$rel_path"
+          echo "${YELLOW}Updated YAML file path to: $yaml_file${NORMAL}"
+        fi
+      fi
     fi
 
     BootstrapWebApplication "$WEBAPP_STACK"
@@ -1321,7 +1353,7 @@ function BootstrapWebApplication {
   fi
 
   if [[ -f "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi" ]] && [[ $currentStack != "magento" ]] && [[ $currentStack != "laravel" ]] && [[ $currentStack != "phpweb" ]]; then
-    cat "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi" | sed "s/PHP_VERSION/$PHP_VERSION/g" | sed "s/PROXY_PORT/$PROXY_PORT/g" > "$devilboxConfDir/backend.cfg"
+    cat "$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi" | sed "s/PHP_VERSION/php/g" | sed "s/PROXY_PORT/$PROXY_PORT/g" > "$devilboxConfDir/backend.cfg"
   fi
 
   # Setup web server configuration
