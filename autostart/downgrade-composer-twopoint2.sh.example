@@ -7,4 +7,6 @@ set -o pipefail
 # COMPOSER binary
 COMPOSER_BIN="/usr/local/bin/composer-2"
 
+# Only use this script if you are still on version 154 and prior.
+# Starting from .155, default version of composer has been tuning for perfect match.
 $COMPOSER_BIN self-update --2.2

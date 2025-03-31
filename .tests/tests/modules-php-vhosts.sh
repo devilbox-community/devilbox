@@ -73,12 +73,12 @@ FILES="$( cd "${TESTS}" && find . -name '*.php' | sort )"
 
 for file in ${FILES}; do
 	name="${file#./}"
-	if ! run "docker-compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} | grep -E '^(OK|SKIP)$'" "${RETRIES}" "${DVLBOX_PATH}"; then
-		run "docker-compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} || true" "1" "${DVLBOX_PATH}"
+	if ! run "docker compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} | grep -E '^(OK|SKIP)$'" "${RETRIES}" "${DVLBOX_PATH}"; then
+		run "docker compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} || true" "1" "${DVLBOX_PATH}"
 		ERROR=1
 	fi
-	if ! run_fail "docker-compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} 2>&1 | grep -Ei 'fatal|except|err|warn|notice' > /dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
-		run "docker-compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} || true" "1" "${DVLBOX_PATH}"
+	if ! run_fail "docker compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} 2>&1 | grep -Ei 'fatal|except|err|warn|notice' > /dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
+		run "docker compose exec -T --user devilbox php php /shared/httpd/${VHOST}/htdocs/${name} || true" "1" "${DVLBOX_PATH}"
 		ERROR=1
 	fi
 done

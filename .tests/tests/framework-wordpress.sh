@@ -63,54 +63,54 @@ else
 	WP_BRANCH="$(git ls-remote --tags https://github.com/WordPress/WordPress | sed 's/^.*tags\///g' | grep -E '^[.0-9]+$' | tr '-' '~' | sort -V | tail -1)"
 fi
 # Download Wordpress
-run "docker-compose exec --user devilbox -T php bash -c ' \
+run "docker compose exec --user devilbox -T php bash -c ' \
 	git clone --depth=1 --single-branch --branch=${WP_BRANCH} https://github.com/WordPress/WordPress /shared/httpd/${VHOST}/wordpress \
 	&& ln -sf wordpress /shared/httpd/${VHOST}/htdocs'" \
 	"${RETRIES}" "${DVLBOX_PATH}"
 
 # Switch to an earlier Wordpress version for older PHP versions
 if [ "${PHP_VERSION}" = "5.6" ]; then
-	run "docker-compose exec --user devilbox -T php bash -c ' \
+	run "docker compose exec --user devilbox -T php bash -c ' \
 		cd /shared/httpd/${VHOST}/wordpress \
 		&& git checkout 6.2.4'" \
 	"${RETRIES}" "${DVLBOX_PATH}"
 # Checkout latest git tag
 else
-	run "docker-compose exec --user devilbox -T php bash -c ' \
+	run "docker compose exec --user devilbox -T php bash -c ' \
 		cd /shared/httpd/${VHOST}/wordpress \
 		&& git checkout \"\$(git tag | sort -V | tail -1)\"'" \
 	"${RETRIES}" "${DVLBOX_PATH}"
 fi
 
 # Setup Database
-run "docker-compose exec --user devilbox -T php mysql -u root -h mysql --password=\"${MYSQL_ROOT_PASSWORD}\" -e \"DROP DATABASE IF EXISTS ${DB_NAME}; CREATE DATABASE ${DB_NAME};\"" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mysql -u root -h mysql --password=\"${MYSQL_ROOT_PASSWORD}\" -e \"DROP DATABASE IF EXISTS ${DB_NAME}; CREATE DATABASE ${DB_NAME};\"" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Configure Wordpress database settings
-run "docker-compose exec --user devilbox -T php bash -c \"perl -pe 's/\\r$//' < /shared/httpd/${VHOST}/wordpress/wp-config-sample.php > /shared/httpd/${VHOST}/wordpress/wp-config.php\"" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_NAME.*/define('DB_NAME', '${DB_NAME}');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_USER.*/define('DB_USER', 'root');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_PASSWORD.*/define('DB_PASSWORD', '${MYSQL_ROOT_PASSWORD}');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_HOST.*/define('DB_HOST', 'mysql');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'WP_DEBUG.*/define('WP_DEBUG', true);/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php php -l /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c \"perl -pe 's/\\r$//' < /shared/httpd/${VHOST}/wordpress/wp-config-sample.php > /shared/httpd/${VHOST}/wordpress/wp-config.php\"" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_NAME.*/define('DB_NAME', '${DB_NAME}');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_USER.*/define('DB_USER', 'root');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_PASSWORD.*/define('DB_PASSWORD', '${MYSQL_ROOT_PASSWORD}');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'DB_HOST.*/define('DB_HOST', 'mysql');/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php sed -i\"\" \"s/define(\\s*'WP_DEBUG.*/define('WP_DEBUG', true);/g\" /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php php -l /shared/httpd/${VHOST}/wordpress/wp-config.php" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Install Wordpress
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
 	'http://${VHOST}.${TLD_SUFFIX}/wp-admin/install.php?step=1'\
 	--data 'language=1' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
-	run "docker-compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
+	run "docker compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
 			'http://${VHOST}.${TLD_SUFFIX}/wp-admin/install.php?step=1'\
 			--data 'language=1' >/dev/null" "1" "${DVLBOX_PATH}" || true
-	run "docker-compose exec --user devilbox -T php curl -sS --fail -L -I \
+	run "docker compose exec --user devilbox -T php curl -sS --fail -L -I \
 			'http://${VHOST}.${TLD_SUFFIX}/wp-admin/install.php?step=1'" "1" "${DVLBOX_PATH}" || true
-	run "docker-compose exec --user devilbox -T php curl -sS --fail -L \
+	run "docker compose exec --user devilbox -T php curl -sS --fail -L \
 			'http://${VHOST}.${TLD_SUFFIX}/'" "1" "${DVLBOX_PATH}" || true
-	run "docker-compose logs php" || true
-	run "docker-compose logs httpd" || true
+	run "docker compose logs php" || true
+	run "docker compose logs httpd" || true
 	exit 1
 fi
 
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
 	'http://${VHOST}.${TLD_SUFFIX}/wp-admin/install.php?step=2' \
 	--data 'weblog_title=${PROJECT_NAME}' \
 	--data 'user_name=admin' \
@@ -120,7 +120,7 @@ if ! run "docker-compose exec --user devilbox -T php curl -sS --fail -L -XPOST -
 	--data 'admin_email=test%40test.com' \
 	--data 'blog_public=0' \
 	--data 'Submit=Install+WordPress&language=' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
-	run "docker-compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
+	run "docker compose exec --user devilbox -T php curl -sS --fail -L -XPOST -c cookie.txt -b cookie.txt \
 		'http://${VHOST}.${TLD_SUFFIX}/wp-admin/install.php?step=2' \
 		--data 'weblog_title=${PROJECT_NAME}' \
 		--data 'user_name=admin' \
@@ -131,14 +131,14 @@ if ! run "docker-compose exec --user devilbox -T php curl -sS --fail -L -XPOST -
 		--data 'blog_public=0' \
 		--data 'Submit=Install+WordPress' \
 		--data 'language='" "1" "${DVLBOX_PATH}" || true
-	run "docker-compose logs php" || true
-	run "docker-compose logs httpd" || true
+	run "docker compose logs php" || true
+	run "docker compose logs httpd" || true
 	exit 1
 fi
 
 # Test Wordpress
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail -L 'http://${VHOST}.${TLD_SUFFIX}/' | grep '${PROJECT_NAME}' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
-	run "docker-compose exec --user devilbox -T php curl -sS -L 'http://${VHOST}.${TLD_SUFFIX}/'" "1" "${DVLBOX_PATH}" || true
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail -L 'http://${VHOST}.${TLD_SUFFIX}/' | grep '${PROJECT_NAME}' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
+	run "docker compose exec --user devilbox -T php curl -sS -L 'http://${VHOST}.${TLD_SUFFIX}/'" "1" "${DVLBOX_PATH}" || true
 	exit 1
 fi
 if ! run "curl -sS --fail -L --header 'host: ${VHOST}.${TLD_SUFFIX}' 'http://localhost:${HOST_PORT_HTTPD}/' | grep '${PROJECT_NAME}' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
@@ -146,7 +146,7 @@ if ! run "curl -sS --fail -L --header 'host: ${VHOST}.${TLD_SUFFIX}' 'http://loc
 	exit 1
 fi
 # Check for Exceptions, Errors or Warnings
-if ! run_fail "docker-compose exec --user devilbox -T php curl -sS --fail -L 'http://${VHOST}.${TLD_SUFFIX}/' | grep -Ei 'fatal|error|warn' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
-	run "docker-compose exec --user devilbox -T php curl -sS -L 'http://${VHOST}.${TLD_SUFFIX}/' | grep -Ei 'fatal|error|warn'" "1" "${DVLBOX_PATH}"
+if ! run_fail "docker compose exec --user devilbox -T php curl -sS --fail -L 'http://${VHOST}.${TLD_SUFFIX}/' | grep -Ei 'fatal|error|warn' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}"; then
+	run "docker compose exec --user devilbox -T php curl -sS -L 'http://${VHOST}.${TLD_SUFFIX}/' | grep -Ei 'fatal|error|warn'" "1" "${DVLBOX_PATH}"
 	exit 1
 fi

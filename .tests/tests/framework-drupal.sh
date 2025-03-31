@@ -13,7 +13,7 @@ DVLBOX_PATH="$( cd "${SCRIPT_PATH}/../.." && pwd -P )"
 . "${SCRIPT_PATH}/../scripts/.lib.sh"
 
 RETRIES=10
-DISABLED_VERSIONS=("5.6" "7.0" "7.1" "7.2" "7.3" "7.4" "8.0" "8.1" "8.2" "8.3")
+DISABLED_VERSIONS=("5.6" "7.0" "7.1" "7.2" "7.3" "7.4" "8.0" "8.1" "8.2" "8.3" "8.4")
 DISABLED_MYSQL_VERSIONS=("mysql-8.0" "percona-8.0")
 
 
@@ -41,15 +41,15 @@ if [[ ${DISABLED_MYSQL_VERSIONS[*]} =~ ${MYSQL_VERSION} ]]; then
 fi
 
 DRUSH=
-if run "docker-compose exec --user devilbox -T php bash -c 'command -v drush'" "1" "${DVLBOX_PATH}"; then
+if run "docker compose exec --user devilbox -T php bash -c 'command -v drush'" "1" "${DVLBOX_PATH}"; then
 	DRUSH=drush
-elif run "docker-compose exec --user devilbox -T php bash -c 'command -v drush10'" "1" "${DVLBOX_PATH}"; then
+elif run "docker compose exec --user devilbox -T php bash -c 'command -v drush10'" "1" "${DVLBOX_PATH}"; then
 	DRUSH=drush10
-elif run "docker-compose exec --user devilbox -T php bash -c 'command -v drush9'" "1" "${DVLBOX_PATH}"; then
+elif run "docker compose exec --user devilbox -T php bash -c 'command -v drush9'" "1" "${DVLBOX_PATH}"; then
 	DRUSH=drush9
-elif run "docker-compose exec --user devilbox -T php bash -c 'command -v drush8'" "1" "${DVLBOX_PATH}"; then
+elif run "docker compose exec --user devilbox -T php bash -c 'command -v drush8'" "1" "${DVLBOX_PATH}"; then
 	DRUSH=drush8
-elif run "docker-compose exec --user devilbox -T php bash -c 'command -v drush7'" "1" "${DVLBOX_PATH}"; then
+elif run "docker compose exec --user devilbox -T php bash -c 'command -v drush7'" "1" "${DVLBOX_PATH}"; then
 	DRUSH=drush7
 fi
 if [ -z "${DRUSH}" ]; then
@@ -74,15 +74,15 @@ create_vhost_dir "${VHOST}"
 
 
 # Setup Drupal project
-run "docker-compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${VHOST}; composer-1 create-project --no-interaction --prefer-dist drupal-composer/drupal-project drupal 8.x-dev'" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${VHOST}; ln -sf drupal/web htdocs'" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php mysql -u root -h mysql --password=\"${MYSQL_ROOT_PASSWORD}\" -e \"DROP DATABASE IF EXISTS my_drupal; CREATE DATABASE my_drupal;\"" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${VHOST}; composer-1 create-project --no-interaction --prefer-dist drupal-composer/drupal-project drupal 8.x-dev'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${VHOST}; ln -sf drupal/web htdocs'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mysql -u root -h mysql --password=\"${MYSQL_ROOT_PASSWORD}\" -e \"DROP DATABASE IF EXISTS my_drupal; CREATE DATABASE my_drupal;\"" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Configure Drupal
-run "docker-compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${VHOST}/htdocs/; ${DRUSH} site-install standard --db-url='mysql://root:${MYSQL_ROOT_PASSWORD}@mysql/my_drupal' --site-name=Example -y'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'cd /shared/httpd/${VHOST}/htdocs/; ${DRUSH} site-install standard --db-url='mysql://root:${MYSQL_ROOT_PASSWORD}@mysql/my_drupal' --site-name=Example -y'" "${RETRIES}" "${DVLBOX_PATH}"
 
 # Test Drupal
-if ! run "docker-compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep 'Welcome to Example'" "${RETRIES}" "${DVLBOX_PATH}"; then
-	run "docker-compose exec --user devilbox -T php curl 'http://${VHOST}.${TLD_SUFFIX}' || true"
+if ! run "docker compose exec --user devilbox -T php curl -sS --fail 'http://${VHOST}.${TLD_SUFFIX}' | tac | tac | grep 'Welcome to Example'" "${RETRIES}" "${DVLBOX_PATH}"; then
+	run "docker compose exec --user devilbox -T php curl 'http://${VHOST}.${TLD_SUFFIX}' || true"
 	exit 1
 fi

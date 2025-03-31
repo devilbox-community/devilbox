@@ -71,10 +71,10 @@ ERROR=0
 ###
 ### Create vhost directory
 ###
-run "docker-compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php rm -rf /shared/httpd/${VHOST}" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
-run "docker-compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
-run "docker-compose exec --user devilbox -T php bash -c 'echo \"<?php echo \\\"indexphp\\\";\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.php'" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php mkdir -p /shared/httpd/${VHOST}/htdocs" "${RETRIES}" "${DVLBOX_PATH}"
+run "docker compose exec --user devilbox -T php bash -c 'echo \"<?php echo \\\"indexphp\\\";\" > /shared/httpd/${VHOST}/${HTTPD_DOCROOT_DIR}/index.php'" "${RETRIES}" "${DVLBOX_PATH}"
 run "sleep 4"
 
 
@@ -95,9 +95,9 @@ fi
 ### Vhost / from container
 ###
 printf "[TEST] https vhost / from container"
-if ! run "docker-compose exec -T php curl -sS --fail 'https://${VHOST}.${TLD_SUFFIX}' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
+if ! run "docker compose exec -T php curl -sS --fail 'https://${VHOST}.${TLD_SUFFIX}' >/dev/null" "${RETRIES}" "${DVLBOX_PATH}" "0"; then
 	printf "\\r[FAIL] https vhost / from container\\n"
-	run "docker-compose exec -T php curl -v 'https://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}" "0"
+	run "docker compose exec -T php curl -v 'https://${VHOST}.${TLD_SUFFIX}' || true" "1" "${DVLBOX_PATH}" "0"
 	ERROR=1
 else
 	printf "\\r[OK]   https vhost / from container\\n"

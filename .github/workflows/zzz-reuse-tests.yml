@@ -65,7 +65,18 @@ jobs:
       - name: "[DEBUG] Show Docker Compose version"
         shell: bash
         run: |
-          docker-compose version
+          # Try both the old hyphenated and new space-separated commands
+          docker-compose version || docker compose version || echo "Docker Compose not available via standard commands"
+
+      - name: "[SETUP] Ensure docker-compose compatibility"
+        shell: bash
+        run: |
+          if ! command -v docker-compose &> /dev/null && command -v docker &> /dev/null; then
+            echo "Creating docker-compose compatibility wrapper"
+            echo '#!/bin/bash
+            docker compose "$@"' | sudo tee /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
 
       # ------------------------------------------------------------
       # Configure

@@ -6,6 +6,34 @@ Make sure to have a look at [UPDATING.md](https://github.com/cytopia/devilbox/bl
 ## Unreleased
 
 
+## Release v3.0.0 (2025-03-27)
+
+### Added
+- Support PHP 8.4
+- Simplified the initialize webapp process of `dvl.sh`
+- Wrapping all PHP related commands with a detection to check and use PHP version
+- New sub-command `ece-tools` for `dvl.sh`
+- New sub-command `cloud-patches` for `dvl.sh`
+- New sub-command `update-docroot` for `dvl.sh`
+- New sub-command `sync-env` for `dvl.sh`
+
+### Changed
+- Updated PHP image version to `0.155`
+- Updated softwares of image to latest versions
+
+
+## Release v3.0.0-beta-0.7 (2024-11-05)
+
+## Added
+- New sub-command `magerun` for `dvl.sh`
+- New sub-command `db:import` (or `db-import`) for `dvl.sh`
+- Add a new way to initialize project for `dvl init` (via `.devilbox.yaml`)
+
+## Changed
+- Removed unsupported and EOL PHP versions out of Devilbox
+- Update PHP image version to `0.154` (remove EOL versions, PHP EOL versions still available in `0.153` and previous)
+
+
 ## Release v3.0.0-beta-0.6 (2024-06-01)
 
 ### Added

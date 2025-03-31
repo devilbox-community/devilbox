@@ -14,7 +14,7 @@ DVLBOX_PATH="$( cd "${SCRIPT_PATH}/../.." && pwd -P )"
 # Pre-check
 # -------------------------------------------------------------------------------------------------
 
-if ! command -v docker-compose >/dev/null 2>&1; then
+if ! command -v docker compose >/dev/null 2>&1; then
 	>&2 echo "Error 'docker-compose' binary not found, but required."
 	exit 1
 fi
@@ -26,15 +26,15 @@ fi
 
 echo
 echo "# --------------------------------------------------------------------------------"
-echo "# docker-compose logs"
+echo "# docker compose logs"
 echo "# --------------------------------------------------------------------------------"
-run "docker-compose logs || true" "1" "${DVLBOX_PATH}"
+run "docker compose logs || true" "1" "${DVLBOX_PATH}"
 
 echo
 echo "# --------------------------------------------------------------------------------"
-echo "# docker-compose ps"
+echo "# docker compose ps"
 echo "# --------------------------------------------------------------------------------"
-run "docker-compose ps || true" "1" "${DVLBOX_PATH}"
+run "docker compose ps || true" "1" "${DVLBOX_PATH}"
 
 
 echo
@@ -59,11 +59,11 @@ echo
 echo "# --------------------------------------------------------------------------------"
 echo "# mounts httpd"
 echo "# --------------------------------------------------------------------------------"
-run "docker-compose exec -T httpd ls -lap /shared/httpd/ || true" "1" "${DVLBOX_PATH}"
+run "docker compose exec -T httpd ls -lap /shared/httpd/ || true" "1" "${DVLBOX_PATH}"
 
 
 echo
 echo "# --------------------------------------------------------------------------------"
 echo "# mounts php"
 echo "# --------------------------------------------------------------------------------"
-run "docker-compose exec -T php ls -lap /shared/httpd/ || true" "1" "${DVLBOX_PATH}"
+run "docker compose exec -T php ls -lap /shared/httpd/ || true" "1" "${DVLBOX_PATH}"

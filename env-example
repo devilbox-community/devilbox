@@ -580,7 +580,7 @@ HOST_PATH_SSH_DIR=~/.ssh
 ### Also ensure to disable xdebug when using any of the above:
 ### https://xdebug.org/docs/install#compat
 ###
-### PHP_MODULES_ENABLE=ioncube, blackfire
+### PHP_MODULES_ENABLE=ioncube, blackfire, sourceguardian
 ###
 PHP_MODULES_ENABLE=
 
@@ -592,7 +592,7 @@ PHP_MODULES_ENABLE=
 ###
 ### PHP_MODULES_DISABLE=xdebug,imagick,swoole
 ###
-PHP_MODULES_DISABLE=oci8,PDO_OCI,PDO_Firebird,pdo_dblib,pdo_sqlite,pdo_sqlsrv,sqlsrv,rdkafka,swoole,psr,phalcon,amqp,apcu,FFI,ldap,lz4,lzf,memcache,memcached,mongodb,OAuth,snmp,solr,sqlite3,uploadprogress,uuid,vips,xlswriter,yaml,zstd
+PHP_MODULES_DISABLE=oci8,PDO_OCI,pdo_sqlsrv,sqlsrv,rdkafka,swoole,psr,phalcon
 
 
 ###
