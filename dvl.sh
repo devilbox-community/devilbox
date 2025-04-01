@@ -102,6 +102,8 @@ function get_yq_version() {
 }
 
 function download_yq() {
+  echo -ne "${YELLOW}${BOLD}[!] Downloading YQ binary..."
+
   local uname
   local aarch
   local DEB_HOST_ARCH
@@ -128,11 +130,26 @@ function download_yq() {
     if [[ ! -d "$DEVILBOX_PATH/.tests/binaries/" ]]; then
       mkdir -p "$DEVILBOX_PATH/.tests/binaries/"
     fi
-    YQ_URL="https://github.com/mikefarah/yq/releases/download/$(get_yq_version)/yq_${YQ_UNAME}_${DEB_HOST_ARCH}" \
-    && curl -sS -L --fail "${YQ_URL}" > "$DEVILBOX_PATH/.tests/binaries/yq"
+
+    # Set up the URL
+    YQ_URL="https://github.com/mikefarah/yq/releases/download/$(get_yq_version)/yq_${YQ_UNAME}_${DEB_HOST_ARCH}"
+
+    # Download in background with spinner
+    (curl -sS -L --fail "${YQ_URL}" > "$DEVILBOX_PATH/.tests/binaries/yq") &
+    spinner
+  else
+    # No supported architecture found
+    echo -ne "...${NORMAL} ${RED}FAILED ✘${NORMAL}"
+    echo ""
+    echo "${RED}Unsupported architecture: ${aarch}${NORMAL}"
+    return 1
   fi
 
-  chmod +x "$DEVILBOX_PATH/.tests/binaries/yq";
+  # Set permissions after download is complete
+  chmod +x "$DEVILBOX_PATH/.tests/binaries/yq"
+
+  echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+  echo ""
 }
 
 # Checker
@@ -188,7 +205,7 @@ TEMPLATE_CONFIG="$DEVILBOX_PATH/.tests/devilbox-template-config.yaml"
 YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
-readonly VERSION="1.2.3"
+readonly VERSION="1.2.4"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -285,7 +302,7 @@ function __get_default_containers {
   if [[ ! -z "$DEVILBOX_CONTAINERS" ]]; then
     printf %s "${DEVILBOX_CONTAINERS}"
   else
-    printf %s "bind httpd php php74 php81 php82 php83 mysql redis elastic mailhog"
+    printf %s "bind httpd php php74 php81 php82 php83 mysql redis opensearch mailhog"
   fi
 }
 
@@ -1423,20 +1440,229 @@ function UpdateDocRoots {
 }
 
 function SyncHttpdConf {
-  echo -ne "${YELLOW}Please wait, we are syncing your Httpd configuration"
+  echo "${YELLOW}${BOLD}Syncing Httpd configuration for all webapps${NORMAL}"
+  echo "Using web server: ${GREEN}$HTTPD_SERVER${NORMAL}"
+  echo ""
 
+  # Track statistics
+  local updated_count=0
+  local skipped_count=0
+  local error_count=0
+  local processed_count=0
+
+  # Iterate through all webapps
   for appName in "$WEBAPP_DIR"/*; do
-    if [[ "$HTTPD_SERVER" =~ "nginx" ]]; then
-      \cp "$DEVILBOX_PATH/cfg/vhost-gen/nginx.yml-example-magento2" "$appName/$HTTPD_TEMPLATE_DIR/nginx.yml"
-    elif [[ "$HTTPD_SERVER" = "apache-2.2" ]]; then
-      \cp "$DEVILBOX_PATH/cfg/vhost-gen/apache22.yml-example-magento2" "$appName/$HTTPD_TEMPLATE_DIR/apache22.yml"
-    elif [[ "$HTTPD_SERVER" = "apache-2.4" ]]; then
-      \cp "$DEVILBOX_PATH/cfg/vhost-gen/apache24.yml-example-magento2" "$appName/$HTTPD_TEMPLATE_DIR/apache24.yml"
+    if [[ ! -d "$appName" ]]; then
+      continue
     fi
+
+    local app_basename=$(basename "$appName")
+    processed_count=$((processed_count+1))
+    echo "${YELLOW}${BOLD}Processing webapp: $app_basename${NORMAL}"
+
+    # Ensure the template directory exists
+    local template_dir="$appName/$HTTPD_TEMPLATE_DIR"
+    if [[ ! -d "$template_dir" ]]; then
+      echo -ne "${YELLOW}[!] Creating template directory..."
+      mkdir -p "$template_dir"
+      echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+      echo ""
+    fi
+
+    # Determine webapp stack from .devilbox.yaml if it exists
+    local webapp_stack="phpweb"  # Default stack
+    local yaml_file="$appName/.devilbox.yaml"
+
+    # Check in htdocs directory if main .devilbox.yaml not found
+    if [[ ! -f "$yaml_file" ]]; then
+      yaml_file="$appName/$HTTPD_DOCROOT_DIR/.devilbox.yaml"
+    fi
+
+    if [[ -f "$yaml_file" ]]; then
+      local detected_stack=$("$YQ_BINARY" '.stack' "$yaml_file")
+      if [[ -n "$detected_stack" && "$detected_stack" != "null" ]]; then
+        webapp_stack="$detected_stack"
+      fi
+    fi
+
+    echo "Detected stack: ${GREEN}$webapp_stack${NORMAL}"
+
+    # Determine template type based on webapp stack
+    local template_type
+    case "$webapp_stack" in
+      magento)
+        template_type="magento2"
+        ;;
+      nodejs|shopify|bigcommerce)
+        template_type="rproxy"
+        ;;
+      laravel|phpweb|*)
+        template_type="vhost"
+        ;;
+    esac
+
+    # Sync vhost configuration
+    local vhost_source
+    local vhost_target
+
+    if [[ "$HTTPD_SERVER" =~ "nginx" ]]; then
+      vhost_source="$DEVILBOX_PATH/cfg/vhost-gen/nginx.yml-example-$template_type"
+      vhost_target="$template_dir/nginx.yml"
+    elif [[ "$HTTPD_SERVER" = "apache-2.2" ]]; then
+      vhost_source="$DEVILBOX_PATH/cfg/vhost-gen/apache22.yml-example-$template_type"
+      vhost_target="$template_dir/apache22.yml"
+    elif [[ "$HTTPD_SERVER" = "apache-2.4" ]]; then
+      vhost_source="$DEVILBOX_PATH/cfg/vhost-gen/apache24.yml-example-$template_type"
+      vhost_target="$template_dir/apache24.yml"
+    fi
+
+    # Sync vhost configuration
+    if [[ -f "$vhost_source" ]]; then
+      if [[ -f "$vhost_target" ]]; then
+        echo "Checking vhost configuration differences..."
+
+        # Check if files are different
+        if ! diff -q "$vhost_source" "$vhost_target" >/dev/null; then
+          # Show differences
+          diff -u "$vhost_target" "$vhost_source" || true
+          echo ""
+
+          # Prompt user for action
+          read -r -p "${CYAN}Apply these changes to $app_basename vhost configuration? (y/n): ${NORMAL}" response
+          case "$response" in
+            [yY][eE][sS]|[yY])
+              echo -ne "${YELLOW}[!] Updating vhost configuration..."
+              cp "$vhost_source" "$vhost_target"
+              updated_count=$((updated_count+1))
+              echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+              echo ""
+              ;;
+            *)
+              skipped_count=$((skipped_count+1))
+              echo -ne "${YELLOW}[!] Skipping vhost configuration update..."
+              echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+              echo ""
+              ;;
+          esac
+        else
+          echo -ne "${YELLOW}[!] No differences in vhost configuration..."
+          echo -ne "...${NORMAL} ${GREEN}UP-TO-DATE ✔${NORMAL}"
+          echo ""
+        fi
+      else
+        echo -ne "${YELLOW}[!] Creating new vhost configuration..."
+        cp "$vhost_source" "$vhost_target"
+        updated_count=$((updated_count+1))
+        echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+        echo ""
+      fi
+    else
+      echo -ne "${YELLOW}[!] Template file not found: $vhost_source..."
+      echo -ne "...${NORMAL} ${RED}ERROR ✘${NORMAL}"
+      echo ""
+      error_count=$((error_count+1))
+    fi
+
+    # Sync backend configuration
+    local backend_source
+    local backend_target="$template_dir/backend.cfg"
+
+    if [[ "$webapp_stack" = "nodejs" || "$webapp_stack" = "bigcommerce" || "$webapp_stack" = "shopify" ]]; then
+      backend_source="$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-rproxy-multi"
+    else
+      backend_source="$DEVILBOX_PATH/cfg/vhost-gen/backend.cfg-example-php-multi"
+    fi
+
+    if [[ -f "$backend_source" ]]; then
+      local tmp_backend_source=$(mktemp)
+
+      # Create a modified copy with variables substituted
+      if [[ "$webapp_stack" = "nodejs" || "$webapp_stack" = "bigcommerce" || "$webapp_stack" = "shopify" ]]; then
+        # Get proxy port from yaml if available
+        local proxy_port="3000"
+        if [[ -f "$yaml_file" ]]; then
+          local yaml_port=$("$YQ_BINARY" '.proxy.port' "$yaml_file")
+          if [[ -n "$yaml_port" && "$yaml_port" != "null" ]]; then
+            proxy_port="$yaml_port"
+          fi
+        fi
+        cat "$backend_source" | sed "s/PHP_VERSION/php/g" | sed "s/PROXY_PORT/$proxy_port/g" > "$tmp_backend_source"
+      else
+        # Get PHP version from yaml if available
+        local php_version="php"
+        if [[ -f "$yaml_file" ]]; then
+          local yaml_php=$("$YQ_BINARY" '.php.version' "$yaml_file")
+          if [[ -n "$yaml_php" && "$yaml_php" != "null" ]]; then
+            php_version="$yaml_php"
+          fi
+        fi
+        cat "$backend_source" | sed "s/PHP_VERSION/$php_version/g" > "$tmp_backend_source"
+      fi
+
+      if [[ -f "$backend_target" ]]; then
+        echo "Checking backend configuration differences..."
+
+        # Check if files are different
+        if ! diff -q "$tmp_backend_source" "$backend_target" >/dev/null; then
+          # Show differences
+          diff -u "$backend_target" "$tmp_backend_source" || true
+          echo ""
+
+          # Prompt user for action
+          read -r -p "${CYAN}Apply these changes to $app_basename backend configuration? (y/n): ${NORMAL}" response
+          case "$response" in
+            [yY][eE][sS]|[yY])
+              echo -ne "${YELLOW}[!] Updating backend configuration..."
+              cp "$tmp_backend_source" "$backend_target"
+              updated_count=$((updated_count+1))
+              echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+              echo ""
+              ;;
+            *)
+              skipped_count=$((skipped_count+1))
+              echo -ne "${YELLOW}[!] Skipping backend configuration update..."
+              echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+              echo ""
+              ;;
+          esac
+        else
+          echo -ne "${YELLOW}[!] No differences in backend configuration..."
+          echo -ne "...${NORMAL} ${GREEN}UP-TO-DATE ✔${NORMAL}"
+          echo ""
+        fi
+      else
+        echo -ne "${YELLOW}[!] Creating new backend configuration..."
+        cp "$tmp_backend_source" "$backend_target"
+        updated_count=$((updated_count+1))
+        echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+        echo ""
+      fi
+
+      # Clean up temp file
+      rm -f "$tmp_backend_source"
+    else
+      echo -ne "${YELLOW}[!] Backend template file not found: $backend_source..."
+      echo -ne "...${NORMAL} ${RED}ERROR ✘${NORMAL}"
+      echo ""
+      error_count=$((error_count+1))
+    fi
+
+    echo ""
   done
 
-  echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
-  echo ""
+  # Print summary
+  echo "${YELLOW}${BOLD}Sync Summary:${NORMAL}"
+  echo "Processed: ${GREEN}$processed_count${NORMAL} webapps"
+  echo "Updated: ${GREEN}$updated_count${NORMAL} configurations"
+  echo "Skipped: ${CYAN}$skipped_count${NORMAL} configurations"
+
+  if [[ $error_count -gt 0 ]]; then
+    echo "Errors: ${RED}$error_count${NORMAL} configurations"
+    return 1
+  else
+    success "Httpd configuration sync complete!"
+    return 0
+  fi
 }
 
 function SyncEnvConf {
