@@ -929,6 +929,7 @@ function DatabaseImport {
   local filename="$1"
   local dbname="$2"
 
+  # Perform the database import operation
   if [[ "$filename" == *.sql ]]; then
     echo -ne "${YELLOW}${BOLD}[!] Importing $filename into $dbname..."
     (ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -e 'CREATE DATABASE IF NOT EXISTS ${dbname}'" && ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' --default-character-set=utf8 --force $dbname < $BACKUP_WORKDIR/$filename") &
@@ -943,6 +944,202 @@ function DatabaseImport {
     echo ""
   else
     error "File type (name: ${filename}) does not supported yet."
+  fi
+
+  # Check for .devilbox.yaml configuration
+  local yaml_file="$CURRENT_DIR/$CONFIG_FILE"
+
+  # If not found, check parent directory (common for Magento AWS projects)
+  if [[ ! -f "$yaml_file" ]]; then
+    yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
+  fi
+
+  # If still not found and we're in htdocs or a subdirectory
+  if [[ ! -f "$yaml_file" ]]; then
+    # Check if current dir matches htdocs name
+    if [[ "$(basename "$CURRENT_DIR")" == "$HTTPD_DOCROOT_DIR" ]]; then
+      # We're in htdocs, try the parent directory
+      yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
+    elif [[ "$(basename "$(dirname "$CURRENT_DIR")")" == "$HTTPD_DOCROOT_DIR" ]]; then
+      # We're in a subdirectory of htdocs, try going up two levels
+      yaml_file="$(dirname "$(dirname "$CURRENT_DIR")")/$CONFIG_FILE"
+    fi
+  fi
+
+  # If yaml file exists, check if it's a Magento stack
+  if [[ -f "$yaml_file" ]]; then
+    local detected_stack=$("$YQ_BINARY" '.stack' "$yaml_file")
+
+    # If it's a Magento stack, offer database post-processing
+    if [[ "$detected_stack" == "magento" ]]; then
+      echo ""
+      echo "${YELLOW}${BOLD}Detected Magento project.${NORMAL} Would you like to update database URLs?"
+
+      # Get domain from yaml file
+      local app_name=$("$YQ_BINARY" '.app' "$yaml_file")
+      if [[ -z "$app_name" || "$app_name" == "null" ]]; then
+        app_name=$(basename "$CURRENT_DIR")
+      fi
+
+      local domain=$("$YQ_BINARY" '.domain' "$yaml_file")
+      if [[ -z "$domain" || "$domain" == "null" ]]; then
+        domain="https://$app_name.$TLD_SUFFIX"
+      fi
+
+      # Ensure domain ends with trailing slash
+      if [[ ! "$domain" =~ /$ ]]; then
+        domain="$domain/"
+      fi
+
+      # Step 1: Update default scope base URLs
+      echo ""
+      echo "${CYAN}Option 1: Update default scope base URLs in core_config_data table${NORMAL}"
+      echo "This will set 'web/unsecure/base_url' and 'web/secure/base_url' to: ${GREEN}$domain${NORMAL}"
+      echo "Only for default scope (scope='default', scope_id=0)"
+
+      read -r -p "${CYAN}Update default scope base URLs? (y/n): ${NORMAL}" response
+      case "$response" in
+        [yY][eE][sS]|[yY])
+          echo -ne "${YELLOW}[!] Updating default scope base URLs..."
+
+          # Run query to count records that will be affected
+          local count_query="SELECT COUNT(*) as count FROM core_config_data WHERE path IN ('web/unsecure/base_url', 'web/secure/base_url') AND scope = 'default' AND scope_id = 0"
+          local affected_count=$(ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -N -e \"$count_query\" $dbname")
+
+          # Run update query
+          local update_query="UPDATE core_config_data SET value = '$domain' WHERE path IN ('web/unsecure/base_url', 'web/secure/base_url') AND scope = 'default' AND scope_id = 0"
+          ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -e \"$update_query\" $dbname"
+
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+          echo ""
+          echo "Updated ${GREEN}$affected_count${NORMAL} records in default scope."
+
+          # Show updated records
+          echo "${YELLOW}Current default scope values:${NORMAL}"
+          local select_query="SELECT scope, scope_id, path, value FROM core_config_data WHERE path IN ('web/unsecure/base_url', 'web/secure/base_url') AND scope = 'default' AND scope_id = 0"
+          ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' --table -e \"$select_query\" $dbname"
+          echo ""
+          ;;
+        *)
+          echo -ne "${YELLOW}[!] Skipping default scope base URL updates..."
+          echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+          echo ""
+          ;;
+      esac
+
+      # Step 2: Check for and possibly update non-default scopes
+      local non_default_check="SELECT COUNT(*) as count FROM core_config_data WHERE path IN ('web/unsecure/base_url', 'web/secure/base_url') AND (scope != 'default' OR scope_id != 0)"
+      local non_default_count=$(ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -N -e \"$non_default_check\" $dbname")
+
+      if [[ "$non_default_count" -gt 0 ]]; then
+        echo ""
+        echo "${CYAN}Option 2: Update non-default scope base URLs${NORMAL}"
+        echo "Found ${GREEN}$non_default_count${NORMAL} base URL settings in website/store scopes."
+        echo "${YELLOW}Current non-default scope values:${NORMAL}"
+
+        # Show current non-default scope values
+        local select_query="SELECT scope, scope_id, path, value FROM core_config_data WHERE path IN ('web/unsecure/base_url', 'web/secure/base_url') AND (scope != 'default' OR scope_id != 0)"
+        ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' --table -e \"$select_query\" $dbname"
+        echo ""
+
+        # Ask how to handle non-default scopes
+        echo "${CYAN}How would you like to handle these non-default scopes?${NORMAL}"
+        echo "1) Update all to same URL: $domain"
+        echo "2) Skip non-default scopes"
+
+        read -r -p "${CYAN}Enter your choice (1/2): ${NORMAL}" scope_choice
+        case "$scope_choice" in
+          1)
+            echo -ne "${YELLOW}[!] Updating all non-default scopes to $domain..."
+
+            # Run update query for non-default scopes
+            local update_query="UPDATE core_config_data SET value = '$domain' WHERE path IN ('web/unsecure/base_url', 'web/secure/base_url') AND (scope != 'default' OR scope_id != 0)"
+            ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -e \"$update_query\" $dbname"
+
+            echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+            echo ""
+            echo "Updated ${GREEN}$non_default_count${NORMAL} records in non-default scopes."
+
+            # Show updated records
+            echo "${YELLOW}Updated non-default scope values:${NORMAL}"
+            local select_query="SELECT scope, scope_id, path, value FROM core_config_data WHERE path IN ('web/unsecure/base_url', 'web/secure/base_url') AND (scope != 'default' OR scope_id != 0)"
+            ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' --table -e \"$select_query\" $dbname"
+            echo ""
+            ;;
+          *)
+            echo -ne "${YELLOW}[!] Skipping non-default scope updates..."
+            echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+            echo ""
+            ;;
+        esac
+      fi
+
+      # Step 3: Option to remove base link URLs
+      echo ""
+      echo "${CYAN}Option 3: Remove base link URLs from core_config_data table${NORMAL}"
+      echo "This will remove records with paths 'web/secure/base_link_url' and 'web/unsecure/base_link_url'"
+      echo "These settings are often unnecessary and can cause issues with Magento URL generation."
+
+      read -r -p "${CYAN}Remove base link URLs? (y/n): ${NORMAL}" response
+      case "$response" in
+        [yY][eE][sS]|[yY])
+          echo -ne "${YELLOW}[!] Checking for base link URLs in database..."
+
+          # Run query to count records that will be affected
+          local count_query="SELECT COUNT(*) as count FROM core_config_data WHERE path IN ('web/secure/base_link_url', 'web/unsecure/base_link_url')"
+          local affected_count=$(ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -N -e \"$count_query\" $dbname")
+
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+          echo ""
+
+          if [[ "$affected_count" -gt 0 ]]; then
+            # Show what will be deleted
+            echo "${YELLOW}Records to be deleted:${NORMAL}"
+            local show_query="SELECT scope, scope_id, path, value FROM core_config_data WHERE path IN ('web/secure/base_link_url', 'web/unsecure/base_link_url')"
+            ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' --table -e \"$show_query\" $dbname"
+            echo ""
+
+            # Run delete query
+            echo -ne "${YELLOW}[!] Removing base link URLs from database..."
+            local delete_query="DELETE FROM core_config_data WHERE path IN ('web/secure/base_link_url', 'web/unsecure/base_link_url')"
+            ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -e \"$delete_query\" $dbname"
+            
+            echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+            echo ""
+            echo "Deleted ${GREEN}$affected_count${NORMAL} records."
+          else
+            echo "No base link URL records found in database. ${GREEN}Nothing to delete.${NORMAL}"
+          fi
+          echo ""
+          ;;
+        *)
+          echo -ne "${YELLOW}[!] Skipping base link URL removal..."
+          echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+          echo ""
+          ;;
+      esac
+
+      # Flush Magento cache
+      echo ""
+      echo "${CYAN}Would you like to flush the Magento cache? (Recommended after URL changes)${NORMAL}"
+      read -r -p "${CYAN}Flush Magento cache? (y/n): ${NORMAL}" response
+      case "$response" in
+        [yY][eE][sS]|[yY])
+          echo -ne "${YELLOW}[!] Flushing Magento cache..."
+          local php_version=$(GetPhpVersionFromYaml)
+          CommandRequiringWorkFlavor "magento" "$php_version" "cache:flush"
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+          echo ""
+          ;;
+        *)
+          echo -ne "${YELLOW}[!] Skipping cache flush..."
+          echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+          echo ""
+          ;;
+      esac
+
+      success "Database import and configuration complete!"
+    fi
   fi
 }
 
@@ -1319,7 +1516,6 @@ function BootstrapWebApplication {
   else
     # Create new directory structure
     mkdir -p "$WEBAPP_DIR/$APPNAME"
-    mkdir -p "$devilboxConfDir"
 
     # For non-subdomains, clone repository if provided
     if [[ "$WEB_MULTI" == "N" ]]; then
@@ -1471,11 +1667,11 @@ function SyncHttpdConf {
 
     # Determine webapp stack from .devilbox.yaml if it exists
     local webapp_stack="phpweb"  # Default stack
-    local yaml_file="$appName/.devilbox.yaml"
+    local yaml_file="$appName/$CONFIG_FILE"
 
     # Check in htdocs directory if main .devilbox.yaml not found
     if [[ ! -f "$yaml_file" ]]; then
-      yaml_file="$appName/$HTTPD_DOCROOT_DIR/.devilbox.yaml"
+      yaml_file="$appName/$HTTPD_DOCROOT_DIR/$CONFIG_FILE"
     fi
 
     if [[ -f "$yaml_file" ]]; then
