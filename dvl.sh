@@ -946,25 +946,29 @@ function DatabaseImport {
     error "File type (name: ${filename}) does not supported yet."
   fi
 
-  # Check for .devilbox.yaml configuration
-  local yaml_file="$CURRENT_DIR/$CONFIG_FILE"
+  # Check for .devilbox.yaml configuration - Search in multiple locations
+  local yaml_file=""
+  local possible_yaml_locations=(
+    "$CURRENT_DIR/$CONFIG_FILE"                       # Current directory
+    "$(dirname "$CURRENT_DIR")/$CONFIG_FILE"          # Parent directory
+    "$WEBAPP_DIR/$(basename "$CURRENT_DIR")/$CONFIG_FILE"  # www/current-dir
+  )
 
-  # If not found, check parent directory (common for Magento AWS projects)
-  if [[ ! -f "$yaml_file" ]]; then
-    yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
+  # If in htdocs or subdirectory of htdocs, check parent directories
+  if [[ "$(basename "$CURRENT_DIR")" == "$HTTPD_DOCROOT_DIR" ]]; then
+    possible_yaml_locations+=("$(dirname "$CURRENT_DIR")/$CONFIG_FILE")
+  elif [[ "$(basename "$(dirname "$CURRENT_DIR")")" == "$HTTPD_DOCROOT_DIR" ]]; then
+    possible_yaml_locations+=("$(dirname "$(dirname "$CURRENT_DIR")")/$CONFIG_FILE")
   fi
 
-  # If still not found and we're in htdocs or a subdirectory
-  if [[ ! -f "$yaml_file" ]]; then
-    # Check if current dir matches htdocs name
-    if [[ "$(basename "$CURRENT_DIR")" == "$HTTPD_DOCROOT_DIR" ]]; then
-      # We're in htdocs, try the parent directory
-      yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
-    elif [[ "$(basename "$(dirname "$CURRENT_DIR")")" == "$HTTPD_DOCROOT_DIR" ]]; then
-      # We're in a subdirectory of htdocs, try going up two levels
-      yaml_file="$(dirname "$(dirname "$CURRENT_DIR")")/$CONFIG_FILE"
+  # Find the first valid yaml file
+  for loc in "${possible_yaml_locations[@]}"; do
+    if [[ -f "$loc" ]]; then
+      yaml_file="$loc"
+      echo "Found YAML file at: $yaml_file" >&2
+      break
     fi
-  fi
+  done
 
   # If yaml file exists, check if it's a Magento stack
   if [[ -f "$yaml_file" ]]; then
@@ -975,16 +979,43 @@ function DatabaseImport {
       echo ""
       echo "${YELLOW}${BOLD}Detected Magento project.${NORMAL} Would you like to update database URLs?"
 
-      # Get domain from yaml file
-      local app_name=$("$YQ_BINARY" '.app' "$yaml_file")
+      # Get app name from yaml file - try multiple approaches
+      local app_name=""
+
+      # First try multi-app format
+      app_name=$("$YQ_BINARY" '.apps[0].name' "$yaml_file")
+
+      # If not found, try single app format
       if [[ -z "$app_name" || "$app_name" == "null" ]]; then
-        app_name=$(basename "$CURRENT_DIR")
+        app_name=$("$YQ_BINARY" '.app' "$yaml_file")
       fi
 
+      # If still not found, derive from directory name
+      if [[ -z "$app_name" || "$app_name" == "null" ]]; then
+        # If in htdocs directory, use parent directory name
+        if [[ "$(basename "$CURRENT_DIR")" == "$HTTPD_DOCROOT_DIR" ]]; then
+          app_name=$(basename "$(dirname "$CURRENT_DIR")")
+        else
+          # Otherwise use current directory name
+          app_name=$(basename "$CURRENT_DIR")
+
+          # If current directory is a Magento subdirectory like 'app', 'vendor', etc.,
+          # try to use parent directory name
+          if [[ "$app_name" == "app" || "$app_name" == "vendor" || "$app_name" == "pub" ]]; then
+            app_name=$(basename "$(dirname "$CURRENT_DIR")")
+          fi
+        fi
+      fi
+
+      echo "Using app name: $app_name" >&2
+
+      # Get domain from yaml file
       local domain=$("$YQ_BINARY" '.domain' "$yaml_file")
       if [[ -z "$domain" || "$domain" == "null" ]]; then
         domain="https://$app_name.$TLD_SUFFIX"
       fi
+
+      echo "Using domain: $domain" >&2
 
       # Ensure domain ends with trailing slash
       if [[ ! "$domain" =~ /$ ]]; then
@@ -1445,16 +1476,47 @@ function BootstrapExistingApps {
     local app_dir="$WEBAPP_DIR/$APPNAME"
 
     if [[ -n "$APPREPOSITORY" ]] && [[ "$WEB_MULTI" == "N" ]]; then
+      # Handle differently based on infrastructure type
+      local infra_type=$("$YQ_BINARY" '.infra' "$yaml_file")
+
       if [[ -d "$repo_dir" ]] && [[ "$repo_name" != "$APPNAME" ]]; then
-        echo -ne "${YELLOW}Found repository directory with different name: $repo_name"
-        echo -ne "\n${YELLOW}Renaming to match app name: $APPNAME"
-        mv "$repo_dir" "$app_dir"
-        echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+        if [[ "$infra_type" == "cloud" ]]; then
+          # For cloud infrastructure, we need the repo contents in HTTPD_DOCROOT_DIR
+          echo -ne "\n${YELLOW}Found repository directory with different name: $repo_name"
+          echo -ne "\n${YELLOW}Setting up for cloud infrastructure..."
+
+          # Create app directory if it doesn't exist
+          if [[ ! -d "$app_dir" ]]; then
+            mkdir -p "$app_dir"
+          fi
+
+          # Move repo contents to htdocs subdirectory
+          if [[ ! -d "$app_dir/$HTTPD_DOCROOT_DIR" ]]; then
+            mv "$repo_dir" "$app_dir/$HTTPD_DOCROOT_DIR"
+            echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+          else
+            echo -ne "\n${YELLOW}Document root directory already exists, skipping move."
+            echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}\n"
+          fi
+        else
+          # For AWS or other infrastructure, we just rename the repo directory
+          echo -ne "\n${YELLOW}Found repository directory with different name: $repo_name"
+          echo -ne "\n${YELLOW}Renaming to match app name: $APPNAME"
+          mv "$repo_dir" "$app_dir"
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+        fi
 
         # If the yaml file was in the renamed directory, update its path
         if [[ "$yaml_file" == "$repo_dir"* ]]; then
           local rel_path="${yaml_file#$repo_dir}"
-          yaml_file="$app_dir$rel_path"
+
+          if [[ "$infra_type" == "cloud" ]]; then
+            # For cloud infrastructure, the yaml file is now in the htdocs subdirectory
+            yaml_file="$app_dir/$HTTPD_DOCROOT_DIR$rel_path"
+          else
+            # For other infrastructure, the yaml file is directly in the app directory
+            yaml_file="$app_dir$rel_path"
+          fi
           echo "${YELLOW}Updated YAML file path to: $yaml_file${NORMAL}"
         fi
       fi
@@ -1506,8 +1568,8 @@ function BootstrapWebApplication {
       fi
     fi
 
-    # For Magento AWS infrastructure, ensure symlinks are correct
-    if [[ "$currentStack" == "magento" ]] && [[ "$MAGE_INFRA" == "aws" ]]; then
+    # For AWS infrastructure, ensure symlinks are correct
+    if [[ "$MAGE_INFRA" == "aws" ]]; then
       if [[ ! -L "$WEBAPP_DIR/$APPNAME/$HTTPD_DOCROOT_DIR" ]] && [[ -d "$WEBAPP_DIR/$APPNAME/$AWS_BASEDIR" ]]; then
         echo -ne "\n${YELLOW}Setting up AWS infrastructure symlinks"
         (cd "$WEBAPP_DIR/$APPNAME" || exit; ln -snf "$AWS_BASEDIR" "$HTTPD_DOCROOT_DIR" > /dev/null)
