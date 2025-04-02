@@ -1447,6 +1447,7 @@ function BootstrapExistingApps {
   for ((i=0; i<apps_count; i++)); do
     local app_name=$("$YQ_BINARY" ".apps[$i].name" "$yaml_file")
     local is_subdomain=$("$YQ_BINARY" ".apps[$i].is_subdomain" "$yaml_file")
+    local infra_type=$("$YQ_BINARY" '.infra' "$yaml_file")
 
     # Skip empty app names
     if [[ -z "$app_name" || "$app_name" == "null" ]]; then
@@ -1458,6 +1459,7 @@ function BootstrapExistingApps {
 
     APPNAME="$app_name"
     WEB_MULTI="$is_subdomain"
+    MAGE_INFRA="$infra_type"
 
     if [[ "$is_subdomain" == "Y" ]]; then
       # For subdomains, we need to find the parent app
@@ -1470,18 +1472,18 @@ function BootstrapExistingApps {
       fi
     fi
 
+    # Get repository from yaml if available
+    APPREPOSITORY=$("$YQ_BINARY" '.repo' "$yaml_file")
+
     # Check if directory exists but with different name (from git clone)
     local repo_name=$(basename "$APPREPOSITORY" .git | sed 's/\.git$//')
     local repo_dir="$WEBAPP_DIR/$repo_name"
     local app_dir="$WEBAPP_DIR/$APPNAME"
 
     if [[ -n "$APPREPOSITORY" ]] && [[ "$WEB_MULTI" == "N" ]]; then
-      # Handle differently based on infrastructure type
-      local infra_type=$("$YQ_BINARY" '.infra' "$yaml_file")
-
       if [[ -d "$repo_dir" ]] && [[ "$repo_name" != "$APPNAME" ]]; then
+        # Handle differently based on infrastructure type
         if [[ "$infra_type" == "cloud" ]]; then
-          # For cloud infrastructure, we need the repo contents in HTTPD_DOCROOT_DIR
           echo -ne "\n${YELLOW}Found repository directory with different name: $repo_name"
           echo -ne "\n${YELLOW}Setting up for cloud infrastructure..."
 
@@ -1490,35 +1492,111 @@ function BootstrapExistingApps {
             mkdir -p "$app_dir"
           fi
 
-          # Move repo contents to htdocs subdirectory
+          # For cloud infrastructure, repository contents should go into htdocs
           if [[ ! -d "$app_dir/$HTTPD_DOCROOT_DIR" ]]; then
+            # Move the repository to be the htdocs directory
             mv "$repo_dir" "$app_dir/$HTTPD_DOCROOT_DIR"
             echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+
+            # Update yaml file path if it was in the moved directory
+            if [[ "$yaml_file" == "$repo_dir"* ]]; then
+              local rel_path="${yaml_file#$repo_dir}"
+              yaml_file="$app_dir/$HTTPD_DOCROOT_DIR$rel_path"
+              echo "${YELLOW}Updated YAML file path to: $yaml_file${NORMAL}"
+            fi
           else
             echo -ne "\n${YELLOW}Document root directory already exists, skipping move."
             echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}\n"
           fi
         else
-          # For AWS or other infrastructure, we just rename the repo directory
+          # For AWS or other infrastructure, just rename the directory
           echo -ne "\n${YELLOW}Found repository directory with different name: $repo_name"
           echo -ne "\n${YELLOW}Renaming to match app name: $APPNAME"
           mv "$repo_dir" "$app_dir"
           echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
-        fi
 
-        # If the yaml file was in the renamed directory, update its path
-        if [[ "$yaml_file" == "$repo_dir"* ]]; then
-          local rel_path="${yaml_file#$repo_dir}"
-
-          if [[ "$infra_type" == "cloud" ]]; then
-            # For cloud infrastructure, the yaml file is now in the htdocs subdirectory
-            yaml_file="$app_dir/$HTTPD_DOCROOT_DIR$rel_path"
-          else
-            # For other infrastructure, the yaml file is directly in the app directory
+          # Update yaml file path if it was in the renamed directory
+          if [[ "$yaml_file" == "$repo_dir"* ]]; then
+            local rel_path="${yaml_file#$repo_dir}"
             yaml_file="$app_dir$rel_path"
+            echo "${YELLOW}Updated YAML file path to: $yaml_file${NORMAL}"
           fi
-          echo "${YELLOW}Updated YAML file path to: $yaml_file${NORMAL}"
         fi
+      elif [[ -d "$app_dir" ]] && [[ "$repo_name" == "$APPNAME" ]] && [[ "$infra_type" == "cloud" ]]; then
+        # Special case: repo name matches app name, but we need cloud infrastructure setup
+        echo -ne "\n${YELLOW}Found repository directory with correct name, checking cloud structure...${NORMAL}${app_dir}/${HTTPD_DOCROOT_DIR}"
+
+        # IMPROVED CHECK: First verify if htdocs exists
+        if [[ ! -d "$app_dir/$HTTPD_DOCROOT_DIR" ]]; then
+          echo -ne "\n${YELLOW}Missing document root directory for cloud infrastructure, creating it...${NORMAL}"
+          mkdir -p "$app_dir/$HTTPD_DOCROOT_DIR"
+
+          # Preserve a copy of the original .devilbox.yaml file if it exists in the app root
+          local has_yaml_in_root=0
+          if [[ -f "$app_dir/$CONFIG_FILE" ]]; then
+            cp "$app_dir/$CONFIG_FILE" "$app_dir/$CONFIG_FILE.bak"
+            has_yaml_in_root=1
+          fi
+
+          # Create a temporary directory to hold files while we restructure
+          local temp_dir=$(mktemp -d)
+
+          # Move ALL files (including hidden ones) except htdocs to temp dir
+          echo -ne "\n${YELLOW}Directory appears to be a direct clone, restructuring for cloud infrastructure...${NORMAL}"
+
+          # First move all non-hidden files
+          find "$app_dir" -mindepth 1 -maxdepth 1 -not -name "$HTTPD_DOCROOT_DIR" -not -name ".*" -exec mv {} "$temp_dir/" \; 2>/dev/null || true
+
+          # Then move all hidden files (those starting with .)
+          find "$app_dir" -mindepth 1 -maxdepth 1 -name ".*" -not -name "." -not -name ".." -exec mv {} "$temp_dir/" \; 2>/dev/null || true
+
+          # Check if we have any files to move
+          if [[ -n "$(ls -A "$temp_dir" 2>/dev/null)" ]]; then
+            # Move all content to htdocs directory (including hidden files)
+            find "$temp_dir" -mindepth 1 -maxdepth 1 -exec mv {} "$app_dir/$HTTPD_DOCROOT_DIR/" \; 2>/dev/null || true
+
+            # Restore the original .devilbox.yaml file to both locations
+            if [[ $has_yaml_in_root -eq 1 && -f "$app_dir/$CONFIG_FILE.bak" ]]; then
+              # Copy to htdocs directory
+              cp "$app_dir/$CONFIG_FILE.bak" "$app_dir/$HTTPD_DOCROOT_DIR/$CONFIG_FILE"
+              # Restore original too
+              mv "$app_dir/$CONFIG_FILE.bak" "$app_dir/$CONFIG_FILE"
+
+              # Update yaml file path reference in our script
+              if [[ "$yaml_file" == "$app_dir/$CONFIG_FILE" ]]; then
+                yaml_file="$app_dir/$HTTPD_DOCROOT_DIR/$CONFIG_FILE"
+                echo "${YELLOW}Updated YAML file path to: $yaml_file${NORMAL}"
+              fi
+            fi
+          else 
+            echo -ne "\n${YELLOW}No files found to move. Directory might be empty.${NORMAL}"
+          fi
+
+          # Clean up temp dir
+          rmdir "$temp_dir" 2>/dev/null || true
+
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+        else
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+          echo -ne "\n${YELLOW}Document root directory ($HTTPD_DOCROOT_DIR) already exists${NORMAL}"
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+        fi
+      fi
+    fi
+
+    # Generate yaml configuration file in the correct location if it doesn't exist
+    if [[ "$WEB_MULTI" == "N" ]]; then
+      local yaml_target=""
+      if [[ "$infra_type" == "cloud" ]]; then
+        yaml_target="$app_dir/$HTTPD_DOCROOT_DIR/$CONFIG_FILE"
+      else
+        yaml_target="$app_dir/$CONFIG_FILE"
+      fi
+
+      if [[ ! -f "$yaml_target" ]]; then
+        echo -ne "\n${YELLOW}Creating YAML configuration file at $yaml_target..."
+        GenerateYamlConf "$WEBAPP_STACK" "$APPNAME" "https://$APPNAME.$TLD_SUFFIX" "$WEB_MULTI" "$infra_type" "$APPREPOSITORY" "$PHP_VERSION" "$PROXY_PORT"
+        echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
       fi
     fi
 
@@ -1536,19 +1614,6 @@ function BootstrapWebApplication {
   # Creating dirs
   if [[ ! -d "$WEBAPP_DIR" ]]; then
     mkdir -p "$WEBAPP_DIR"
-  fi
-
-  # Check if directory exists but with different name (from git clone)
-  if [[ -n "$APPREPOSITORY" ]] && [[ "$WEB_MULTI" == "N" ]]; then
-    local repo_name=$(basename "$APPREPOSITORY" .git | sed 's/\.git$//')
-    local repo_dir="$WEBAPP_DIR/$repo_name"
-
-    if [[ -d "$repo_dir" ]] && [[ "$repo_name" != "$APPNAME" ]]; then
-      echo -ne "\n${YELLOW}Found repository directory with different name: $repo_name"
-      echo -ne "\n${YELLOW}Renaming to match app name: $APPNAME"
-      mv "$repo_dir" "$WEBAPP_DIR/$APPNAME"
-      echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
-    fi
   fi
 
   # If directory already exists
