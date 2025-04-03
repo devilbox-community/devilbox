@@ -1524,7 +1524,7 @@ function BootstrapExistingApps {
         fi
       elif [[ -d "$app_dir" ]] && [[ "$repo_name" == "$APPNAME" ]] && [[ "$infra_type" == "cloud" ]]; then
         # Special case: repo name matches app name, but we need cloud infrastructure setup
-        echo -ne "\n${YELLOW}Found repository directory with correct name, checking cloud structure...${NORMAL}${app_dir}/${HTTPD_DOCROOT_DIR}"
+        echo -ne "\n${YELLOW}Found repository directory with correct name, checking cloud structure...${NORMAL}"
 
         # IMPROVED CHECK: First verify if htdocs exists
         if [[ ! -d "$app_dir/$HTTPD_DOCROOT_DIR" ]]; then
@@ -1589,6 +1589,8 @@ function BootstrapExistingApps {
       local yaml_target=""
       if [[ "$infra_type" == "cloud" ]]; then
         yaml_target="$app_dir/$HTTPD_DOCROOT_DIR/$CONFIG_FILE"
+        # Also ensure we have a copy at the app root level
+        local yaml_root="$app_dir/$CONFIG_FILE"
       else
         yaml_target="$app_dir/$CONFIG_FILE"
       fi
@@ -1596,6 +1598,18 @@ function BootstrapExistingApps {
       if [[ ! -f "$yaml_target" ]]; then
         echo -ne "\n${YELLOW}Creating YAML configuration file at $yaml_target..."
         GenerateYamlConf "$WEBAPP_STACK" "$APPNAME" "https://$APPNAME.$TLD_SUFFIX" "$WEB_MULTI" "$infra_type" "$APPREPOSITORY" "$PHP_VERSION" "$PROXY_PORT"
+        echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+
+        # For cloud infrastructure, create a copy at app root if it doesn't exist
+        if [[ "$infra_type" == "cloud" ]] && [[ ! -f "$yaml_root" ]]; then
+          echo -ne "\n${YELLOW}Copying YAML configuration to app root directory..."
+          cp "$yaml_target" "$yaml_root"
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
+        fi
+      elif [[ "$infra_type" == "cloud" ]] && [[ ! -f "$yaml_root" ]]; then
+        # YAML exists at target but not at root - copy it
+        echo -ne "\n${YELLOW}Copying existing YAML configuration to app root directory..."
+        cp "$yaml_target" "$yaml_root"
         echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}\n"
       fi
     fi
