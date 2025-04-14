@@ -19,19 +19,15 @@
 [![Discourse](https://img.shields.io/discourse/https/devilbox.discourse.group/status.svg?colorB=%234CB697&label=Discourse&logo=discourse)](https://devilbox.discourse.group)
 [![License](https://img.shields.io/badge/license-MIT-%233DA639.svg)](https://opensource.org/licenses/MIT)
 
-<!--
 [![Documentation Status](https://readthedocs.org/projects/devilbox/badge/?version=latest)](https://devilbox.readthedocs.io)
-[![Build Status](https://github.com/cytopia/devilbox/workflows/Lint/badge.svg)](https://github.com/cytopia/devilbox/actions?workflow=Lint)
-[![Build Status](https://github.com/cytopia/devilbox/workflows/Docs/badge.svg)](https://github.com/cytopia/devilbox/actions?workflow=Docs)
-
-[![PHP](https://github.com/cytopia/devilbox/actions/workflows/test-php.yml/badge.svg)](https://github.com/cytopia/devilbox/actions/workflows/test-php.yml)
-[![Httpd](https://github.com/cytopia/devilbox/actions/workflows/test-httpd.yml/badge.svg)](https://github.com/cytopia/devilbox/actions/workflows/test-httpd.yml)
-[![MySQL](https://github.com/cytopia/devilbox/actions/workflows/test-mysql.yml/badge.svg)](https://github.com/cytopia/devilbox/actions/workflows/test-mysql.yml)
-[![Memcd](https://github.com/cytopia/devilbox/actions/workflows/test-memcd.yml/badge.svg)](https://github.com/cytopia/devilbox/actions/workflows/test-memcd.yml)
-[![Mongo](https://github.com/cytopia/devilbox/actions/workflows/test-mongo.yml/badge.svg)](https://github.com/cytopia/devilbox/actions/workflows/test-mongo.yml)
-[![PgSQL](https://github.com/cytopia/devilbox/actions/workflows/test-pgsql.yml/badge.svg)](https://github.com/cytopia/devilbox/actions/workflows/test-pgsql.yml)
-[![Redis](https://github.com/cytopia/devilbox/actions/workflows/test-redis.yml/badge.svg)](https://github.com/cytopia/devilbox/actions/workflows/test-redis.yml)
--->
+[![Build Status](https://github.com/devilbox-community/devilbox/actions/workflows/lint.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/lint.yml)
+[![PHP](https://github.com/devilbox-community/devilbox/actions/workflows/test-php.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/test-php.yml)
+[![Httpd](https://github.com/devilbox-community/devilbox/actions/workflows/test-httpd.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/test-httpd.yml)
+[![MySQL](https://github.com/devilbox-community/devilbox/actions/workflows/test-mysql.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/test-mysql.yml)
+[![Mongo](https://github.com/devilbox-community/devilbox/actions/workflows/test-mongo.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/test-mongo.yml)
+[![Memcd](https://github.com/devilbox-community/devilbox/actions/workflows/test-memcd.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/test-memcd.yml)
+[![PgSQL](https://github.com/devilbox-community/devilbox/actions/workflows/test-pgsql.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/test-pgsql.yml)
+[![Redis](https://github.com/devilbox-community/devilbox/actions/workflows/test-redis.yml/badge.svg)](https://github.com/devilbox-community/devilbox/actions/workflows/test-redis.yml)
 
 <!--
 <img width="200" style="width:200px;" src="docs/_includes/figures/https/https-ssl-address-bar.png" /><br/>
@@ -50,7 +46,7 @@ All created projects (frontend or backend) will be able to communicate with one 
 <br/>
 <br/>
 **Available Architectures:** `amd64`, `arm64`<br/>
-**Available PHP Versions:** `7.4`, `8.0`, `8.1`, `8.2`, `8.3`<br/>
+**Available PHP Versions:** `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`<br/>
 **Deprecated PHP Version:** `5.6`, `7.0`, `7.1`, `7.2`, `7.3` only available in `0.153` and previous
 
 
@@ -941,6 +937,7 @@ Well-known and popular tools will be at your service:
 | [rsync][lnk_rsync]                         |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |
 | [sass][lnk_sass]                           |         |         |         |         |         |         |
 | [shellcheck][lnk_shellcheck]               |         |         |         |         |         |         |
+| [shopify-cli][lnk_shopify-cli]             |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |
 | [ssh][lnk_ssh]                             |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |
 | [stencil-cli][lnk_stencil-cli]             |         |         |         |         |         |         |
 | [stylelint][lnk_stylelint]                 |         |         |         |         |         |         |
@@ -948,6 +945,7 @@ Well-known and popular tools will be at your service:
 | [symfony-cli][lnk_symfony-cli]             |         |         |         |         |         |         |
 | [taskfile][lnk_taskfile]                   |         |         |         |         |         |         |
 | [tig][lnk_tig]                             |         |         |         |         |         |         |
+| [trap][lnk_trap]                           |         |         |    ✓    |    ✓    |    ✓    |    ✓    |
 | [vim][lnk_vim]                             |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |
 | [vue-cli][lnk_vue-cli]                     |         |         |         |         |         |         |
 | [webpack-cli][lnk_webpack-cli]             |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |
@@ -996,6 +994,7 @@ Well-known and popular tools will be at your service:
 [lnk_rsync]: ../php_tools/rsync
 [lnk_sass]: ../php_tools/sass
 [lnk_shellcheck]: ../php_tools/shellcheck
+[lnk_shopify-cli]: ../php_tools/shopify-cli
 [lnk_ssh]: ../php_tools/ssh
 [lnk_stencil-cli]: ../php_tools/stencil-cli
 [lnk_stylelint]: ../php_tools/stylelint
@@ -1003,6 +1002,7 @@ Well-known and popular tools will be at your service:
 [lnk_symfony-cli]: ../php_tools/symfony-cli
 [lnk_taskfile]: ../php_tools/taskfile
 [lnk_tig]: ../php_tools/tig
+[lnk_trap]: ../php_tools/trap
 [lnk_vim]: ../php_tools/vim
 [lnk_vue-cli]: ../php_tools/vue-cli
 [lnk_webpack-cli]: ../php_tools/webpack-cli
