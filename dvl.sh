@@ -1316,7 +1316,7 @@ function InteractiveQuestions {
     7.0|70|7.1|71|7.2|72|7.3|73|7.4|74)
       PHP_VERSION=$(awk '{gsub(/[.]/,"");print $NF}' <<< "php$response")
       ;;
-    8.0|80|8.2|82|8.3|83)
+    8.0|80|8.2|82|8.3|83|8.4|84)
       PHP_VERSION=$(awk '{gsub(/[.]/,"");print $NF}' <<< "php$response")
       ;;
     8.1|81|*)
