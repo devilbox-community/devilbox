@@ -5,16 +5,18 @@ version: '2.3'
 services:
 
   # -----------------------------------------------------------------------------------------------
-  # MailHog
+  # MailPit
   # -----------------------------------------------------------------------------------------------
-  mailhog:
-    image: ${MAILHOG_IMAGE:-mailhog/mailhog}:${MAILHOG_SERVER:-latest}
-    hostname: mailhog
+  mailpit:
+    image: ${MAILPIT_IMAGE:-axllent/mailpit}:${MAILPIT_SERVER:-latest}
+    hostname: mailpit
+    restart: unless-stopped
     ports:
-      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_MAILHOG:-8025}:8025"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_MAILPIT:-8025}:8025"
+      - "${LOCAL_LISTEN_ADDR}${SMTP_PORT_MAILPIT:-1025}:1025"
     networks:
       app_net:
-        ipv4_address: 172.16.238.252
+        ipv4_address: 172.16.238.253
     depends_on:
       - bind
       - php

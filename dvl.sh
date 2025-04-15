@@ -205,7 +205,8 @@ TEMPLATE_CONFIG="$DEVILBOX_PATH/.tests/devilbox-template-config.yaml"
 YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
-readonly VERSION="1.2.4"
+readonly VERSION="1.2.5"
+readonly DEFAULT_DVL_CONTAINERS="bind httpd php php74 php81 php82 php83 mysql redis opensearch buggregator"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -302,7 +303,7 @@ function __get_default_containers {
   if [[ ! -z "$DEVILBOX_CONTAINERS" ]]; then
     printf %s "${DEVILBOX_CONTAINERS}"
   else
-    printf %s "bind httpd php php74 php81 php82 php83 mysql redis opensearch mailhog"
+    printf %s "bind httpd php php74 php81 php82 php83 mysql redis opensearch buggregator"
   fi
 }
 
@@ -344,7 +345,7 @@ function GetPhpVersionFromYaml {
   if [[ ! -f "$yaml_file" ]]; then
     yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
   fi
-  
+
   # If still not found and we're in htdocs or a subdirectory
   if [[ ! -f "$yaml_file" ]]; then
     # Check if current dir matches htdocs name
@@ -2130,6 +2131,116 @@ function SyncEnvConf {
     cp "$ENV_SOURCE" "$ENV_TARGET"
     echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
     echo ""
+  fi
+
+  # STEP 3: Handle container configuration synchronization
+  echo ""
+  echo "${YELLOW}${BOLD}Step 3: Checking container configuration differences${NORMAL}"
+
+  # Get default containers
+  local default_containers="$DEFAULT_DVL_CONTAINERS"
+
+  # Search for DEVILBOX_CONTAINERS in user's profile files
+  local profile_files=("$HOME/.zprofile" "$HOME/.bash_profile" "$HOME/.profile" "$HOME/.bashrc" "$HOME/.zshrc")
+  local user_containers=""
+  local profile_file=""
+
+  # Find the first profile file containing DEVILBOX_CONTAINERS
+  for file in "${profile_files[@]}"; do
+    if [[ -f "$file" ]] && grep -q "DEVILBOX_CONTAINERS" "$file"; then
+      profile_file="$file"
+      # Extract current container list, handling various export formats
+      user_containers=$(grep -E "^(export )?DEVILBOX_CONTAINERS=" "$file" | sed -E 's/^(export )?DEVILBOX_CONTAINERS="?([^"]*)"?$/\2/')
+      break
+    fi
+  done
+
+  # If no existing configuration found
+  if [[ -z "$user_containers" ]]; then
+    echo "${YELLOW}No existing container configuration found in profile files.${NORMAL}"
+    echo "${CYAN}Default containers:${NORMAL} $default_containers"
+
+    read -r -p "${CYAN}Would you like to add the default container configuration to your profile? (y/n): ${NORMAL}" response
+    case "$response" in
+      [yY][eE][sS]|[yY])
+        # Choose which profile file to update
+        if [[ -f "$HOME/.zprofile" ]]; then
+          profile_file="$HOME/.zprofile"
+        elif [[ -f "$HOME/.bash_profile" ]]; then
+          profile_file="$HOME/.bash_profile"
+        elif [[ -f "$HOME/.profile" ]]; then
+          profile_file="$HOME/.profile"
+        elif [[ -f "$HOME/.zshrc" ]]; then
+          profile_file="$HOME/.zshrc"
+        else
+          profile_file="$HOME/.profile"
+          touch "$profile_file"
+        fi
+
+        echo -ne "${YELLOW}[!] Adding container configuration to $profile_file..."
+        echo "" >> "$profile_file"
+        echo "# DevilBox container configuration" >> "$profile_file"
+        echo "export DEVILBOX_CONTAINERS=\"$default_containers\"" >> "$profile_file"
+        echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+        echo ""
+        echo "${YELLOW}Please run 'source $profile_file' or restart your terminal for changes to take effect.${NORMAL}"
+        ;;
+      *)
+        echo -ne "${YELLOW}[!] Skipping container configuration setup..."
+        echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+        echo ""
+        ;;
+    esac
+  else
+    # Create temporary files for comparison
+    local tmp_default=$(mktemp)
+    local tmp_user=$(mktemp)
+
+    # Format containers with one per line for easier comparison
+    echo "$default_containers" | tr ' ' '\n' | sort > "$tmp_default"
+    echo "$user_containers" | tr ' ' '\n' | sort > "$tmp_user"
+
+    echo "Found existing container configuration in $profile_file"
+    echo "Comparing default containers with your configured containers:"
+
+    # Check if there are differences
+    if ! diff -q "$tmp_default" "$tmp_user" >/dev/null; then
+      echo "${CYAN}Differences found:${NORMAL}"
+      echo "${GREEN}--- Your configuration${NORMAL}"
+      echo "${RED}+++ Default configuration${NORMAL}"
+      diff -u "$tmp_user" "$tmp_default" | grep -E "^[+-][^+-]" || true
+      echo ""
+
+      read -r -p "${CYAN}Would you like to update your container configuration to the default? (y/n): ${NORMAL}" response
+      case "$response" in
+        [yY][eE][sS]|[yY])
+          echo -ne "${YELLOW}[!] Updating container configuration in $profile_file..."
+
+          # Update the existing line in profile file
+          if grep -q "^export DEVILBOX_CONTAINERS=" "$profile_file"; then
+            sed -i.bak "s/^export DEVILBOX_CONTAINERS=.*$/export DEVILBOX_CONTAINERS=\"$default_containers\"/" "$profile_file" && rm -f "${profile_file}.bak"
+          elif grep -q "^DEVILBOX_CONTAINERS=" "$profile_file"; then
+            sed -i.bak "s/^DEVILBOX_CONTAINERS=.*$/export DEVILBOX_CONTAINERS=\"$default_containers\"/" "$profile_file" && rm -f "${profile_file}.bak"
+          fi
+
+          echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+          echo ""
+          echo "${YELLOW}Please run 'source $profile_file' or restart your terminal for changes to take effect.${NORMAL}"
+          ;;
+        *)
+          echo -ne "${YELLOW}[!] Keeping your existing container configuration..."
+          echo -ne "...${NORMAL} ${CYAN}SKIPPED${NORMAL}"
+          echo ""
+          ;;
+      esac
+    else
+      echo -ne "${YELLOW}[!] Your container configuration already matches the default..."
+      echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
+      echo ""
+    fi
+
+    # Clean up temporary files
+    rm -f "$tmp_default" "$tmp_user"
   fi
 
   success "Environment configuration synchronization complete!"

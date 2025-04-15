@@ -26,7 +26,7 @@ x-app: &default-php
     # Mail-catching
     - ENABLE_MAIL=${PHP_MAIL_CATCH_ALL:-2}
     ## Enable 127.0.0.1 Port-forwarding
-    - FORWARD_PORTS_TO_LOCALHOST=80:httpd:80,443:httpd:443,3306:mysql:3306,5432:pgsql:5432,6379:redis:6379,11211:memcd:11211,27017:mongo:27017,9200:elastic:9200,8025:mailhog:8025
+    - FORWARD_PORTS_TO_LOCALHOST=80:httpd:80,443:httpd:443,3306:mysql:3306,5432:pgsql:5432,6379:redis:6379,11211:memcd:11211,27017:mongo:27017,9200:elastic:9200,8025:mailhog:8025,8025:mailpit:8025,8000:buggregator:8000,1025:buggregator:1025,9912:buggregator:9912,9913:buggregator:9913
   dns:
     - 172.16.238.100
   depends_on:
@@ -60,6 +60,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-7.1:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -86,6 +87,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-7.2:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -112,6 +114,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-7.3:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -121,7 +124,7 @@ services:
 
   php74:
     <<: *default-php
-    image: devilboxcommunity/php-fpm:7.4-slim-0.155
+    image: devilboxcommunity/php-fpm:7.4-slim-0.158
     hostname: php74
     networks:
       app_net:
@@ -138,6 +141,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-7.4:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -147,7 +151,7 @@ services:
 
   php80:
     <<: *default-php
-    image: devilboxcommunity/php-fpm:8.0-slim-0.155
+    image: devilboxcommunity/php-fpm:8.0-slim-0.158
     hostname: php80
     networks:
       app_net:
@@ -164,6 +168,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-8.0:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -173,7 +178,7 @@ services:
 
   php81:
     <<: *default-php
-    image: devilboxcommunity/php-fpm:8.1-slim-0.155
+    image: devilboxcommunity/php-fpm:8.1-slim-0.158
     hostname: php81
     networks:
       app_net:
@@ -190,6 +195,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-8.1:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -199,7 +205,7 @@ services:
 
   php82:
     <<: *default-php
-    image: devilboxcommunity/php-fpm:8.2-slim-0.155
+    image: devilboxcommunity/php-fpm:8.2-slim-0.158
     hostname: php82
     networks:
       app_net:
@@ -216,6 +222,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-8.2:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -225,7 +232,7 @@ services:
 
   php83:
     <<: *default-php
-    image: devilboxcommunity/php-fpm:8.3-slim-0.155
+    image: devilboxcommunity/php-fpm:8.3-slim-0.158
     hostname: php83
     networks:
       app_net:
@@ -242,6 +249,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-8.3:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -251,7 +259,7 @@ services:
 
   php84:
     <<: *default-php
-    image: devilboxcommunity/php-fpm:8.4-slim-0.155
+    image: devilboxcommunity/php-fpm:8.4-slim-0.158
     hostname: php84
     networks:
       app_net:
@@ -268,6 +276,7 @@ services:
       - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
       # - ${DEVILBOX_PATH}/cfg/msmtp/msmtprc:/etc/msmtprc:ro${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/php-startup-8.4:/startup.1.d:rw${MOUNT_OPTIONS}
       - devilbox-mail:/var/mail:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/supervisor:/etc/supervisor/custom.d:rw${MOUNT_OPTIONS}
       # Certificate Authority public key
@@ -346,7 +355,25 @@ services:
       - "${LOCAL_LISTEN_ADDR}${HOST_PORT_MAILHOG:-8025}:8025"
     networks:
       app_net:
-        ipv4_address: 172.16.238.201
+        ipv4_address: 172.16.238.252
+    depends_on:
+      - bind
+      - php
+      - httpd
+
+  # -----------------------------------------------------------------------------------------------
+  # MailPit
+  # -----------------------------------------------------------------------------------------------
+  mailpit:
+    image: ${MAILPIT_IMAGE:-axllent/mailpit}:${MAILPIT_SERVER:-latest}
+    hostname: mailpit
+    restart: unless-stopped
+    ports:
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_MAILPIT:-8025}:8025"
+      - "${LOCAL_LISTEN_ADDR}${SMTP_PORT_MAILPIT:-1025}:1025"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.253
     depends_on:
       - bind
       - php
@@ -366,7 +393,26 @@ services:
       - "${LOCAL_LISTEN_ADDR}${HOST_PORT_NGROK:-4040}:4040"
     networks:
       app_net:
-        ipv4_address: 172.16.238.202
+        ipv4_address: 172.16.238.254
+    depends_on:
+      - bind
+      - php
+      - httpd
+
+  # -----------------------------------------------------------------------------------------------
+  # Buggregator
+  # -----------------------------------------------------------------------------------------------
+  buggregator:
+    image: ${BUGGREGATOR_IMAGE:-ghcr.io/buggregator/server}:${BUGGREGATOR_SERVER:-latest}
+    hostname: buggregator
+    ports:
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_DASHBOARD:-8000}:8000"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_SMTP:-1025}:1025"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_VAR_DUMPER:-9912}:9912"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_MONOLOG:-9913}:9913"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.110
     depends_on:
       - bind
       - php
@@ -387,7 +433,7 @@ services:
       - "${LOCAL_LISTEN_ADDR}${HOST_PORT_RABBIT_MGMT:-15672}:15672"
     networks:
       app_net:
-        ipv4_address: 172.16.238.210
+        ipv4_address: 172.16.238.220
     volumes:
       - devilbox-rabbit:/var/lib/rabbitmq
     depends_on:
@@ -462,12 +508,6 @@ services:
 
     sysctls:
       net.core.somaxconn: 1024
-
-#    ulimits:
-#      nproc: 65535
-#      nofile:
-#        soft: 20000
-#        hard: 4000
 
     networks:
       app_net:

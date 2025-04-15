@@ -1,0 +1,24 @@
+# vim: set ft=yaml:
+---
+version: '2.3'
+
+services:
+
+  # -----------------------------------------------------------------------------------------------
+  # Buggregator
+  # -----------------------------------------------------------------------------------------------
+  buggregator:
+    image: ${BUGGREGATOR_IMAGE:-ghcr.io/buggregator/server}:${BUGGREGATOR_SERVER:-latest}
+    hostname: buggregator
+    ports:
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_DASHBOARD:-8000}:8000"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_SMTP:-1025}:1025"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_VAR_DUMPER:-9912}:9912"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_BUGGREGATOR_MONOLOG:-9913}:9913"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.110
+    depends_on:
+      - bind
+      - php
+      - httpd

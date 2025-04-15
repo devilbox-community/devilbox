@@ -508,6 +508,29 @@ NGROK_SERVER=latest
 
 
 
+###
+### 1.14 Choose Mailpit server image
+###
+### See here for all versions: https://mailpit.axllent.org/docs/install/docker/
+###
+MAILPIT_SERVER=latest
+#MAILPIT_SERVER=1.24
+#MAILPIT_SERVER=1.2
+#MAILPIT_SERVER=edge
+
+
+
+###
+### 1.15 Choose Buggregator server image
+###
+### See here for all versions: https://github.com/buggregator/server/pkgs/container/server
+###
+BUGGREGATOR_SERVER=latest
+#BUGGREGATOR_SERVER=1.13
+#BUGGREGATOR_SERVER=1.12
+
+
+
 ################################################################################
 ###
 ### 2. Host Mounts (Your computer)
@@ -998,6 +1021,53 @@ HOST_PORT_NGROK=4040
 NGROK_HTTP_TUNNELS=httpd:httpd:80
 NGROK_AUTHTOKEN=
 NGROK_REGION=us
+
+
+
+################################################################################
+###
+### 16. MailPit Docker Settings
+###
+################################################################################
+
+###
+### Expose MailPit Port to Host
+###
+HOST_PORT_MAILPIT=8025
+SMTP_PORT_MAILPIT=1025
+
+
+###
+### Generic MailPit Settings
+###
+MAILPIT_IMAGE=axllent/mailpit
+MAILPIT_SMTP_ADDR=mailpit:1025
+
+
+
+################################################################################
+###
+### 17. Buggregator Docker Settings
+###
+################################################################################
+
+###
+### Expose Buggregator Port to Host
+###
+HOST_PORT_BUGGREGATOR_DASHBOARD=8000
+HOST_PORT_BUGGREGATOR_SMTP=1025
+HOST_PORT_BUGGREGATOR_VAR_DUMPER=9912
+HOST_PORT_BUGGREGATOR_MONOLOG=9913
+
+
+###
+### Generic Buggregator Settings
+###
+BUGGREGATOR_IMAGE=ghcr.io/buggregator/server
+RAY_HOST=ray@buggregator
+RAY_PORT=8000
+VAR_DUMPER_FORMAT=server
+VAR_DUMPER_SERVER=buggregator:9912
 
 
 
