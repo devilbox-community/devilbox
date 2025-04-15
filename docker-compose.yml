@@ -164,7 +164,7 @@ services:
       ##
       ## Enable 127.0.0.1 Port-forwarding
       ##
-      - FORWARD_PORTS_TO_LOCALHOST=80:httpd:80,443:httpd:443,3306:mysql:3306,5432:pgsql:5432,6379:redis:6379,11211:memcd:11211,27017:mongo:27017,8025:mailhog:8025,8025:mailpit:8025,8000:buggregator:8000,1025:buggregator:1025,9912:buggregator:9912,9913:buggregator:9913
+      - FORWARD_PORTS_TO_LOCALHOST=80:httpd:80,443:httpd:443,3306:mysql:3306,5432:pgsql:5432,6379:redis:6379,11211:memcd:11211,27017:mongo:27017
 
       ##
       ## MySQL Backups
