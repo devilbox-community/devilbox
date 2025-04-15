@@ -337,10 +337,10 @@ function RestartServices {
 
 function GetPhpVersionFromYaml {
   local debug_mode=${1:-false}
-  
+
   # Check in current directory first
   local yaml_file="$CURRENT_DIR/$CONFIG_FILE"
-  
+
   # If not found, check parent directory (common for Magento AWS projects)
   if [[ ! -f "$yaml_file" ]]; then
     yaml_file="$(dirname "$CURRENT_DIR")/$CONFIG_FILE"
@@ -357,7 +357,7 @@ function GetPhpVersionFromYaml {
       yaml_file="$(dirname "$(dirname "$CURRENT_DIR")")/$CONFIG_FILE"
     fi
   fi
-  
+
   # Debug mode to help troubleshoot version detection
   if [[ "$debug_mode" == "true" ]]; then
     echo "Current directory: $CURRENT_DIR" >&2
@@ -365,7 +365,7 @@ function GetPhpVersionFromYaml {
     echo "Checking multiple locations for YAML file" >&2
     echo "1. Current directory: $CURRENT_DIR/$CONFIG_FILE" >&2
     echo "2. Parent directory: $(dirname "$CURRENT_DIR")/$CONFIG_FILE" >&2
-    
+
     if [[ -f "$yaml_file" ]]; then
       echo "Found YAML file at: $yaml_file" >&2
       echo "PHP version in YAML: $("$YQ_BINARY" '.php.version' "$yaml_file")" >&2
@@ -377,12 +377,12 @@ function GetPhpVersionFromYaml {
   # First check if we're in a project with a yaml file
   if [[ -f "$yaml_file" ]]; then
     local php_version=$("$YQ_BINARY" '.php.version' "$yaml_file")
-    
+
     # If we have a valid PHP version in the yaml file
     if [[ -n "$php_version" && "$php_version" != "null" ]]; then
       # Get the PHP_SERVER from .env file (default PHP version)
       local php_server="$( "${SCRIPT_PATH}/env-getvar.sh" "PHP_SERVER" )"
-      
+
       if [[ "$debug_mode" == "true" ]]; then
         echo "Default PHP server from .env: $php_server" >&2
       fi
@@ -391,7 +391,7 @@ function GetPhpVersionFromYaml {
       if [[ "$php_version" =~ ^php[0-9]{2}$ ]]; then
         # Extract numeric part from php_version (e.g., "74" from "php74")
         local yaml_version_num="${php_version#php}"
-        
+
         # Convert env PHP version to same format (e.g., "7.4" to "74")
         local env_version_num=$(echo "$php_server" | sed 's/\.//g')
 
@@ -443,7 +443,7 @@ function CheckPhpContainerFlavor {
   # Get current container image from docker-compose config
   local container_image=""
   local config_output=""
-  
+
   if hash docker-compose 2>/dev/null; then
     if [[ "$debug" == "true" ]]; then
       echo "Using docker-compose to get config" >&2
@@ -455,31 +455,31 @@ function CheckPhpContainerFlavor {
     fi
     config_output=$(cd "$DEVILBOX_PATH" && docker compose config)
   fi
-  
+
   # First, try to extract service and image using a different pattern
   if [[ "$debug" == "true" ]]; then
     echo "Trying to find $php_container in docker-compose config" >&2
   fi
-  
+
   # Save the config to a temp file for easier debugging
   local temp_config=$(mktemp)
   echo "$config_output" > "$temp_config"
-  
+
   if [[ "$debug" == "true" ]]; then
     echo "Docker compose config written to temp file at: $temp_config" >&2
     echo "Checking with grep -A 20 '$php_container:'" >&2
   fi
-  
+
   # Try various patterns to match the container
   container_image=$(grep -A 20 "$php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
-  
+
   if [[ -z "$container_image" ]]; then
     if [[ "$debug" == "true" ]]; then
       echo "First attempt failed, trying with different pattern" >&2
     fi
     container_image=$(grep -A 20 "  $php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
   fi
-  
+
   if [[ -z "$container_image" ]]; then
     if [[ "$debug" == "true" ]]; then
       echo "Second attempt failed, trying with looser pattern" >&2
@@ -487,7 +487,7 @@ function CheckPhpContainerFlavor {
     # More aggressive pattern
     container_image=$(grep -A 50 -i "$php_container" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
   fi
-  
+
   # Clean up
   rm -f "$temp_config"
 
@@ -530,7 +530,7 @@ function CheckPhpContainerFlavor {
 function UpdateContainerFlavor {
   local php_container="$1"
   local target_flavor="$2"
-  
+
   # Use get_workspace_path to get the correct path
   local devilbox_path=$(get_workspace_path)
   local override_file="$devilbox_path/docker-compose.override.yml"
@@ -542,42 +542,42 @@ function UpdateContainerFlavor {
   # Create the override file if it doesn't exist
   if [[ ! -f "$override_file" ]]; then
     echo "Override file not found. Creating minimal override file..." >&2
-    
+
     # Create a minimal docker-compose.override.yml file
     cat > "$override_file" <<EOL
 version: '2.3'
 services:
 EOL
-    
+
     echo "Created new override file" >&2
   fi
 
   # Get current container image using more robust pattern matching
   local current_image=""
   local config_output=""
-  
+
   if hash docker-compose 2>/dev/null; then
     config_output=$(cd "$devilbox_path" && docker-compose config 2>/dev/null)
   else
     config_output=$(cd "$devilbox_path" && docker compose config 2>/dev/null)
   fi
-  
+
   # Save the config to a temp file for easier debugging
   local temp_config=$(mktemp)
   echo "$config_output" > "$temp_config"
-  
+
   # Try various patterns to match the container image
   current_image=$(grep -A 20 "$php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
-  
+
   if [[ -z "$current_image" ]]; then
     current_image=$(grep -A 20 "  $php_container:" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
   fi
-  
+
   if [[ -z "$current_image" ]]; then
     # More aggressive pattern
     current_image=$(grep -A 50 -i "$php_container" "$temp_config" | grep -m 1 "image:" | sed 's/image://g' | sed 's/^[[:space:]]*//g')
   fi
-  
+
   # Clean up
   rm -f "$temp_config"
 
@@ -620,13 +620,13 @@ EOL
   if [[ -f "$override_file" && -s "$override_file" ]]; then
     cp "$override_file" "${override_file}.bak"
   fi
-  
+
   # Process YAML with careful line-by-line approach to maintain structure
   local temp_file=$(mktemp)
   local in_container_section=0
   local image_line_found=0
   local indent_level=""
-  
+
   while IFS= read -r line; do
     # Detect if we're entering the container section
     if [[ "$line" =~ ^[[:space:]]*"$php_container:"($|[[:space:]]) ]]; then
@@ -636,7 +636,7 @@ EOL
       echo "$line" >> "$temp_file"
       continue
     fi
-    
+
     # If we're in the container section and find an image line, replace it
     if [[ $in_container_section -eq 1 && "$line" =~ ^[[:space:]]*image: ]]; then
       # Maintain the existing indentation
@@ -645,7 +645,7 @@ EOL
       image_line_found=1
       continue
     fi
-    
+
     # If we encounter another service or the end of the services section, we're exiting our container section
     if [[ $in_container_section -eq 1 && ( "$line" =~ ^[[:space:]]*[a-zA-Z0-9_-]+:($|[[:space:]]) || "$line" =~ ^[^[:space:]#] ) ]]; then
       # If we didn't find an image line, add it before moving on
@@ -656,16 +656,16 @@ EOL
       fi
       in_container_section=0
     fi
-    
+
     # Write the current line to the output file
     echo "$line" >> "$temp_file"
   done < "$override_file"
-  
+
   # If we're still in the container section at the end of the file and haven't added an image line
   if [[ $in_container_section -eq 1 && $image_line_found -eq 0 ]]; then
     echo "${indent_level}  image: $new_image" >> "$temp_file"
   fi
-  
+
   # If we never found the container section, add it at the end of the file
   if [[ $in_container_section -eq 0 && $image_line_found -eq 0 ]]; then
     # Check if there's a services: line
@@ -682,7 +682,7 @@ EOL
       echo "    image: $new_image" >> "$temp_file"
     fi
   fi
-  
+
   # Replace the original file with our new one
   mv "$temp_file" "$override_file"
 
@@ -723,7 +723,7 @@ EOL
   fi
 
   echo "${GREEN}Successfully updated container settings${NORMAL}"
-  
+
   # Wait for container to be ready
   echo "${YELLOW}Waiting for $php_container container to be ready...${NORMAL}"
   sleep 5
@@ -1135,7 +1135,7 @@ function DatabaseImport {
             echo -ne "${YELLOW}[!] Removing base link URLs from database..."
             local delete_query="DELETE FROM core_config_data WHERE path IN ('web/secure/base_link_url', 'web/unsecure/base_link_url')"
             ExecShellTTY "mysql --host=mysql --user=root --password='$MYSQL_ROOT_PASSWORD' -e \"$delete_query\" $dbname"
-            
+
             echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
             echo ""
             echo "Deleted ${GREEN}$affected_count${NORMAL} records."
@@ -1569,7 +1569,7 @@ function BootstrapExistingApps {
                 echo "${YELLOW}Updated YAML file path to: $yaml_file${NORMAL}"
               fi
             fi
-          else 
+          else
             echo -ne "\n${YELLOW}No files found to move. Directory might be empty.${NORMAL}"
           fi
 
@@ -2125,7 +2125,7 @@ function SyncEnvConf {
 
     # Clean up temporary files
     rm -f "$TMP_SOURCE" "$TMP_TARGET"
-    
+
   elif [[ -f "$ENV_SOURCE" ]] && [[ ! -f "$ENV_TARGET" ]]; then
     echo -ne "${YELLOW}[!] Creating new .env file..."
     cp "$ENV_SOURCE" "$ENV_TARGET"
@@ -2223,6 +2223,7 @@ function SyncEnvConf {
             sed -i.bak "s/^DEVILBOX_CONTAINERS=.*$/export DEVILBOX_CONTAINERS=\"$default_containers\"/" "$profile_file" && rm -f "${profile_file}.bak"
           fi
 
+          source $profile_file
           echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
           echo ""
           echo "${YELLOW}Please run 'source $profile_file' or restart your terminal for changes to take effect.${NORMAL}"
