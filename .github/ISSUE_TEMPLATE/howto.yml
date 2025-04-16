@@ -22,7 +22,7 @@ body:
         - label: I have checked the [Devilbox FAQ](https://devilbox.readthedocs.io/en/latest/support/faq.html)
         - label: I have checked the [Devilbox Howto](https://devilbox.readthedocs.io/en/latest/support/howto.html)
         - label: I have checked the [Devilbox Forum](https://devilbox.discourse.group/)
-        - label: I have checked [existing issues](https://github.com/cytopia/devilbox/issues)
+        - label: I have checked [existing issues](https://github.com/devilbox-community/devilbox/issues)
         - label: I have googled already with no luck
         - label: I have not done any of the above
     validations:
