@@ -42,6 +42,7 @@
 /log/php-fpm-8.1/*
 /log/php-fpm-8.2/*
 /log/php-fpm-8.3/*
+/log/php-fpm-8.4/*
 !/log/.keepme
 !/log/*/.keepme
 
@@ -71,6 +72,7 @@
 /cfg/mariadb-10.5/*.cnf
 /cfg/mariadb-10.6/*.cnf
 /cfg/mariadb-10.7/*.cnf
+/cfg/mariadb-11.4/*.cnf
 /cfg/percona-5.5/*.cnf
 /cfg/percona-5.6/*.cnf
 /cfg/percona-5.7/*.cnf
@@ -87,6 +89,7 @@
 /cfg/php-ini-8.1/*.ini
 /cfg/php-ini-8.2/*.ini
 /cfg/php-ini-8.3/*.ini
+/cfg/php-ini-8.4/*.ini
 
 # Ignore custom disabled PHP.ini configs
 /cfg/php-ini-5.6/*.ini-disabled
@@ -99,6 +102,7 @@
 /cfg/php-ini-8.1/*.ini-disabled
 /cfg/php-ini-8.2/*.ini-disabled
 /cfg/php-ini-8.3/*.ini-disabled
+/cfg/php-ini-8.4/*.ini-disabled
 
 # Ignore custom PHP-FPM configs
 /cfg/php-fpm-5.6/*.conf
@@ -111,6 +115,7 @@
 /cfg/php-fpm-8.1/*.conf
 /cfg/php-fpm-8.2/*.conf
 /cfg/php-fpm-8.3/*.conf
+/cfg/php-ini-8.4/*.conf
 
 # Ignore custom PHP-FPM startup scripts
 /autostart/*.sh
@@ -124,6 +129,7 @@
 /cfg/php-startup-8.1/*.sh
 /cfg/php-startup-8.2/*.sh
 /cfg/php-startup-8.3/*.sh
+/cfg/php-startup-8.4/*.sh
 
 # Ignore custom Varnish configs
 /cfg/varnish-4/*.vcl
@@ -144,6 +150,7 @@
 /mod/php-fpm-8.1/*.so
 /mod/php-fpm-8.2/*.so
 /mod/php-fpm-8.3/*.so
+/mod/php-fpm-8.4/*.so
 
 # Ignore supervisord configs
 /supervisor/*.conf

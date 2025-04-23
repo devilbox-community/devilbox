@@ -241,7 +241,7 @@ services:
   # Web Server
   # ------------------------------------------------------------
   httpd:
-    image: devilbox/${HTTPD_SERVER}:${HTTPD_FLAVOUR:-alpine}-1.2
+    image: devilboxcommunity/${HTTPD_SERVER}:${HTTPD_FLAVOUR:-alpine}-1.2
     hostname: httpd
 
     environment:
@@ -353,7 +353,7 @@ services:
   # MySQL Database
   # ------------------------------------------------------------
   mysql:
-    image: devilbox/mysql:${MYSQL_SERVER}-0.21
+    image: devilboxcommunity/mysql:${MYSQL_SERVER}-0.22
     hostname: mysql
 
     environment:
