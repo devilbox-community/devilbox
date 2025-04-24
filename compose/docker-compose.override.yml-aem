@@ -1,0 +1,47 @@
+# vim: set ft=yaml:
+---
+version: '2.3'
+
+services:
+
+  # -----------------------------------------------------------------------------------------------
+  # AEM Base
+  # -----------------------------------------------------------------------------------------------
+  aem:
+    image: ${AEMDESIGN_IMAGE:-ghcr.io/aem-design/aemdesign/aem}:${AEM_SERVER:-6.5.3.0}
+    hostname: aem
+    ports:
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_AEM:-4502}:8080"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_AEM_DEBUGGER:-30303}:58242"
+    environment:
+      - AEM_RUNMODE=${AEM_RUNMODE:--Dsling.run.modes=author,crx3,crx3tar,dev}
+      - AEM_JVM_OPTS=${AEM_JVM_OPTS:--server -Xms1024m -Xmx1024m -XX:MaxDirectMemorySize=256M -XX:+CMSClassUnloadingEnabled -Djava.awt.headless=true -Dorg.apache.felix.http.host=0.0.0.0}
+      - AEM_START_OPTS=${AEM_START_OPTS:-start -c /aem/crx-quickstart -i launchpad -p 8080 -a 0.0.0.0 -Dsling.properties=conf/sling.properties}
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.111
+    depends_on:
+      - bind
+      - php
+      - httpd
+
+  # -----------------------------------------------------------------------------------------------
+  # AEM Bundle Packages
+  # -----------------------------------------------------------------------------------------------
+  aembundle:
+    image: ${AEMDESIGN_IMAGE:-ghcr.io/aem-design/aemdesign/aem}:${AEM_SERVER:-6.5.3.0-bundle}
+    hostname: aem_bundle
+    ports:
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_AEM:-4502}:8080"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_AEM_DEBUG:-30303}:58242"
+    environment:
+      - AEM_RUNMODE=${AEM_RUNMODE:--Dsling.run.modes=author,crx3,crx3tar,dev}
+      - AEM_JVM_OPTS=${AEM_JVM_OPTS:--server -Xms248m -Xmx1524m -XX:MaxDirectMemorySize=256M -XX:+CMSClassUnloadingEnabled -Djava.awt.headless=true -Dorg.apache.felix.http.host=0.0.0.0 -Xdebug -Xrunjdwp:transport=dt_socket,server=y,address=58242,suspend=n}
+      - AEM_START_OPTS=${AEM_START_OPTS:-start -c /aem/crx-quickstart -i launchpad -p 8080 -a 0.0.0.0 -Dsling.properties=conf/sling.properties}
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.112
+    depends_on:
+      - bind
+      - php
+      - httpd

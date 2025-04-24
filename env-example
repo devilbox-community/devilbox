@@ -533,6 +533,19 @@ BUGGREGATOR_SERVER=latest
 
 
 
+###
+### 1.16 Choose AEM server image
+###
+### See here for all versions: https://github.com/aem-design/docker-aem/pkgs/container/aemdesign%2Faem
+###
+AEM_SERVER=6.5.11.0-jdk11
+#AEM_SERVER=6.5.11.0-jdk11-arm
+#AEM_SERVER=6.5.3.0-bundle
+#AEM_SERVER=6.5.3.0-bundle-forms
+#AEM_SERVER=6.5.8.0-bundle-forms-jdk11
+
+
+
 ################################################################################
 ###
 ### 2. Host Mounts (Your computer)
@@ -1070,6 +1083,29 @@ RAY_HOST=ray@buggregator
 RAY_PORT=8000
 VAR_DUMPER_FORMAT=server
 VAR_DUMPER_SERVER=buggregator:9912
+
+
+
+################################################################################
+###
+### 18. AEM Design Docker Settings
+###
+################################################################################
+
+###
+### Expose AEM Port to Host
+###
+HOST_PORT_AEM=4502
+HOST_PORT_AEM_DEBUGGER=30303
+
+
+###
+### Generic AEM Settings
+###
+AEMDESIGN_IMAGE=ghcr.io/aem-design/aemdesign/aem
+AEM_RUNMODE="-Dsling.run.modes=author,crx3,crx3tar,dev"
+AEM_JVM_OPTS="-server -Xms1024m -Xmx1024m -XX:MaxDirectMemorySize=256M -XX:+CMSClassUnloadingEnabled -Djava.awt.headless=true -Dorg.apache.felix.http.host=0.0.0.0"
+AEM_START_OPTS="server-start -c /aem/crx-quickstart -i launchpad -p 8080 -a 0.0.0.0 -Dsling.properties=conf/sling.properties"
 
 
 
