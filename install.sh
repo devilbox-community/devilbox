@@ -240,11 +240,16 @@ configure_uid_gid() {
   log_info "Current GID: $current_gid"
   
   # Update .env file with current UID and GID
-  sed -i.bak "s/^NEW_UID=.*/NEW_UID=$current_uid/" .env
-  sed -i.bak "s/^NEW_GID=.*/NEW_GID=$current_gid/" .env
-  
-  # Remove backup file
-  rm -f .env.bak
+  # Use a more portable approach that works reliably on macOS
+  if command -v perl >/dev/null 2>&1; then
+    # Perl approach - most portable and reliable
+    perl -i -pe "s/^NEW_UID=.*/NEW_UID=$current_uid/" .env
+    perl -i -pe "s/^NEW_GID=.*/NEW_GID=$current_gid/" .env
+  else
+    # Fallback to sed with temporary file approach for maximum compatibility
+    sed "s/^NEW_UID=.*/NEW_UID=$current_uid/" .env > .env.tmp && mv .env.tmp .env
+    sed "s/^NEW_GID=.*/NEW_GID=$current_gid/" .env > .env.tmp && mv .env.tmp .env
+  fi
   
   log_success "UID and GID configured in .env file"
 }
