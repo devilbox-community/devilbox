@@ -70,6 +70,43 @@ The Devilbox runs on all major operating systems and its only requirement is <co
 
 **Be up and running in 2 minutes.**
 
+<details style="margin-bottom:0px;"><summary>🚀 Automated Installation: macOS</summary>
+
+<h3>macOS: One-Click Installation</h3>
+
+For macOS users, you can use our automated installation script that handles all the setup steps:
+
+```bash
+# Download and run the installation script
+curl -sSL https://raw.githubusercontent.com/devilbox-community/devilbox/mainline/install.sh | bash
+
+# Or download the script first and then run it
+curl -sSL https://raw.githubusercontent.com/devilbox-community/devilbox/mainline/install.sh -o install.sh
+chmod +x install.sh
+./install.sh --help
+```
+
+**What the script does:**
+1. Clones Devilbox repository to `~/Workspace`
+2. Creates `.env` file from `env-example`
+3. Copies Magento2 docker-compose override file
+4. Sets environment variables in your shell profile
+5. Configures `NEW_UID` and `NEW_GID` automatically
+6. Installs Homebrew if not present
+7. Creates `dvl` command symlink for easy access
+
+**After installation:**
+```bash
+# Start Devilbox
+dvl up
+
+# Access the intranet
+open http://localhost
+```
+
+<br/>
+</details>
+
 <details style="margin-bottom:0px;"><summary>🚀 Install and Run: Linux</summary>
 
 <h3>Linux: Install</h3>
