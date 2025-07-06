@@ -52,14 +52,23 @@ FORCE=false
 
 # Detect shell and set appropriate profile file
 detect_shell_profile() {
-  if [ -n "${ZSH_VERSION:-}" ]; then
-    SHELL_PROFILE="$HOME/.zprofile"
-  elif [ -n "${BASH_VERSION:-}" ]; then
-    SHELL_PROFILE="$HOME/.bash_profile"
-  else
-    # Default to .zprofile for macOS
-    SHELL_PROFILE="$HOME/.zprofile"
-  fi
+  # Get the user's default shell
+  local user_shell=$(basename "$SHELL")
+  case "$user_shell" in
+    zsh)
+      SHELL_PROFILE="$HOME/.zprofile"
+      ;;
+    bash)
+      SHELL_PROFILE="$HOME/.bash_profile"
+      ;;
+    fish)
+      SHELL_PROFILE="$HOME/.config/fish/config.fish"
+      ;;
+    *)
+      # Default to .zprofile for macOS (most common)
+      SHELL_PROFILE="$HOME/.zprofile"
+      ;;
+  esac
 }
 
 # Logging functions
@@ -164,21 +173,21 @@ check_macos() {
 # Check prerequisites
 check_prerequisites() {
   log_step "Checking Prerequisites"
-  
+
   # Check for git
   if ! command -v git &> /dev/null; then
     log_error "Git is not installed. Please install git first."
     exit 1
   fi
   log_success "Git is installed"
-  
+
   # Check for Docker
   if ! command -v docker &> /dev/null; then
     log_error "Docker is not installed. Please install Docker Desktop first."
     exit 1
   fi
   log_success "Docker is installed"
-  
+
   # Check if Docker is running
   if ! docker info &> /dev/null; then
     log_error "Docker is not running. Please start Docker Desktop first."
@@ -190,7 +199,7 @@ check_prerequisites() {
 # Step 1: Clone Devilbox repository
 clone_devilbox() {
   log_step "Step 1: Cloning Devilbox Repository"
-  
+
   if [ -d "$WORKSPACE_DIR" ] && [ "$FORCE" = false ]; then
     log_warning "Directory $WORKSPACE_DIR already exists"
     read -p "Do you want to continue and overwrite it? [y/N] " -n 1 -r
@@ -200,13 +209,13 @@ clone_devilbox() {
       exit 0
     fi
   fi
-  
+
   # Remove existing directory if force is enabled
   if [ -d "$WORKSPACE_DIR" ] && [ "$FORCE" = true ]; then
     log_verbose "Removing existing directory: $WORKSPACE_DIR"
     rm -rf "$WORKSPACE_DIR"
   fi
-  
+
   log_info "Cloning Devilbox repository to $WORKSPACE_DIR"
   git clone "$DEVILBOX_REPO" "$WORKSPACE_DIR"
   log_success "Repository cloned successfully"
@@ -215,14 +224,14 @@ clone_devilbox() {
 # Step 2: Create .env file and copy override file
 setup_configuration() {
   log_step "Step 2: Setting up Configuration Files"
-  
+
   cd "$WORKSPACE_DIR"
-  
+
   # Copy env-example to .env
   log_info "Creating .env file from env-example"
   cp env-example .env
   log_success ".env file created"
-  
+
   # Copy magento2 docker-compose override file
   log_info "Copying Magento2 docker-compose override file"
   cp compose/docker-compose.override.yml-magento2 docker-compose.override.yml
@@ -232,13 +241,13 @@ setup_configuration() {
 # Step 3: Configure NEW_UID and NEW_GID
 configure_uid_gid() {
   log_step "Step 3: Configuring User and Group IDs"
-  
+
   local current_uid=$(id -u)
   local current_gid=$(id -g)
-  
+
   log_info "Current UID: $current_uid"
   log_info "Current GID: $current_gid"
-  
+
   # Update .env file with current UID and GID
   # Use a more portable approach that works reliably on macOS
   if command -v perl >/dev/null 2>&1; then
@@ -250,20 +259,20 @@ configure_uid_gid() {
     sed "s/^NEW_UID=.*/NEW_UID=$current_uid/" .env > .env.tmp && mv .env.tmp .env
     sed "s/^NEW_GID=.*/NEW_GID=$current_gid/" .env > .env.tmp && mv .env.tmp .env
   fi
-  
+
   log_success "UID and GID configured in .env file"
 }
 
 # Step 4: Setup shell profile
 setup_shell_profile() {
   log_step "Step 4: Setting up Shell Profile"
-  
+
   detect_shell_profile
   log_info "Using shell profile: $SHELL_PROFILE"
-  
+
   # Create profile file if it doesn't exist
   touch "$SHELL_PROFILE"
-  
+
   # Check if DEVILBOX_CONTAINERS is already set
   if ! grep -q "DEVILBOX_CONTAINERS" "$SHELL_PROFILE"; then
     log_info "Adding DEVILBOX_CONTAINERS to $SHELL_PROFILE"
@@ -273,7 +282,7 @@ setup_shell_profile() {
   else
     log_info "DEVILBOX_CONTAINERS already exists in $SHELL_PROFILE"
   fi
-  
+
   # Check if DEVILBOX_PATH is already set
   if ! grep -q "DEVILBOX_PATH" "$SHELL_PROFILE"; then
     log_info "Adding DEVILBOX_PATH to $SHELL_PROFILE"
@@ -281,33 +290,33 @@ setup_shell_profile() {
   else
     log_info "DEVILBOX_PATH already exists in $SHELL_PROFILE"
   fi
-  
+
   log_success "Shell profile configured"
 }
 
 # Step 5: Install Homebrew if not present
 install_homebrew() {
   log_step "Step 5: Checking Homebrew Installation"
-  
+
   if command -v brew &> /dev/null; then
     log_success "Homebrew is already installed"
     return 0
   fi
-  
+
   log_info "Homebrew not found, installing..."
-  
+
   # Check if we're on macOS
   if [[ "$OSTYPE" == "darwin"* ]]; then
     # Install Homebrew
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    
+
     # Add Homebrew to PATH for current session
     if [[ -f "/opt/homebrew/bin/brew" ]]; then
       export PATH="/opt/homebrew/bin:$PATH"
     elif [[ -f "/usr/local/bin/brew" ]]; then
       export PATH="/usr/local/bin:$PATH"
     fi
-    
+
     log_success "Homebrew installed successfully"
   else
     log_error "Homebrew installation is only supported on macOS"
@@ -318,7 +327,7 @@ install_homebrew() {
 # Step 6: Create symlink to dvl command
 create_symlink() {
   log_step "Step 6: Creating DVL Command Symlink"
-  
+
   # Determine Homebrew bin directory
   local brew_bin_dir
   if [[ -d "/opt/homebrew/bin" ]]; then
@@ -329,30 +338,30 @@ create_symlink() {
     log_error "Cannot find Homebrew bin directory"
     exit 1
   fi
-  
+
   local dvl_script="$WORKSPACE_DIR/dvl.sh"
   local dvl_symlink="$brew_bin_dir/dvl"
-  
+
   # Check if dvl.sh exists
   if [[ ! -f "$dvl_script" ]]; then
     log_error "dvl.sh not found in $WORKSPACE_DIR"
     exit 1
   fi
-  
+
   # Create symlink
   log_info "Creating symlink: $dvl_symlink -> $dvl_script"
   ln -snf "$dvl_script" "$dvl_symlink"
-  
+
   # Make sure the script is executable
   chmod +x "$dvl_script"
-  
+
   log_success "DVL command symlink created"
 }
 
 # Final setup and instructions
 final_setup() {
   log_step "Installation Complete!"
-  
+
   echo ""
   echo "${GREEN}${BOLD}Devilbox has been successfully installed!${NORMAL}"
   echo ""
@@ -379,7 +388,7 @@ final_setup() {
 main() {
   echo "${CYAN}${BOLD}Devilbox Automated Installation Script${NORMAL}"
   echo ""
-  
+
   parse_args "$@"
   check_macos
   check_prerequisites
@@ -390,7 +399,7 @@ main() {
   install_homebrew
   create_symlink
   final_setup
-  
+
   log_success "Installation completed successfully!"
 }
 
