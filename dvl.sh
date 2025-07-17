@@ -259,7 +259,7 @@ function main {
         shift;
         ComposerCommand "$@"
       ;;
-      cloud-cli|cloud)
+      cloud-cli|cloud|magento-cloud)
         shift;
         MagentoCloudCommand "$@"
       ;;
@@ -855,6 +855,7 @@ function MagentoCloudCommand {
     esac
   fi
 
+  #BaseComposeCommand exec --user devilbox php bash -c "$MAGENTO_CLI_BINARY $*"
   ExecShellTTY "$MAGENTO_CLI_BINARY $*"
 }
 
@@ -2312,7 +2313,7 @@ function Usage {
       echo "${GREEN}" "magento${NORMAL}          Run Magento command from the current project directory"
       echo "${GREEN}" "magerun${NORMAL}          Run Magerun2 command from the current project directory"
       echo "${GREEN}" "composer${NORMAL}         Run Composer command from the current project directory"
-      echo "${GREEN}" "cloud-cli${NORMAL}(cloud) Run Magento Cloud command from the current project directory"
+      echo "${GREEN}" "magento-cloud${NORMAL}    Run Magento Cloud command from the current project directory"
       echo "${GREEN}" "ece-tools${NORMAL}        Run EceTools command from the current project directory"
       echo "${GREEN}" "cloud-patches${NORMAL}    Run EcePatches command from the current project directory"
       echo "${GREEN}" "update-docroot${NORMAL}   Update new document root for all current webapps"
@@ -2351,7 +2352,7 @@ function Usage {
       echo " magento${NORMAL}          Run Magento command from the current project directory"
       echo " magerun${NORMAL}          Run Magerun2 command from the current project directory"
       echo " composer${NORMAL}         Run Composer command from the current project directory"
-      echo " cloud-cli${NORMAL}(cloud) Run Magento Cloud command from the current project directory"
+      echo " magento-cloud${NORMAL}    Run Magento Cloud command from the current project directory"
       echo " ece-tools${NORMAL}        Run EceTools command from the current project directory"
       echo " cloud-patches${NORMAL}    Run EcePatches command from the current project directory"
       echo " update-docroot${NORMAL}   Update new document root for all current webapps"
