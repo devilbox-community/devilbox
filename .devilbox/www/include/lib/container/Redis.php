@@ -109,7 +109,7 @@ class Redis extends BaseClass implements BaseInterface
 		if ($this->_redis) {
 			$databases = $this->getDatabases();
 			foreach ($databases as $db) {
-				$this->_redis->select($db);
+				$this->_redis->select((int)$db);
 				$keys = $this->_redis->keys('*');
 				foreach ($keys as $key) {
 

@@ -812,7 +812,7 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>FFI</sup>                |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>fileinfo</sup>           |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>filter</sup>             |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
-| <sup>ftp</sup>                |    ✔    |    ✔    |    ✔    |         |         |         |
+| <sup>ftp</sup>                |    ✔    |    ✔    |    ✔    |    🗸    |    🗸    |    🗸    |
 | <sup>gd</sup>                 |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>gettext</sup>            |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>gmp</sup>                |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
@@ -838,7 +838,7 @@ The Devilbox is a development stack, so it is made sure that a lot of PHP module
 | <sup>mysqlnd</sup>            |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>OAuth</sup>              |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>oci8</sup>               |    d    |    d    |    d    |    d    |    d    |    d    |
-| <sup>OPcache</sup>            |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
+| <sup>OPcache</sup>            |    🗸    |    🗸    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>openssl</sup>            |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
 | <sup>pcntl</sup>              |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |    🗸    |
 | <sup>pcre</sup>               |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |    ✔    |
@@ -955,6 +955,7 @@ Well-known and popular tools will be at your service:
 | [laravel-installer][lnk_laravel-installer] |         |         |         |         |         |         |
 | [laravel-lumen][lnk_laravel-lumen]         |         |         |         |         |         |         |
 | [linkcheck][lnk_linkcheck]                 |         |         |         |         |         |         |
+| [**magento-cloud**][lnk_**magento-cloud**] |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |
 | [magerun][lnk_magerun]                     |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |    ✓    |
 | [mdl][lnk_mdl]                             |         |         |         |         |         |         |
 | [mdlint][lnk_mdlint]                       |         |         |         |         |         |         |
@@ -1012,6 +1013,7 @@ Well-known and popular tools will be at your service:
 [lnk_laravel-installer]: ../php_tools/laravel-installer
 [lnk_laravel-lumen]: ../php_tools/laravel-lumen
 [lnk_linkcheck]: ../php_tools/linkcheck
+[lnk_**magento-cloud**]: https://experienceleague.adobe.com/en/docs/commerce-on-cloud/user-guide/dev-tools/cloud-cli/cloud-cli-overview
 [lnk_magerun]: ../php_tools/magerun
 [lnk_mdl]: ../php_tools/mdl
 [lnk_mdlint]: ../php_tools/mdlint
