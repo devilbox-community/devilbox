@@ -104,7 +104,7 @@ services:
   # PHP
   # ------------------------------------------------------------
   php:
-    image: devilboxcommunity/php-fpm:${PHP_SERVER}-work-0.159
+    image: devilboxcommunity/php-fpm:${PHP_SERVER}-work-0.160
     hostname: php
 
     ##
@@ -229,6 +229,9 @@ services:
 
       # Certificate Authority public key
       - ${DEVILBOX_PATH}/ca:/ca:rw${MOUNT_OPTIONS}
+
+      # Users magento-cloud directory
+      #- ${DEVILBOX_PATH}/cfg/magento-cloud/config.yml:/home/devilbox/.magento-cloud/config.yml:rw${MOUNT_OPTIONS}
 
       # Users SSH directory (read-only)
       - ${HOST_PATH_SSH_DIR}:/home/devilbox/.ssh:ro${MOUNT_OPTIONS}

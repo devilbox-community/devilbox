@@ -1,0 +1,10 @@
+---
+# config.yml
+# This file is used contains Magento Cloud API configurations.
+# Reference: https://experienceleague.adobe.com/en/docs/commerce-on-cloud/user-guide/dev-tools/cloud-cli/cloud-cli-overview
+#
+#:-version: v1
+
+api:
+  auto_load_ssh_cert: true
+  token: <your api token>

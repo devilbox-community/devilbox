@@ -202,11 +202,12 @@ PROJECT_DIR="${CURRENT_DIR/$WEBAPP_DIR\///}"
 TARGET_WORKDIR="$HTTPD_WORKDIR$PROJECT_DIR"
 CONFIG_FILE=".devilbox.yaml"
 TEMPLATE_CONFIG="$DEVILBOX_PATH/.tests/devilbox-template-config.yaml"
+MAGENTO_CLI_BINARY="/home/devilbox/.magento-cloud/bin/magento-cloud"
 YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
-readonly VERSION="1.2.5"
-readonly DEFAULT_DVL_CONTAINERS="bind httpd php php74 php81 php82 php83 mysql redis opensearch buggregator"
+readonly VERSION="1.2.6"
+readonly DEFAULT_DVL_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 mysql redis opensearch buggregator"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -257,6 +258,10 @@ function main {
       composer)
         shift;
         ComposerCommand "$@"
+      ;;
+      cloud-cli|cloud)
+        shift;
+        MagentoCloudCommand "$@"
       ;;
       ece-tools|ecetools)
         shift;
@@ -834,6 +839,23 @@ function ExecShell {
 
 function ExecShellTTY {
   BaseComposeCommand exec --no-TTY --user devilbox php bash -c "$@"
+}
+
+function MagentoCloudCommand {
+  local php_version=$(GetPhpVersionFromYaml)
+
+  if [[ "$php_version" != "php" ]]; then
+    read -r -p "${CYAN}Use detected PHP version $php_version instead of default PHP? [Y/n]${NORMAL} " response
+    case "$response" in
+      [nN][oO]|[nN])
+        php_version="php"
+        ;;
+      *)
+        ;;
+    esac
+  fi
+
+  ExecShellTTY "$MAGENTO_CLI_BINARY $*"
 }
 
 function MagentoCommand {
@@ -2065,7 +2087,7 @@ function SyncEnvConf {
     cp "$ENV_TARGET" "$TMP_TARGET"
 
     # Normalize preserved variables to same values in both files
-    for var in "TLD_SUFFIX" "NEW_UID" "NEW_GID" "HOST_PORT_BIND"; do
+    for var in "TLD_SUFFIX" "NEW_UID" "NEW_GID" "HOST_PORT_BIND MAGENTO_CLOUD_CLI_TOKEN"; do
       sed -i.bak "s/^$var=.*/$var=NORMALIZED_VALUE/" "$TMP_SOURCE" && rm -f "${TMP_SOURCE}.bak"
       sed -i.bak "s/^$var=.*/$var=NORMALIZED_VALUE/" "$TMP_TARGET" && rm -f "${TMP_TARGET}.bak"
     done
@@ -2087,6 +2109,7 @@ function SyncEnvConf {
           local new_uid=$(grep -E "^NEW_UID=" "$ENV_TARGET" | cut -d '=' -f2-)
           local new_gid=$(grep -E "^NEW_GID=" "$ENV_TARGET" | cut -d '=' -f2-)
           local host_port_bind=$(grep -E "^HOST_PORT_BIND=" "$ENV_TARGET" | cut -d '=' -f2-)
+          local magento_cloud_cli_token=$(grep -E "^MAGENTO_CLOUD_CLI_TOKEN=" "$ENV_TARGET" | cut -d '=' -f2-)
 
           # Copy the new env file
           cp "$ENV_SOURCE" "$ENV_TARGET"
@@ -2106,6 +2129,10 @@ function SyncEnvConf {
 
           if [[ ! -z "$host_port_bind" ]]; then
             sed -i.bak "s/^HOST_PORT_BIND=.*/HOST_PORT_BIND=${host_port_bind}/" "$ENV_TARGET" && rm -f "${ENV_TARGET}.bak"
+          fi
+
+          if [[ ! -z "$magento_cloud_cli_token" ]]; then
+            sed -i.bak "s/^MAGENTO_CLOUD_CLI_TOKEN=.*/MAGENTO_CLOUD_CLI_TOKEN=${magento_cloud_cli_token}/" "$ENV_TARGET" && rm -f "${ENV_TARGET}.bak"
           fi
 
           echo -ne "...${NORMAL} ${GREEN}DONE ✔${NORMAL}"
@@ -2285,6 +2312,7 @@ function Usage {
       echo "${GREEN}" "magento${NORMAL}          Run Magento command from the current project directory"
       echo "${GREEN}" "magerun${NORMAL}          Run Magerun2 command from the current project directory"
       echo "${GREEN}" "composer${NORMAL}         Run Composer command from the current project directory"
+      echo "${GREEN}" "cloud-cli${NORMAL}(cloud) Run Magento Cloud command from the current project directory"
       echo "${GREEN}" "ece-tools${NORMAL}        Run EceTools command from the current project directory"
       echo "${GREEN}" "cloud-patches${NORMAL}    Run EcePatches command from the current project directory"
       echo "${GREEN}" "update-docroot${NORMAL}   Update new document root for all current webapps"
@@ -2323,6 +2351,7 @@ function Usage {
       echo " magento${NORMAL}          Run Magento command from the current project directory"
       echo " magerun${NORMAL}          Run Magerun2 command from the current project directory"
       echo " composer${NORMAL}         Run Composer command from the current project directory"
+      echo " cloud-cli${NORMAL}(cloud) Run Magento Cloud command from the current project directory"
       echo " ece-tools${NORMAL}        Run EceTools command from the current project directory"
       echo " cloud-patches${NORMAL}    Run EcePatches command from the current project directory"
       echo " update-docroot${NORMAL}   Update new document root for all current webapps"

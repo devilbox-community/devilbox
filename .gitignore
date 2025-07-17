@@ -139,6 +139,9 @@
 # Ignore custom msmtp configs
 /cfg/msmtp/msmtprc
 
+# Ignore custom Magento Cloud configs
+/cfg/magento-cloud/*.yml
+
 # Ignore custom PHP-FPM modules
 /mod/php-fpm-5.6/*.so
 /mod/php-fpm-7.0/*.so

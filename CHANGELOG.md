@@ -6,6 +6,20 @@ Make sure to have a look at [UPDATING.md](https://github.com/cytopia/devilbox/bl
 ## Unreleased
 
 
+## Release v3.0.1 (2025-07-17)
+
+### Added
+- Officially use `buggregator` service for easier development workflow
+- New sub-command `cloud-cli` (Magento Cloud CLI) for `dvl.sh`
+- Support `mailpit` as drop-in replacement for `mailhog` (port conflicts with `buggregator`)
+
+### Changed
+- Updated PHP image version to `0.160`
+- Updated softwares of image to latest versions
+- Resolve some issues with `msmtp` package
+- Drop support for `mailhog` officially
+
+
 ## Release v3.0.0 (2025-03-27)
 
 ### Added

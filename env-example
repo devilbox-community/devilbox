@@ -1122,7 +1122,7 @@ AEM_START_OPTS="server-start -c /aem/crx-quickstart -i launchpad -p 8080 -a 0.0.
 ### This might be useful to set application environment and retrieve
 ### them via: <?php getenv('MY_APPLICATION_ENV'); ?>
 ###
-
+MAGENTO_CLOUD_CLI_TOKEN="my-magento-cloud-cli-token"
 
 ###
 ### Example:
