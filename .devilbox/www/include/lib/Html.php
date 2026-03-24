@@ -221,7 +221,7 @@ class Html
 			<!-- CSS/JS -->
 			<link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
 			{$css_fa}
-			<link href="/assets/css/custom.css" rel="stylesheet">
+			<link href="/assets/css/custom.css?v1" rel="stylesheet">
 
 			<title>The DevilBox</title>
 HTML;
@@ -436,7 +436,7 @@ HTML;
 						if (version_compare(loadClass('Php')->getVersion(), '7.3', '<')) {
 							$el['path'] = '/vendor/phpmyadmin-4.9.11/index.php';
 						} else {
-							$el['path'] = '/vendor/phpmyadmin-5.2.1/index.php';
+							$el['path'] = '/vendor/phpmyadmin-5.2.3/index.php';
 						}
 					}
 					if ($el['path'] === '__PHPPGADMIN__') {

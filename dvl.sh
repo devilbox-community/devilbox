@@ -207,7 +207,7 @@ YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
 readonly VERSION="1.2.6"
-readonly DEFAULT_DVL_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 mysql redis opensearch buggregator"
+readonly DEFAULT_DVL_CONTAINERS="bind httpd php mysql redis"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -308,7 +308,7 @@ function __get_default_containers {
   if [[ ! -z "$DEVILBOX_CONTAINERS" ]]; then
     printf %s "${DEVILBOX_CONTAINERS}"
   else
-    printf %s "bind httpd php php74 php81 php82 php83 mysql redis opensearch buggregator"
+    printf %s "bind httpd php mysql redis"
   fi
 }
 

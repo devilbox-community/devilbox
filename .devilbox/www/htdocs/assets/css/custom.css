@@ -61,7 +61,9 @@ html, body {
 	font-size: 14px;
 }
 
-
+.table-bordered td, .table-bordered th {
+    color: #dffce3;
+}
 
 /* Sticky footer styles
 -------------------------------------------------- */
@@ -72,6 +74,7 @@ html {
 body {
 	/* Margin bottom by footer height */
 	margin-bottom: 80px !important;
+	color: #888888;
 }
 .footer {
 	position: absolute;

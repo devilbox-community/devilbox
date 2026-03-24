@@ -146,7 +146,8 @@ function loadClass($class) {
 					 * preg_match_all returns a multi-dimensional array, the first level array is in order of which was matched first,
 					 * and the password string is either matched in group 2 or group 3 which is always the end of the sub-array.
 					 */
-					$_REDIS_PASS = end(end($_REDIS_PASS));
+					$_REDIS_PASS_ROW = end($_REDIS_PASS);
+					$_REDIS_PASS = end($_REDIS_PASS_ROW);
 
 					if (strlen($_REDIS_PASS) > 0) {
 						$REDIS_ROOT_PASSWORD = $_REDIS_PASS;
