@@ -47,7 +47,49 @@ header() {
 
 # ── DevilBox Environment ─────────────────────────────────────────────────────
 if [[ -z "${DEVILBOX_PATH:-}" ]]; then
-    fatal "Devilbox not found. Please make sure it is installed and DEVILBOX_PATH is set."
+    error "Environment variable DEVILBOX_PATH is not set."
+    echo
+    printf "%b\n" "${BOLD}  How to fix:${NC}"
+    echo
+    echo "  This script requires the DEVILBOX_PATH variable to point to your"
+    echo "  DevilBox installation directory. Set it permanently in your shell"
+    echo "  profile so it survives terminal restarts and reboots."
+    echo
+    printf "%b\n" "${BOLD}  Step 1 — Find your DevilBox path:${NC}"
+    echo
+    echo "  Navigate to the directory where you cloned DevilBox and run:"
+    echo
+    echo "    pwd"
+    echo
+    echo "  Example output: /home/user/dev/devilbox"
+    echo
+    printf "%b\n" "${BOLD}  Step 2 — Add the variable to your shell profile:${NC}"
+    echo
+    echo "  Open the appropriate file for your shell (usually ~/.bashrc or"
+    echo "  ~/.zshrc) and add the following line at the end:"
+    echo
+    echo "    export DEVILBOX_PATH=/path/to/your/devilbox"
+    echo
+    echo "  Replace /path/to/your/devilbox with the actual path from Step 1."
+    echo
+    printf "%b\n" "${BOLD}  Step 3 — Apply the changes:${NC}"
+    echo
+    echo "  Either restart your terminal, or run:"
+    echo
+    echo "    source ~/.bashrc    # if using bash"
+    echo "    source ~/.zshrc     # if using zsh (default on macOS since Catalina)"
+    echo
+    printf "%b\n" "${BOLD}  Quick one-liner (bash):${NC}"
+    echo
+    echo '    echo "export DEVILBOX_PATH=$(pwd)" >> ~/.bashrc && source ~/.bashrc'
+    echo
+    printf "%b\n" "${BOLD}  Quick one-liner (zsh):${NC}"
+    echo
+    echo '    echo "export DEVILBOX_PATH=$(pwd)" >> ~/.zshrc && source ~/.zshrc'
+    echo
+    echo "  Run the one-liner from inside your DevilBox directory."
+    echo
+    exit 1
 fi
 
 DVLBOX_PATH="$(cd "${DEVILBOX_PATH}" && pwd -P)"
