@@ -258,3 +258,6 @@ $RECYCLE.BIN/
 
 ###### Zed.dev IDE ######
 /.zed
+
+###### Obsidian md docs ######
+/.obsidian
