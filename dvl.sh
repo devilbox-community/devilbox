@@ -153,8 +153,46 @@ function download_yq() {
 }
 
 # Checker
-if [[ -z "$DEVILBOX_PATH" ]]; then
-  error "Devilbox not found, please make sure it is installed in your home directory or use DEVILBOX_PATH in your profile."
+if [[ -z "${DEVILBOX_PATH:-}" ]]; then
+  echo
+  echo "${RED}${BOLD}  ✘  Environment variable DEVILBOX_PATH is not set.${NORMAL}"
+  echo
+  printf "%b\n" "${YELLOW}${BOLD}  How to fix:${NORMAL}"
+  echo
+  echo "  This script requires the DEVILBOX_PATH variable to point to your"
+  echo "  DevilBox installation directory. Set it permanently in your shell"
+  echo "  profile so it survives terminal restarts and reboots."
+  echo
+  printf "%b\n" "${CYAN}${BOLD}  ▸  Step 1 — Find your DevilBox path:${NORMAL}"
+  echo
+  echo "  Navigate to the directory where you cloned DevilBox and run:"
+  echo
+  echo "    ${GREEN}pwd${NORMAL}"
+  echo
+  echo "  Example output: ${GREEN}/home/user/dev/devilbox${NORMAL}"
+  echo
+  printf "%b\n" "${CYAN}${BOLD}  ▸  Step 2 — Add the variable to your shell profile:${NORMAL}"
+  echo
+  echo "  Open the appropriate file for your shell (usually ${GREEN}~/.bashrc${NORMAL} or"
+  echo "  ${GREEN}~/.zshrc${NORMAL}) and add the following line at the end:"
+  echo
+  echo "    ${GREEN}export DEVILBOX_PATH=/path/to/your/devilbox${NORMAL}"
+  echo
+  echo "  Replace ${YELLOW}/path/to/your/devilbox${NORMAL} with the actual path from Step 1."
+  echo
+  printf "%b\n" "${CYAN}${BOLD}  ▸  Step 3 — Apply the changes:${NORMAL}"
+  echo
+  echo "  Either restart your terminal, or run:"
+  echo
+  echo "    ${GREEN}source ~/.bashrc${NORMAL}    ${DARK_GRAY}# if using bash${NORMAL}"
+  echo "    ${GREEN}source ~/.zshrc${NORMAL}     ${DARK_GRAY}# if using zsh (default on macOS since Catalina)${NORMAL}"
+  echo
+  printf "%b\n" "${YELLOW}${BOLD}  Quick one-liners (run from inside DevilBox directory):${NORMAL}"
+  echo
+  echo "    ${GREEN}echo \"export DEVILBOX_PATH=\$(pwd)\" >> ~/.bashrc && source ~/.bashrc${NORMAL}"
+  echo "    ${GREEN}echo \"export DEVILBOX_PATH=\$(pwd)\" >> ~/.zshrc  && source ~/.zshrc${NORMAL}"
+  echo
+  die "$KO_CODE"
 fi
 #safe_cd "$(get_workspace_path)" "Devilbox not found, please make sure it is installed in your home directory or use DEVILBOX_PATH in your profile."
 
@@ -207,7 +245,7 @@ YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
 readonly VERSION="1.2.6"
-readonly DEFAULT_DVL_CONTAINERS="bind httpd php mysql redis"
+readonly DEFAULT_DVL_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 mysql redis opensearch buggregator"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -246,6 +284,22 @@ function main {
       db:import|db-import)
         shift;
         DatabaseImport "$@"
+      ;;
+      db:create|db-create)
+        shift;
+        DbCreate "$@"
+      ;;
+      db:grant|db-grant)
+        shift;
+        DbGrant "$@"
+      ;;
+      db:user|db-user)
+        shift;
+        DbUser "$@"
+      ;;
+      db:passwd|db-password)
+        shift;
+        DbUserPasswd "$@"
       ;;
       magento)
         shift;
@@ -308,7 +362,7 @@ function __get_default_containers {
   if [[ ! -z "$DEVILBOX_CONTAINERS" ]]; then
     printf %s "${DEVILBOX_CONTAINERS}"
   else
-    printf %s "bind httpd php mysql redis"
+    printf %s "bind httpd php php74 php81 php82 php83 mysql redis opensearch buggregator"
   fi
 }
 
@@ -1196,6 +1250,421 @@ function DatabaseImport {
       success "Database import and configuration complete!"
     fi
   fi
+}
+
+# =============================================================================
+# MySQL Database & User Management Functions
+# =============================================================================
+
+# Execute mysql query via docker exec with -T and stdin (same pattern as mysql-db-user-manager.sh)
+function mysql_exec {
+  local query="$1"
+  if hash docker-compose 2>/dev/null; then
+    (cd "$DVLBOX_PATH"; docker-compose exec -T --user devilbox php \
+      bash -c "mysql --host=mysql --user=root --password='${MYSQL_ROOT_PASSWORD}' -N -B" <<< "${query}")
+  else
+    (cd "$DVLBOX_PATH"; docker compose exec -T --user devilbox php \
+      bash -c "mysql --host=mysql --user=root --password='${MYSQL_ROOT_PASSWORD}' -N -B" <<< "${query}")
+  fi
+}
+
+function validate_identifier {
+  local name="$1"
+  local label="$2"
+
+  if [[ -z "${name}" ]]; then
+    error "${label} cannot be empty."
+    return 1
+  fi
+
+  if [[ ${#name} -gt 64 ]]; then
+    error "${label} is too long (max 64 characters)."
+    return 1
+  fi
+
+  if [[ ! "${name}" =~ ^[A-Za-z0-9_\$]+$ ]]; then
+    error "${label} contains invalid characters. Only letters, digits, underscores and dollar signs are allowed."
+    return 1
+  fi
+  return 0
+}
+
+function is_system_db {
+  case "$1" in
+    information_schema|mysql|performance_schema|sys) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+function is_system_user {
+  [[ "$1" == "root" || "$1" == mysql* ]]
+}
+
+function sql_escape {
+  local val="$1"
+  printf "%s" "${val//\'/\'\'}"
+}
+
+function db_separator {
+  printf "%b\n" "${BOLD}─────────────────────────────────────────────────────────────${NORMAL}"
+}
+
+function db_header {
+  echo
+  db_separator
+  printf "%b\n" "${BOLD}  $*${NORMAL}"
+  db_separator
+  echo
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  SCENARIO 1: Create DB + User
+# ──────────────────────────────────────────────────────────────────────────────
+function DbCreate {
+  db_header "📋  CREATE DATABASE + USER"
+
+  info "Fetching existing databases…"
+  local EXISTING_DBS
+  EXISTING_DBS="$(mysql_exec "SHOW DATABASES;")" || error "Failed to connect to MySQL."
+  if [[ -n "${EXISTING_DBS}" ]]; then
+    printf "%b\n" "${BOLD}Existing databases:${NORMAL}"
+    while IFS= read -r db; do
+      printf "  %b %s\n" "${CYAN}•${NORMAL}" "${db}"
+    done <<< "${EXISTING_DBS}"
+    echo
+  fi
+
+  local DB_NAME
+  read -rp "$(printf "%b" "${BOLD}Enter new database name: ${NORMAL}")" DB_NAME
+  DB_NAME="$(printf "%s" "${DB_NAME}" | xargs)"
+  validate_identifier "${DB_NAME}" "Database name" || return 1
+
+  if printf "%s" "${EXISTING_DBS}" | grep -qix "${DB_NAME}"; then
+    error "Database '${DB_NAME}' already exists. Aborting."
+    return 1
+  fi
+
+  success "Database name '${DB_NAME}' is available."
+  echo
+
+  info "Fetching existing MySQL users…"
+  local EXISTING_USERS
+  EXISTING_USERS="$(mysql_exec "SELECT user FROM mysql.user WHERE host='%';")" || error "Failed to fetch users."
+  if [[ -n "${EXISTING_USERS}" ]]; then
+    printf "%b\n" "${BOLD}Existing MySQL users (host=%):${NORMAL}"
+    while IFS= read -r usr; do
+      printf "  %b %s\n" "${CYAN}•${NORMAL}" "${usr}"
+    done <<< "${EXISTING_USERS}"
+    echo
+  fi
+
+  local DB_USER
+  read -rp "$(printf "%b" "${BOLD}Enter database username: ${NORMAL}")" DB_USER
+  DB_USER="$(printf "%s" "${DB_USER}" | xargs)"
+  validate_identifier "${DB_USER}" "Username" || return 1
+
+  local USER_EXISTS=false
+  if [[ -n "${EXISTING_USERS}" ]] && printf "%s" "${EXISTING_USERS}" | grep -qix "${DB_USER}"; then
+    USER_EXISTS=true
+  fi
+
+  local CREATE_NEW_USER=true
+  if [[ "${USER_EXISTS}" == true ]]; then
+    warn "User '${DB_USER}' already exists."
+    read -rp "$(printf "%b" "${BOLD}Grant this existing user access to '${DB_NAME}'? [y/N]: ${NORMAL}")" GRANT_ANSWER
+    GRANT_ANSWER="$(printf "%s" "${GRANT_ANSWER}" | xargs | tr '[:upper:]' '[:lower:]')"
+    if [[ "${GRANT_ANSWER}" != "y" && "${GRANT_ANSWER}" != "yes" ]]; then
+      info "Aborting — no changes made."
+      return 0
+    fi
+    CREATE_NEW_USER=false
+  fi
+
+  local DB_PASS=""
+  if [[ "${CREATE_NEW_USER}" == true ]]; then
+    db_header "🔑  Set Password for '${DB_USER}'"
+    while true; do
+      read -rsp "$(printf "%b" "${BOLD}Enter password: ${NORMAL}")" DB_PASS
+      echo
+      read -rsp "$(printf "%b" "${BOLD}Confirm password: ${NORMAL}")" DB_PASS_CONFIRM
+      echo
+      if [[ "${DB_PASS}" != "${DB_PASS_CONFIRM}" ]]; then
+        warn "Passwords do not match. Try again."
+        continue
+      fi
+      if [[ -z "${DB_PASS}" ]]; then
+        warn "Password cannot be empty. Try again."
+        continue
+      fi
+      break
+    done
+    success "Password confirmed."
+    echo
+  fi
+
+  db_header "🚀  Applying Changes"
+  info "Creating database '${DB_NAME}'…"
+  mysql_exec "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` COLLATE 'utf8mb4_unicode_ci';" || error "Failed to create database."
+  success "Database '${DB_NAME}' created."
+
+  if [[ "${CREATE_NEW_USER}" == true ]]; then
+    local DB_PASS_ESC
+    DB_PASS_ESC="$(sql_escape "${DB_PASS}")"
+    info "Creating user '${DB_USER}'@'%'…"
+    mysql_exec "CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS_ESC}';" || error "Failed to create user."
+    success "User '${DB_USER}' created."
+  fi
+
+  info "Granting ALL PRIVILEGES on '${DB_NAME}' to '${DB_USER}'@'%'…"
+  mysql_exec "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';" || error "Failed to grant privileges."
+  success "Privileges granted."
+
+  info "Flushing privileges…"
+  mysql_exec "FLUSH PRIVILEGES;" || warn "FLUSH PRIVILEGES failed (may be non-critical)."
+  success "Privileges flushed."
+
+  db_header "✅  DONE"
+  printf "  %bDatabase:%b  %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_NAME}" "${NORMAL}"
+  printf "  %bUser:%b      %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_USER}" "${NORMAL}"
+  if [[ "${CREATE_NEW_USER}" == true ]]; then
+    printf "  %bPassword:%b  %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_PASS}" "${NORMAL}"
+  else
+    printf "  %bPassword:%b  %b(unchanged — existing user)%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${NORMAL}"
+  fi
+  echo
+  db_separator
+  printf "%b\n" "${GREEN}  All done! 🎉${NORMAL}"
+  db_separator
+  echo
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  SCENARIO 2: Grant privileges to existing User on existing DB
+# ──────────────────────────────────────────────────────────────────────────────
+function DbGrant {
+  db_header "🔐  GRANT PRIVILEGES TO EXISTING USER"
+
+  info "Fetching existing databases…"
+  local EXISTING_DBS
+  EXISTING_DBS="$(mysql_exec "SHOW DATABASES;")" || error "Failed to connect to MySQL."
+  printf "%b\n" "${BOLD}Existing databases:${NORMAL}"
+  while IFS= read -r db; do
+    if is_system_db "${db}"; then
+      printf "  %b %s %b(system — skipped)%b\n" "${RED}✘${NORMAL}" "${db}" "${YELLOW}" "${NORMAL}"
+    else
+      printf "  %b %s\n" "${CYAN}•${NORMAL}" "${db}"
+    fi
+  done <<< "${EXISTING_DBS}"
+  echo
+
+  local DB_NAME
+  read -rp "$(printf "%b" "${BOLD}Enter database name: ${NORMAL}")" DB_NAME
+  DB_NAME="$(printf "%s" "${DB_NAME}" | xargs)"
+  validate_identifier "${DB_NAME}" "Database name" || return 1
+
+  if ! printf "%s" "${EXISTING_DBS}" | grep -qix "${DB_NAME}"; then
+    error "Database '${DB_NAME}' does not exist. Aborting."
+    return 1
+  fi
+  if is_system_db "${DB_NAME}"; then
+    error "Cannot modify privileges for system database '${DB_NAME}'. Aborting."
+    return 1
+  fi
+  success "Database '${DB_NAME}' selected."
+  echo
+
+  info "Fetching existing MySQL users…"
+  local EXISTING_USERS
+  EXISTING_USERS="$(mysql_exec "SELECT user FROM mysql.user WHERE host='%';")" || error "Failed to fetch users."
+  printf "%b\n" "${BOLD}Existing MySQL users (host=%):${NORMAL}"
+  while IFS= read -r usr; do
+    if is_system_user "${usr}"; then
+      printf "  %b %s %b(system — skipped)%b\n" "${RED}✘${NORMAL}" "${usr}" "${YELLOW}" "${NORMAL}"
+    else
+      printf "  %b %s\n" "${CYAN}•${NORMAL}" "${usr}"
+    fi
+  done <<< "${EXISTING_USERS}"
+  echo
+
+  local DB_USER
+  read -rp "$(printf "%b" "${BOLD}Enter username: ${NORMAL}")" DB_USER
+  DB_USER="$(printf "%s" "${DB_USER}" | xargs)"
+  validate_identifier "${DB_USER}" "Username" || return 1
+
+  if ! printf "%s" "${EXISTING_USERS}" | grep -qix "${DB_USER}"; then
+    error "User '${DB_USER}' does not exist. Aborting."
+    return 1
+  fi
+  if is_system_user "${DB_USER}"; then
+    error "Cannot modify privileges for system user '${DB_USER}'. Aborting."
+    return 1
+  fi
+  success "User '${DB_USER}' selected."
+  echo
+
+  db_header "🚀  Applying Changes"
+  info "Granting ALL PRIVILEGES on '${DB_NAME}' to '${DB_USER}'@'%'…"
+  mysql_exec "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';" || error "Failed to grant privileges."
+  success "Privileges granted."
+
+  info "Flushing privileges…"
+  mysql_exec "FLUSH PRIVILEGES;" || warn "FLUSH PRIVILEGES failed (may be non-critical)."
+  success "Privileges flushed."
+
+  db_header "✅  DONE"
+  printf "  %bDatabase:%b  %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_NAME}" "${NORMAL}"
+  printf "  %bUser:%b      %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_USER}" "${NORMAL}"
+  echo
+  db_separator
+  printf "%b\n" "${GREEN}  All done! 🎉${NORMAL}"
+  db_separator
+  echo
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  SCENARIO 3: Create new User (without DB)
+# ──────────────────────────────────────────────────────────────────────────────
+function DbUser {
+  db_header "👤  CREATE NEW USER"
+
+  info "Fetching existing MySQL users…"
+  local EXISTING_USERS
+  EXISTING_USERS="$(mysql_exec "SELECT user FROM mysql.user WHERE host='%';")" || error "Failed to fetch users."
+  if [[ -n "${EXISTING_USERS}" ]]; then
+    printf "%b\n" "${BOLD}Existing MySQL users (host=%):${NORMAL}"
+    while IFS= read -r usr; do
+      printf "  %b %s\n" "${CYAN}•${NORMAL}" "${usr}"
+    done <<< "${EXISTING_USERS}"
+    echo
+  fi
+
+  local DB_USER
+  read -rp "$(printf "%b" "${BOLD}Enter new username: ${NORMAL}")" DB_USER
+  DB_USER="$(printf "%s" "${DB_USER}" | xargs)"
+  validate_identifier "${DB_USER}" "Username" || return 1
+
+  if [[ -n "${EXISTING_USERS}" ]] && printf "%s" "${EXISTING_USERS}" | grep -qix "${DB_USER}"; then
+    error "User '${DB_USER}' already exists. Aborting."
+    return 1
+  fi
+  success "Username '${DB_USER}' is available."
+  echo
+
+  db_header "🔑  Set Password"
+  local DB_PASS
+  while true; do
+    read -rsp "$(printf "%b" "${BOLD}Enter password: ${NORMAL}")" DB_PASS
+    echo
+    read -rsp "$(printf "%b" "${BOLD}Confirm password: ${NORMAL}")" DB_PASS_CONFIRM
+    echo
+    if [[ "${DB_PASS}" != "${DB_PASS_CONFIRM}" ]]; then
+      warn "Passwords do not match. Try again."
+      continue
+    fi
+    if [[ -z "${DB_PASS}" ]]; then
+      warn "Password cannot be empty. Try again."
+      continue
+    fi
+    break
+  done
+  success "Password confirmed."
+  echo
+
+  db_header "🚀  Applying Changes"
+  local DB_PASS_ESC
+  DB_PASS_ESC="$(sql_escape "${DB_PASS}")"
+  info "Creating user '${DB_USER}'@'%'…"
+  mysql_exec "CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS_ESC}';" || error "Failed to create user."
+  success "User '${DB_USER}' created."
+
+  info "Flushing privileges…"
+  mysql_exec "FLUSH PRIVILEGES;" || warn "FLUSH PRIVILEGES failed (may be non-critical)."
+  success "Privileges flushed."
+
+  db_header "✅  DONE"
+  printf "  %bUser:%b      %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_USER}" "${NORMAL}"
+  printf "  %bPassword:%b  %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_PASS}" "${NORMAL}"
+  echo
+  db_separator
+  printf "%b\n" "${GREEN}  All done! 🎉${NORMAL}"
+  db_separator
+  echo
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  SCENARIO 4: Change password for existing User
+# ──────────────────────────────────────────────────────────────────────────────
+function DbUserPasswd {
+  db_header "🔑  CHANGE USER PASSWORD"
+
+  info "Fetching existing MySQL users…"
+  local EXISTING_USERS
+  EXISTING_USERS="$(mysql_exec "SELECT user FROM mysql.user WHERE host='%';")" || error "Failed to fetch users."
+  printf "%b\n" "${BOLD}Existing MySQL users (host=%):${NORMAL}"
+  while IFS= read -r usr; do
+    if is_system_user "${usr}"; then
+      printf "  %b %s %b(protected — cannot change password)%b\n" "${RED}✘${NORMAL}" "${usr}" "${YELLOW}" "${NORMAL}"
+    else
+      printf "  %b %s\n" "${CYAN}•${NORMAL}" "${usr}"
+    fi
+  done <<< "${EXISTING_USERS}"
+  echo
+
+  local DB_USER
+  read -rp "$(printf "%b" "${BOLD}Enter username: ${NORMAL}")" DB_USER
+  DB_USER="$(printf "%s" "${DB_USER}" | xargs)"
+  validate_identifier "${DB_USER}" "Username" || return 1
+
+  if ! printf "%s" "${EXISTING_USERS}" | grep -qix "${DB_USER}"; then
+    error "User '${DB_USER}' does not exist. Aborting."
+    return 1
+  fi
+  if is_system_user "${DB_USER}"; then
+    error "Cannot change password for system user '${DB_USER}'. Aborting."
+    return 1
+  fi
+  success "User '${DB_USER}' selected."
+  echo
+
+  db_header "🔒  Set New Password"
+  local DB_PASS
+  while true; do
+    read -rsp "$(printf "%b" "${BOLD}Enter new password: ${NORMAL}")" DB_PASS
+    echo
+    read -rsp "$(printf "%b" "${BOLD}Confirm new password: ${NORMAL}")" DB_PASS_CONFIRM
+    echo
+    if [[ "${DB_PASS}" != "${DB_PASS_CONFIRM}" ]]; then
+      warn "Passwords do not match. Try again."
+      continue
+    fi
+    if [[ -z "${DB_PASS}" ]]; then
+      warn "Password cannot be empty. Try again."
+      continue
+    fi
+    break
+  done
+  success "Password confirmed."
+  echo
+
+  db_header "🚀  Applying Changes"
+  local DB_PASS_ESC
+  DB_PASS_ESC="$(sql_escape "${DB_PASS}")"
+  info "Updating password for '${DB_USER}'@'%'…"
+  mysql_exec "ALTER USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASS_ESC}';" || error "Failed to update password."
+  success "Password updated."
+
+  info "Flushing privileges…"
+  mysql_exec "FLUSH PRIVILEGES;" || warn "FLUSH PRIVILEGES failed (may be non-critical)."
+  success "Privileges flushed."
+
+  db_header "✅  DONE"
+  printf "  %bUser:%b      %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_USER}" "${NORMAL}"
+  printf "  %bPassword:%b  %b%s%b\n" "${GREEN}" "${NORMAL}" "${BOLD}" "${DB_PASS}" "${NORMAL}"
+  echo
+  db_separator
+  printf "%b\n" "${GREEN}  All done! 🎉${NORMAL}"
+  db_separator
+  echo
 }
 
 function InteractiveQuestions {
@@ -2310,6 +2779,10 @@ function Usage {
       echo "${GREEN}" "shell${NORMAL}            Open shell (php version as args)"
       echo "${GREEN}" "exec${NORMAL}             Exec a command directly from shell (command executed on main PHP container)"
       echo "${GREEN}" "db-import${NORMAL}        Restore a backup to database from ./backups directory"
+      echo "${GREEN}" "db-create${NORMAL}        Create a new database and user."
+      echo "${GREEN}" "db-grant${NORMAL}         Grant privileges to existing user on existing database."
+      echo "${GREEN}" "db-user${NORMAL}          Create a new MySQL user (without database)."
+      echo "${GREEN}" "db-password${NORMAL}      Change password for existing MySQL user."
       echo "${GREEN}" "magento${NORMAL}          Run Magento command from the current project directory"
       echo "${GREEN}" "magerun${NORMAL}          Run Magerun2 command from the current project directory"
       echo "${GREEN}" "composer${NORMAL}         Run Composer command from the current project directory"
@@ -2349,6 +2822,10 @@ function Usage {
       echo " shell${NORMAL}            Open shell (php version as args)"
       echo " exec${NORMAL}             Exec a command directly from shell (command executed on main PHP container)"
       echo " db-import${NORMAL}        Restore a backup to database from ./backups directory"
+      echo " db-create${NORMAL}        Create a new database and user."
+      echo " db-grant${NORMAL}         Grant privileges to existing user on existing database."
+      echo " db-user${NORMAL}          Create a new MySQL user (without database)."
+      echo " db-password${NORMAL}      Change password for existing MySQL user."
       echo " magento${NORMAL}          Run Magento command from the current project directory"
       echo " magerun${NORMAL}          Run Magerun2 command from the current project directory"
       echo " composer${NORMAL}         Run Composer command from the current project directory"
