@@ -25,6 +25,7 @@
 
 # Ignore compose override file
 /docker-compose.override.yml
+/docker-compose.override*.dockerfile
 
 # Ignore logs
 /log/apache-2.2/*
@@ -254,3 +255,9 @@ $RECYCLE.BIN/
 
 ###### VS Code ######
 /.vscode
+
+###### Zed.dev IDE ######
+/.zed
+
+###### Obsidian md docs ######
+/.obsidian

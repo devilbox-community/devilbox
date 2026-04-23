@@ -8,7 +8,7 @@
     <link rel="stylesheet" media="all" type="text/css" href="<?php echo $this->router->baseUrl?>/bootstrap/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" media="all" type="text/css" href="<?php echo $this->router->baseUrl?>/font-awesome/css/font-awesome.min.css">
 	<link rel="stylesheet" media="all" type="text/css" href="<?php echo $this->router->baseUrl?>/js/nvd3/src/nv.d3.css" />
-	<link rel="stylesheet" media="all" type="text/css" href="<?php echo $this->router->baseUrl?>/css/custom.css" />
+	<link rel="stylesheet" media="all" type="text/css" href="<?php echo $this->router->baseUrl?>/css/custom.css?v1" />
 	<link rel="stylesheet" media="all" type="text/css" href="<?php echo $this->router->baseUrl?>/js/jquery-ui/css/jquery-ui.min.css" />
     <script type="text/javascript" src="<?php echo $this->router->baseUrl?>/js/jquery.min.js"></script>
     <script type="text/javascript" src="<?php echo $this->router->baseUrl?>/bootstrap/js/bootstrap.min.js"></script>
