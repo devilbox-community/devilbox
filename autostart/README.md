@@ -27,3 +27,14 @@ for a specific version, go to `cfg/php-startup-X.Y/`.
 ## Important
 
 All provided scripts will be executed with **root** permissions.
+
+
+## Agentic container
+
+When the optional `agentic` service is enabled (via
+`compose/docker-compose.override.yml-agentic`), this directory is **also** mounted
+into the agentic container at `/startup.2.d`. Every `*.sh` file here therefore
+runs once at the agentic container's boot in addition to the PHP container. Use
+this to install agent-specific tooling globally (e.g. `pnpm i -g some-cli`). For
+hooks that should only run inside the agentic container, prefer
+`cfg/agentic-startup/` (mounted at `/startup.1.d`).
