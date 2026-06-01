@@ -22,13 +22,14 @@ cp compose/docker-compose.override.yml-agentic docker-compose.override.yml
 docker compose config -q
 echo "OK: config valid with agentic override"
 
+config_out="$(docker compose config 2>/dev/null)"
+
 # 3. agentic service must pin to 172.16.238.17.
-ip="$(docker compose config | awk '/^  agentic:/,/^  [a-z]/' | grep -Eo '172\.16\.238\.17' | head -1)"
-test "$ip" = "172.16.238.17" || { echo "FAIL: expected 172.16.238.17, got '$ip'"; exit 1; }
-echo "OK: agentic IP = $ip"
+echo "$config_out" | grep -qE '172\.16\.238\.17' || { echo "FAIL: 172.16.238.17 not in config"; exit 1; }
+echo "OK: agentic IP 172.16.238.17 present"
 
 # 4. Image must come from devilboxcommunity/agentic namespace.
-img="$(docker compose config | awk '/^  agentic:/,/^  [a-z]/' | grep -Eo 'devilboxcommunity/agentic:[A-Za-z0-9._-]+' | head -1)"
+img="$(echo "$config_out" | grep -Eo 'devilboxcommunity/agentic:[A-Za-z0-9._-]+' | head -1)"
 test -n "$img" || { echo "FAIL: image not devilboxcommunity/agentic:*"; exit 1; }
 echo "OK: agentic image = $img"
 

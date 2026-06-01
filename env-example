@@ -1129,3 +1129,34 @@ MAGENTO_CLOUD_CLI_TOKEN="my-magento-cloud-cli-token"
 ### <?php echo getenv('Foo'); ?> would produce: 'some value'
 ###
 #Foo=some value
+
+
+################################################################################
+###
+### YY. Agentic Container (devilboxcommunity/agentic)
+###
+################################################################################
+
+###
+### Agentic image release tag (latest|stable).
+### Image: devilboxcommunity/agentic:${AGENTIC_SERVER}
+###
+AGENTIC_SERVER=latest
+
+###
+### Override the agentic image entirely (e.g. for a fork).
+### Leave empty to use devilboxcommunity/agentic:${AGENTIC_SERVER}.
+###
+AGENTIC_DOCKER_IMAGE=
+
+###
+### Host port for OAuth callback receiver (browser → container).
+### Published on ${LOCAL_LISTEN_ADDR} only (loopback by default).
+###
+AGENTIC_OAUTH_PORT=19999
+
+###
+### Host data dir mounted into agentic container (defaults to HTTPD_DATADIR
+### so agents can edit the same workspace as php/httpd).
+###
+AGENTIC_HTTPD_DATADIR=${HOST_PATH_HTTPD_DATADIR}

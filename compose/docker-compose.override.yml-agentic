@@ -1,0 +1,54 @@
+# vim: set ft=yaml:
+version: '2.3'
+services:
+  agentic:
+    image: devilboxcommunity/agentic:${AGENTIC_SERVER:-latest}
+    hostname: agentic
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      - DEBUG_ENTRYPOINT=${DEBUG_ENTRYPOINT:-2}
+      - DEBUG_RUNTIME=${DEBUG_RUNTIME:-0}
+      - NEW_UID=${NEW_UID:-1000}
+      - NEW_GID=${NEW_GID:-1000}
+      - TIMEZONE=${TIMEZONE:-UTC}
+      - AGENTIC_OAUTH_PORT=${AGENTIC_OAUTH_PORT:-19999}
+    ports:
+      # Host-loopback only (OAuth callback receiver); never published on 0.0.0.0
+      - "${LOCAL_LISTEN_ADDR}${AGENTIC_OAUTH_PORT:-19999}:19999"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.17
+    dns:
+      - 172.16.238.100  # devilbox bind container (matches php service line 177)
+    volumes:
+      # Workspace (same as php /shared/httpd) so agents can edit user code
+      - ${HOST_PATH_HTTPD_DATADIR}:/shared/httpd:rw${MOUNT_OPTIONS}
+      # Persistent home + per-tool config (survives `docker compose down -v`)
+      - ${DEVILBOX_PATH}/cfg/agentic-home:/home/devilbox:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-claude:/home/devilbox/.claude:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-opencode:/home/devilbox/.config/opencode:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-codex:/home/devilbox/.codex:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-copilot:/home/devilbox/.config/gh:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-aider:/home/devilbox/.aider:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-goose:/home/devilbox/.config/goose:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-cline:/home/devilbox/.config/cline:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-continue:/home/devilbox/.continue:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-cursor:/home/devilbox/.cursor:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-llm:/home/devilbox/.config/io.datasette.llm:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic-crush:/home/devilbox/.config/crush:rw${MOUNT_OPTIONS}
+      # Cross-tool shared: gitconfig, ssh, env shims
+      - ${DEVILBOX_PATH}/cfg/agentic-shared:/home/devilbox/.shared:rw${MOUNT_OPTIONS}
+      # Startup scripts (mirrors php-startup-* → /startup.1.d pattern, docker-compose.yml line 217)
+      - ${DEVILBOX_PATH}/cfg/agentic-startup:/startup.1.d:rw${MOUNT_OPTIONS}
+      # Generic autostart (shared with php; matches line 218)
+      - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
+      # Bash profile injection (shared with php; matches line 221)
+      - ${DEVILBOX_PATH}/bash:/etc/bashrc-devilbox.d:rw${MOUNT_OPTIONS}
+      # CA cert mount (shared with php; matches line 231)
+      - ${DEVILBOX_PATH}/ca:/ca:rw${MOUNT_OPTIONS}
+      # Host SSH read-only (matches php line 237)
+      - ${HOST_PATH_SSH_DIR}:/home/devilbox/.host-ssh:ro${MOUNT_OPTIONS}
+      # OAuth bridge FIFO (host ⇄ container browser handoff — see Wave 5)
+      - ${DEVILBOX_PATH}/.devilbox/oauth-fifo:/var/run/dvl-oauth:rw${MOUNT_OPTIONS}
