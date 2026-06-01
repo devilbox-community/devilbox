@@ -243,6 +243,10 @@ function main {
         shift;
         ExecShell "$@"
       ;;
+      agent)
+        shift;
+        AgentCommand "$@"
+      ;;
       db:import|db-import)
         shift;
         DatabaseImport "$@"
@@ -942,6 +946,93 @@ function EcePatchesCommand {
   fi
 
   CommandRequiringWorkFlavor "ece-patches" "$php_version" "$@"
+}
+
+function AgentCommand {
+  local subcmd="${1:-}"
+  shift || true
+
+  case "${subcmd}" in
+    up|start)
+      info "Starting agentic container..."
+      BaseComposeCommand up -d agentic
+      ;;
+    down|stop)
+      info "Stopping agentic container..."
+      BaseComposeCommand stop agentic
+      ;;
+    restart)
+      BaseComposeCommand restart agentic
+      ;;
+    build|pull)
+      info "Pulling devilboxcommunity/agentic:${AGENTIC_SERVER:-latest}..."
+      BaseComposeCommand pull agentic &
+      spinner $!
+      ;;
+    shell)
+      BaseComposeCommand exec --user devilbox agentic bash -l
+      ;;
+    exec)
+      if [[ $# -eq 0 ]]; then error "Usage: dvl agent exec <cmd...>"; return 1; fi
+      BaseComposeCommand exec --user devilbox agentic bash -c "$*"
+      ;;
+    logs)
+      BaseComposeCommand logs -f --tail=200 agentic
+      ;;
+    status|ps)
+      BaseComposeCommand ps agentic
+      ;;
+    tools)
+      # Lists installed CLI tools by reading agentic_tools/ on host
+      local td="${DEVILBOX_PATH}/../docker-agentic/agentic_tools"
+      if [[ ! -d "${td}" ]]; then error "agentic_tools/ not found at ${td}"; return 1; fi
+      ls -1 "${td}" | sort
+      ;;
+    auth)
+      local tool="${1:-}"
+      if [[ -z "${tool}" ]]; then error "Usage: dvl agent auth <tool-slug>"; return 1; fi
+      # Delegates to OAuth bridge (Wave 5)
+      local bridge="${DEVILBOX_PATH}/.devilbox/oauth-bridge.sh"
+      if [[ ! -x "${bridge}" ]]; then error "OAuth bridge not installed: ${bridge}"; return 1; fi
+      "${bridge}" "${tool}"
+      ;;
+    enable)
+      # Convenience: copy override file into place
+      local src="${DEVILBOX_PATH}/compose/docker-compose.override.yml-agentic"
+      local dst="${DEVILBOX_PATH}/docker-compose.override.yml"
+      if [[ -f "${dst}" ]]; then
+        question "Override file already exists at ${dst}. Overwrite? [y/N] "
+        read -r ans; [[ "${ans}" == "y" ]] || return 1
+      fi
+      cp "${src}" "${dst}" && success "Agentic enabled. Run: dvl agent up"
+      ;;
+    disable)
+      local dst="${DEVILBOX_PATH}/docker-compose.override.yml"
+      [[ -f "${dst}" ]] && rm "${dst}" && success "Agentic disabled."
+      ;;
+    ""|help|-h|--help)
+      echo "${YELLOW}dvl agent${NORMAL} — control the agentic AI-coding container"
+      echo ""
+      echo "${YELLOW}Subcommands:${NORMAL}"
+      echo "  ${GREEN}enable${NORMAL}       Install compose override (opt-in)"
+      echo "  ${GREEN}disable${NORMAL}      Remove compose override"
+      echo "  ${GREEN}up${NORMAL} (start)   Start the agentic service"
+      echo "  ${GREEN}down${NORMAL} (stop)  Stop the agentic service"
+      echo "  ${GREEN}restart${NORMAL}      Restart the agentic service"
+      echo "  ${GREEN}build${NORMAL} (pull) Pull latest devilboxcommunity/agentic image"
+      echo "  ${GREEN}shell${NORMAL}        Open interactive shell as devilbox user"
+      echo "  ${GREEN}exec${NORMAL} <cmd>   Run a command inside the container"
+      echo "  ${GREEN}logs${NORMAL}         Follow container logs"
+      echo "  ${GREEN}status${NORMAL} (ps)  Show container status"
+      echo "  ${GREEN}tools${NORMAL}        List installed AI CLI tools"
+      echo "  ${GREEN}auth${NORMAL} <tool>  Authenticate a tool via host browser (Wave 5)"
+      [[ "${subcmd}" == "" ]] && return 1 || return 0
+      ;;
+    *)
+      error "Unknown agent subcommand: ${subcmd}. See: dvl agent help"
+      return 1
+      ;;
+  esac
 }
 
 function DatabaseImport {
