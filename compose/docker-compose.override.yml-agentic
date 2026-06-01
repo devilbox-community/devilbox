@@ -16,6 +16,8 @@ services:
       - NEW_GID=${NEW_GID:-1000}
       - TIMEZONE=${TIMEZONE:-UTC}
       - AGENTIC_OAUTH_PORT=${AGENTIC_OAUTH_PORT:-19999}
+      - AGENTIC_TOOLS_ENABLE=${AGENTIC_TOOLS_ENABLE:-}
+      - AGENTIC_TOOLS_DISABLE=${AGENTIC_TOOLS_DISABLE:-}
     ports:
       # Host-loopback only (OAuth callback receiver); never published on 0.0.0.0
       - "${LOCAL_LISTEN_ADDR}${AGENTIC_OAUTH_PORT:-19999}:19999"

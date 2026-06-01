@@ -46,7 +46,7 @@ Email interception and popular development tools will be at your service as well
 All created projects (frontend or backend) will be able to communicate with one another to support the emulation of a complete microservice architecture or an API landscape.
 <br/>
 <br/>
-**[NEW] Agentic Service:** Opt-in to the `agentic` developer environment to use 15+ pre-configured AI coding agents (aider, claude-code, opencode, etc.). Enable it via `./dvl agent enable` and see `dvl agent help` for more. Integration details: [compose/docker-compose.override.yml-agentic](compose/docker-compose.override.yml-agentic).
+**[NEW] Agentic Service:** Opt-in to the `agentic` developer environment to use 19 pre-configured AI coding agents (aider, claude-code, opencode, gemini, etc.). Enable it via `./dvl.sh agent enable` and see `dvl.sh agent help` for more. Individual tools can be toggled via `AGENTIC_TOOLS_ENABLE/DISABLE` (see [documentation](../docker-agentic/README.md#enabledisable-toggle)). Integration details: [compose/docker-compose.override.yml-agentic](compose/docker-compose.override.yml-agentic).
 <br/>
 <br/>
 **Available Architectures:** `amd64`, `arm64`<br/>
@@ -501,6 +501,34 @@ Each of them is also available in multiple different versions in order to reflec
 
 > **Documentation:**
 > [Available Container](https://devilbox.readthedocs.io/en/latest/readings/available-container.html)
+
+<br/>
+</details>
+
+<details style="margin-bottom: 0px;"><summary><strong>🤖 Agentic & Companion Stacks</strong></summary>
+
+<h3>Agentic & Companion Stacks</h3>
+
+Wave 8 introduces multi-stack layering for the agentic developer environment. Use `./dvl.sh agent` to manage these specialized stacks.
+
+| Stack | Purpose | Port | Default IP |
+|---|---|---|---|
+| agentic | Main AI coding tools & agents | 19999 (OAuth) | 172.16.238.250 |
+| hermes-workspace | Hermes UI & persistent desktop | 3000 | 172.16.238.251 |
+| multica | Multica daemon & cluster node | 8080 | 172.16.238.252 |
+
+<h4>Quick Start</h4>
+
+Enable and start multiple stacks together:
+
+```bash
+./dvl.sh agent enable agentic hermes-workspace
+./dvl.sh agent up -d
+```
+
+<h4>Stack Management</h4>
+
+The active stacks are persisted in `.dvl/agent-stacks.list` (gitignored). Use `./dvl.sh agent status` to see what is currently active. For more details on how layering works, see [compose/README.md](compose/README.md).
 
 <br/>
 </details>

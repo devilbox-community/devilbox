@@ -26,6 +26,12 @@
 # Ignore compose override file
 /docker-compose.override.yml
 
+# Wave 8E0: Agent stack layering state (one slug per line)
+/.dvl/agent-stacks.list
+
+# AI agent session state (Claude Code, opencode, etc.)
+/.claude/
+
 # Ignore logs
 /log/apache-2.2/*
 /log/apache-2.4/*
@@ -254,3 +260,4 @@ $RECYCLE.BIN/
 
 ###### VS Code ######
 /.vscode
+.gitnexus

@@ -1,0 +1,100 @@
+# vim: set ft=yaml:
+#
+# Wave 8E1 — hermes-workspace stack.
+#
+# Source: github.com/outsourc-e/hermes-workspace (v2.3.0, MIT, Eric @outsourc-e).
+# Sibling repo path: ../hermes-workspace (sibling to devilbox/).
+#
+# Image source choice: pulls upstream pre-built images from registries by
+# default (per upstream README "Quick Start" + docker-compose.yml line 16-18).
+# The sibling DOES have a Dockerfile, but the upstream compose ships pinned
+# pre-built images (`nousresearch/hermes-agent:latest`, `ghcr.io/outsourc-e/
+# hermes-workspace:latest`) which we mirror here. To build locally instead,
+# users can `cd ../hermes-workspace && docker compose -f docker-compose.yml
+# -f docker-compose.dev.yml up` directly in the sibling repo — devilbox stays
+# out of the build path.
+#
+# Pair: hermes-workspace (Web UI :3000) talks to hermes-agent (gateway :8642)
+# over the devilbox app_net. The single Wave 8E1 stack slug "hermes-workspace"
+# brings up BOTH services because the UI is unusable without the gateway
+# (upstream `depends_on: { condition: service_healthy }` enforces this).
+#
+# Static IP 172.16.238.18 is assigned to hermes-workspace (the user-facing
+# slug). hermes-agent gets an auto-assigned address on the same network and
+# is reachable via Docker DNS at hermes-agent:8642 inside the container.
+#
+# All secrets (API keys, HERMES_PASSWORD, API_SERVER_KEY) are declared in
+# env-example with empty defaults — users override via .env.
+version: '2.3'
+services:
+  hermes-agent:
+    image: ${HERMES_AGENT_DOCKER_IMAGE:-nousresearch/hermes-agent:latest}
+    container_name: ${HERMES_AGENT_CONTAINER_NAME:-hermes-agent}
+    hostname: hermes-agent
+    restart: always
+    # Override default interactive CLI entrypoint with the long-running
+    # gateway server (matches upstream docker-compose.yml line 48).
+    command: ["gateway", "run"]
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - HERMES_UID=${HERMES_UID:-10010}
+      - HERMES_DASHBOARD=1
+      - HERMES_DASHBOARD_HOST=0.0.0.0
+      - HERMES_DASHBOARD_PORT=9119
+      - API_SERVER_KEY=${HERMES_API_SERVER_KEY:-}
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_ENABLED=true
+    volumes:
+      # Persistent agent home (config.yaml, sessions, skills, memory, creds).
+      # Bind-mounted under cfg/ for forever-persistence + host-side editing.
+      - ${DEVILBOX_PATH}/cfg/hermes-workspace:/opt/data:rw${MOUNT_OPTIONS}
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8642/health && curl -fsS http://localhost:9119/api/status || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      # Host-loopback only (gateway API); never published on 0.0.0.0.
+      - "${LOCAL_LISTEN_ADDR}${HERMES_WORKSPACE_HOST_PORT:-8642}:8642"
+    networks:
+      app_net:
+
+  hermes-workspace:
+    image: ${HERMES_WORKSPACE_DOCKER_IMAGE:-ghcr.io/outsourc-e/hermes-workspace:latest}
+    container_name: ${HERMES_WORKSPACE_CONTAINER_NAME:-hermes-workspace}
+    hostname: hermes-workspace
+    restart: always
+    depends_on:
+      hermes-agent:
+        condition: service_healthy
+    environment:
+      - HERMES_HOME=/home/workspace/.hermes
+      - HERMES_WORKSPACE_DIR=/workspace
+      # Internal Docker DNS — not localhost.
+      - HERMES_API_URL=http://hermes-agent:8642
+      - HERMES_DASHBOARD_URL=http://hermes-agent:9119
+      # Must match API_SERVER_KEY on hermes-agent side when set.
+      - HERMES_API_TOKEN=${HERMES_API_SERVER_KEY:-}
+      # REQUIRED when HOST is non-loopback (container binds 0.0.0.0:3000).
+      # Leave blank to keep workspace loopback-only.
+      - HERMES_PASSWORD=${HERMES_PASSWORD:-}
+      - COOKIE_SECURE=${HERMES_COOKIE_SECURE:-}
+      - TRUST_PROXY=${HERMES_TRUST_PROXY:-}
+      - HOST=${HERMES_HOST:-127.0.0.1}
+    volumes:
+      # Workspace config dir (shared read with hermes-agent's /opt/data).
+      - ${DEVILBOX_PATH}/cfg/hermes-workspace:/home/workspace/.hermes:rw${MOUNT_OPTIONS}
+      # Files created via the workspace file browser.
+      - ${DEVILBOX_PATH}/data/hermes-workspace:/workspace:rw${MOUNT_OPTIONS}
+    ports:
+      # Host-loopback only (web UI); never published on 0.0.0.0.
+      - "${LOCAL_LISTEN_ADDR}${HERMES_WORKSPACE_UI_PORT:-3000}:3000"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.18

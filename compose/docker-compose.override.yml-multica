@@ -1,0 +1,144 @@
+# vim: set ft=yaml:
+#
+# Wave 8F1 — multica stack.
+#
+# Source:  github.com/multica-ai/multica (turbo monorepo: Go backend + Next.js).
+# Sibling repo path: ../multica (sibling to devilbox/).
+# Mirrors ../multica/docker-compose.selfhost.yml, adapted for devilbox layering.
+#
+# Services (sibling slug → devilbox slug):
+#   postgres → multica-db        (pgvector/pgvector:pg17, host bind for forever-persistence)
+#   backend  → multica-api       (Go backend, port 8080 inside container)
+#   frontend → multica-web       (Next.js, port 3000 inside container, static IP 172.16.238.19)
+#
+# A separate logical "uploads" cfg dir (cfg/multica-uploads/) hosts the
+# backend's LOCAL_UPLOAD_DIR (/app/data/uploads). No standalone "uploads"
+# service exists in the sibling stack — local file storage is a feature of
+# the backend itself (see sibling .env.example LOCAL_UPLOAD_DIR).
+#
+# Image source: pulls upstream pre-built images from GHCR by default
+# (ghcr.io/multica-ai/multica-backend:latest, ghcr.io/multica-ai/multica-web:latest)
+# — mirrors sibling's default. To build locally, run upstream's
+# `docker-compose.selfhost.build.yml` in the sibling repo; devilbox stays
+# out of the build path.
+#
+# Static IP 172.16.238.19 is assigned to multica-web (the user-facing slug).
+# multica-api and multica-db get auto-assigned addresses on app_net and are
+# reachable via Docker DNS at multica-api:8080 / multica-db:5432 inside the
+# network. The agentic-image multica CLI (Wave 8C) talks to the API via
+# MULTICA_API_URL=http://multica-api:4000 (container-to-container).
+#
+# Persistence: db data → data/multica-db/; api uploads → cfg/multica-uploads/;
+# api config seeds → cfg/multica-api/; db init scripts → cfg/multica-db/.
+# All bind mounts — survive `docker compose down -v` and `agent disable`.
+#
+# Secrets (JWT_SECRET, POSTGRES_PASSWORD, OAuth, S3, SMTP, Resend, GitHub,
+# PostHog, Redis) live in env-example with empty defaults — users override
+# via .env. DO NOT commit real secrets.
+version: '2.3'
+services:
+  multica-db:
+    image: ${MULTICA_DB_DOCKER_IMAGE:-pgvector/pgvector:pg17}
+    container_name: ${MULTICA_DB_CONTAINER_NAME:-multica-db}
+    hostname: multica-db
+    restart: always
+    environment:
+      - POSTGRES_DB=${MULTICA_DB_NAME:-multica}
+      - POSTGRES_USER=${MULTICA_DB_USER:-multica}
+      - POSTGRES_PASSWORD=${MULTICA_DB_PASSWORD:-multica}
+    volumes:
+      # Forever-persistent Postgres data dir (bind, not named volume).
+      # Lazy-created at runtime; safe to leave empty until first `up`.
+      - ${DEVILBOX_PATH}/data/multica-db:/var/lib/postgresql/data:rw${MOUNT_OPTIONS}
+      # Optional init scripts (*.sql, *.sh) — Postgres runs them on first boot
+      # when data dir is empty. Drop pgvector extension bootstraps, seed
+      # fixtures, etc. here.
+      - ${DEVILBOX_PATH}/cfg/multica-db:/docker-entrypoint-initdb.d:ro${MOUNT_OPTIONS}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${MULTICA_DB_USER:-multica} -d ${MULTICA_DB_NAME:-multica}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      app_net:
+
+  multica-api:
+    image: ${MULTICA_API_DOCKER_IMAGE:-ghcr.io/multica-ai/multica-backend}:${MULTICA_IMAGE_TAG:-latest}
+    container_name: ${MULTICA_API_CONTAINER_NAME:-multica-api}
+    hostname: multica-api
+    restart: always
+    depends_on:
+      multica-db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://${MULTICA_DB_USER:-multica}:${MULTICA_DB_PASSWORD:-multica}@multica-db:5432/${MULTICA_DB_NAME:-multica}?sslmode=disable
+      - PORT=8080
+      - APP_ENV=${MULTICA_APP_ENV:-production}
+      - JWT_SECRET=${MULTICA_JWT_SECRET:-change-me-in-production}
+      - FRONTEND_ORIGIN=${MULTICA_FRONTEND_ORIGIN:-http://localhost:${MULTICA_WEB_PORT:-3001}}
+      - MULTICA_APP_URL=${MULTICA_APP_URL:-http://localhost:${MULTICA_WEB_PORT:-3001}}
+      - MULTICA_PUBLIC_URL=${MULTICA_PUBLIC_URL:-}
+      - MULTICA_TRUSTED_PROXIES=${MULTICA_TRUSTED_PROXIES:-}
+      - MULTICA_DEV_VERIFICATION_CODE=${MULTICA_DEV_VERIFICATION_CODE:-}
+      - METRICS_ADDR=${MULTICA_METRICS_ADDR:-}
+      - CORS_ALLOWED_ORIGINS=${MULTICA_CORS_ALLOWED_ORIGINS:-}
+      - COOKIE_DOMAIN=${MULTICA_COOKIE_DOMAIN:-}
+      - ALLOW_SIGNUP=${MULTICA_ALLOW_SIGNUP:-true}
+      - ALLOWED_EMAILS=${MULTICA_ALLOWED_EMAILS:-}
+      - ALLOWED_EMAIL_DOMAINS=${MULTICA_ALLOWED_EMAIL_DOMAINS:-}
+      - DISABLE_WORKSPACE_CREATION=${MULTICA_DISABLE_WORKSPACE_CREATION:-}
+      # Email (Resend or SMTP — see env-example for details)
+      - RESEND_API_KEY=${MULTICA_RESEND_API_KEY:-}
+      - RESEND_FROM_EMAIL=${MULTICA_RESEND_FROM_EMAIL:-noreply@multica.ai}
+      - SMTP_HOST=${MULTICA_SMTP_HOST:-}
+      - SMTP_PORT=${MULTICA_SMTP_PORT:-25}
+      - SMTP_USERNAME=${MULTICA_SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${MULTICA_SMTP_PASSWORD:-}
+      - SMTP_TLS=${MULTICA_SMTP_TLS:-}
+      - SMTP_TLS_INSECURE=${MULTICA_SMTP_TLS_INSECURE:-false}
+      # Google OAuth
+      - GOOGLE_CLIENT_ID=${MULTICA_GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${MULTICA_GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${MULTICA_GOOGLE_REDIRECT_URI:-http://localhost:${MULTICA_WEB_PORT:-3001}/auth/callback}
+      # S3 / CloudFront (optional — fallback is local uploads dir below)
+      - S3_BUCKET=${MULTICA_S3_BUCKET:-}
+      - S3_REGION=${MULTICA_S3_REGION:-us-west-2}
+      - CLOUDFRONT_DOMAIN=${MULTICA_CLOUDFRONT_DOMAIN:-}
+      - CLOUDFRONT_KEY_PAIR_ID=${MULTICA_CLOUDFRONT_KEY_PAIR_ID:-}
+      - CLOUDFRONT_PRIVATE_KEY=${MULTICA_CLOUDFRONT_PRIVATE_KEY:-}
+      # GitHub App integration
+      - GITHUB_APP_SLUG=${MULTICA_GITHUB_APP_SLUG:-}
+      - GITHUB_WEBHOOK_SECRET=${MULTICA_GITHUB_WEBHOOK_SECRET:-}
+      # Local upload dir (fallback when S3_BUCKET is unset).
+      - LOCAL_UPLOAD_DIR=/app/data/uploads
+    volumes:
+      # Persistent uploads (bind — survives `down -v` and stack disable).
+      - ${DEVILBOX_PATH}/cfg/multica-uploads:/app/data/uploads:rw${MOUNT_OPTIONS}
+      # Optional config seed dir — currently unused by upstream image, kept
+      # for forward compatibility (e.g. tls certs, custom auth providers).
+      - ${DEVILBOX_PATH}/cfg/multica-api:/app/config:rw${MOUNT_OPTIONS}
+    ports:
+      # Host-loopback only (API); never published on 0.0.0.0.
+      - "${LOCAL_LISTEN_ADDR}${MULTICA_API_PORT:-4000}:8080"
+    networks:
+      app_net:
+
+  multica-web:
+    image: ${MULTICA_WEB_DOCKER_IMAGE:-ghcr.io/multica-ai/multica-web}:${MULTICA_IMAGE_TAG:-latest}
+    container_name: ${MULTICA_WEB_CONTAINER_NAME:-multica-web}
+    hostname: multica-web
+    restart: always
+    depends_on:
+      - multica-api
+    environment:
+      - HOSTNAME=0.0.0.0
+      # Optional explicit overrides for the Next.js client.
+      # Leave empty to let the browser derive both from window.origin.
+      - NEXT_PUBLIC_API_URL=${MULTICA_NEXT_PUBLIC_API_URL:-}
+      - NEXT_PUBLIC_WS_URL=${MULTICA_NEXT_PUBLIC_WS_URL:-}
+    ports:
+      # Host-loopback only (Web UI); never published on 0.0.0.0.
+      - "${LOCAL_LISTEN_ADDR}${MULTICA_WEB_PORT:-3001}:3000"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.19

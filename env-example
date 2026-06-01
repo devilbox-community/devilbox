@@ -1160,3 +1160,263 @@ AGENTIC_OAUTH_PORT=19999
 ### so agents can edit the same workspace as php/httpd).
 ###
 AGENTIC_HTTPD_DATADIR=${HOST_PATH_HTTPD_DATADIR}
+
+###
+### Agentic tool toggles (runtime).
+### Comma-separated tool slugs. ENABLE adds to the image default list; DISABLE
+### removes from the final set (DISABLE wins on collision). No "all"/wildcard.
+### Authoritative defaults live in /opt/agentic-tools/_defaults.yml inside the
+### image. See docker-agentic/agentic_tools/_defaults.yml for the source list.
+###
+AGENTIC_TOOLS_ENABLE=
+AGENTIC_TOOLS_DISABLE=
+
+
+################################################################################
+###
+### ZZ. hermes-workspace stack (Wave 8E1)
+###
+### Upstream: github.com/outsourc-e/hermes-workspace (v2.3.0, MIT, Eric @outsourc-e)
+### Enable:   ./dvl.sh agent enable hermes-workspace
+### Static IP: 172.16.238.18 (hermes-workspace UI service)
+###
+################################################################################
+
+###
+### Container names (mirror devilbox HOST_PORT_* / *_CONTAINER_NAME conventions).
+###
+HERMES_WORKSPACE_CONTAINER_NAME=hermes-workspace
+HERMES_AGENT_CONTAINER_NAME=hermes-agent
+
+###
+### Host port for the hermes-agent gateway API (paired service, port 8642).
+### Published on ${LOCAL_LISTEN_ADDR} only (loopback by default).
+###
+HERMES_WORKSPACE_HOST_PORT=8642
+
+###
+### Host port for the hermes-workspace Web UI (default container port 3000).
+### Published on ${LOCAL_LISTEN_ADDR} only (loopback by default).
+###
+HERMES_WORKSPACE_UI_PORT=3000
+
+###
+### Override images entirely (leave empty for upstream defaults).
+###
+HERMES_AGENT_DOCKER_IMAGE=
+HERMES_WORKSPACE_DOCKER_IMAGE=
+
+###
+### LLM provider API keys — set at least ONE for hermes-agent to function.
+### Leave the rest blank. See ../hermes-workspace/.env.example for provider
+### links (OpenAI, OpenRouter, Google AI Studio, Groq, Mistral, Anthropic).
+### DO NOT commit real keys.
+###
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+GOOGLE_API_KEY=
+GROQ_API_KEY=
+MISTRAL_API_KEY=
+
+###
+### Hermes Agent gateway authentication.
+### Required when the gateway is reachable off-loopback (it is, in Docker).
+### The same value is passed to hermes-workspace as HERMES_API_TOKEN. Leave
+### blank for trusted localhost-only deployments.
+###
+HERMES_API_SERVER_KEY=
+
+###
+### Workspace UI session password.
+### REQUIRED if HERMES_HOST is set to a non-loopback address (e.g. 0.0.0.0).
+### Pick a strong secret (32+ chars). Stored encrypted in cfg/hermes-workspace.
+###
+HERMES_PASSWORD=
+
+###
+### Workspace bind address inside the container. Default 127.0.0.1 (safe).
+### Set to 0.0.0.0 ONLY if HERMES_PASSWORD is also set.
+###
+HERMES_HOST=127.0.0.1
+
+###
+### TLS / proxy knobs (see ../hermes-workspace/.env.example for details).
+### Leave blank unless terminating HTTPS at a reverse proxy.
+###
+HERMES_COOKIE_SECURE=
+HERMES_TRUST_PROXY=
+
+###
+### Container UID inside hermes-agent (upstream default: 10010).
+### Override if host file ownership requires it.
+###
+HERMES_UID=10010
+
+
+################################################################################
+###
+### ZZ. multica stack (Wave 8F1)
+###
+### Upstream: github.com/multica-ai/multica (turbo monorepo: Go + Next.js)
+### Enable:   ./dvl.sh agent enable multica
+### Static IP: 172.16.238.19 (multica-web, the user-facing service)
+### Services: multica-db (pgvector/pg17), multica-api (Go :8080), multica-web (Next.js :3000)
+### Persistence: data/multica-db, cfg/multica-uploads, cfg/multica-{db,api}
+###
+################################################################################
+
+###
+### Container names (mirror devilbox HOST_PORT_* / *_CONTAINER_NAME conventions).
+###
+MULTICA_WEB_CONTAINER_NAME=multica-web
+MULTICA_API_CONTAINER_NAME=multica-api
+MULTICA_DB_CONTAINER_NAME=multica-db
+
+###
+### Host ports — published on ${LOCAL_LISTEN_ADDR} only (loopback by default).
+### Web: container :3000 → host 3001 (host 3000 is taken by hermes-workspace UI).
+### API: container :8080 → host 4000.
+### DB:  not published — internal only (reachable at multica-db:5432 inside app_net).
+###
+MULTICA_WEB_PORT=3001
+MULTICA_API_PORT=4000
+
+###
+### Image selection. Defaults pull pre-built upstream images from GHCR.
+### Pin MULTICA_IMAGE_TAG to a release (e.g. v0.2.4) for reproducible deploys.
+###
+MULTICA_IMAGE_TAG=latest
+MULTICA_DB_DOCKER_IMAGE=pgvector/pgvector:pg17
+MULTICA_API_DOCKER_IMAGE=ghcr.io/multica-ai/multica-backend
+MULTICA_WEB_DOCKER_IMAGE=ghcr.io/multica-ai/multica-web
+
+###
+### Postgres credentials (used by multica-api to build DATABASE_URL).
+### Override at minimum MULTICA_DB_PASSWORD for any non-trivial deployment.
+###
+MULTICA_DB_NAME=multica
+MULTICA_DB_USER=multica
+MULTICA_DB_PASSWORD=multica
+
+###
+### Application environment. "production" enables safety checks (e.g. ignores
+### MULTICA_DEV_VERIFICATION_CODE). Leave blank or set "dev" for local hacking.
+###
+MULTICA_APP_ENV=production
+
+###
+### JWT signing key — REQUIRED for any non-throwaway deployment.
+### Generate with `openssl rand -base64 48`. Rotating invalidates all sessions.
+###
+MULTICA_JWT_SECRET=change-me-in-production
+
+###
+### CLI ↔ Stack bridge.
+### The Wave 8C agentic-image `multica` CLI talks to this stack's API via
+### this URL when both stacks are enabled together. Use Docker DNS hostname
+### + container port (8080), NOT MULTICA_API_PORT (that's the host-side port).
+###
+MULTICA_API_URL=http://multica-api:8080
+
+###
+### Public-facing URLs. Leave blank unless behind a reverse proxy / CDN.
+### MULTICA_PUBLIC_URL: open-internet URL of the API (no trailing slash);
+###   used to mint absolute webhook URLs for autopilot triggers.
+### MULTICA_APP_URL / MULTICA_FRONTEND_ORIGIN: default to localhost:${MULTICA_WEB_PORT}.
+###
+MULTICA_PUBLIC_URL=
+MULTICA_APP_URL=
+MULTICA_FRONTEND_ORIGIN=
+
+###
+### Optional Next.js client overrides. Leave blank to let the browser derive
+### both from window.origin (the safe default for same-origin reverse proxy).
+###
+MULTICA_NEXT_PUBLIC_API_URL=
+MULTICA_NEXT_PUBLIC_WS_URL=
+
+###
+### Comma-separated CIDR list of trusted reverse proxies whose
+### X-Forwarded-For / X-Real-IP headers the webhook per-IP rate limiter
+### is allowed to trust. Empty = headers ignored (safe default for direct
+### exposure). Set to "127.0.0.1/32" behind a same-host reverse proxy.
+###
+MULTICA_TRUSTED_PROXIES=
+
+###
+### Local-dev shortcut: fixed verification code printed in stdout/logs.
+### Ignored when MULTICA_APP_ENV=production. Set a 6-digit value (e.g. 888888)
+### for deterministic local automation.
+###
+MULTICA_DEV_VERIFICATION_CODE=
+
+###
+### Prometheus metrics listener. Disabled by default. Bind to loopback only.
+### Example: MULTICA_METRICS_ADDR=127.0.0.1:9090
+###
+MULTICA_METRICS_ADDR=
+
+###
+### CORS / cookie hardening.
+### MULTICA_CORS_ALLOWED_ORIGINS: comma-separated; defaults to localhost dev origins when empty.
+### MULTICA_COOKIE_DOMAIN: only set for multi-subdomain deployments (e.g. ".example.com").
+###   Leave blank for single-host (localhost / IP / single hostname) — RFC 6265 forbids
+###   IP literals in cookie Domain attribute.
+###
+MULTICA_CORS_ALLOWED_ORIGINS=
+MULTICA_COOKIE_DOMAIN=
+
+###
+### Signup gating (private instances).
+### MULTICA_ALLOW_SIGNUP=false to disable new user signups entirely.
+### MULTICA_ALLOWED_EMAIL_DOMAINS / _EMAILS: comma-separated allowlists.
+### MULTICA_DISABLE_WORKSPACE_CREATION=true to lock down workspace creation.
+###
+MULTICA_ALLOW_SIGNUP=true
+MULTICA_ALLOWED_EMAIL_DOMAINS=
+MULTICA_ALLOWED_EMAILS=
+MULTICA_DISABLE_WORKSPACE_CREATION=
+
+###
+### Email delivery. Configure exactly ONE — Resend OR SMTP.
+### Without either, verification codes print to stdout (dev-only).
+### MULTICA_SMTP_TLS: unset/"starttls" (default), or "implicit" / "smtps" / "ssl"
+### for port-465-only providers. Auto-enabled when MULTICA_SMTP_PORT=465.
+###
+MULTICA_RESEND_API_KEY=
+MULTICA_RESEND_FROM_EMAIL=noreply@multica.ai
+MULTICA_SMTP_HOST=
+MULTICA_SMTP_PORT=25
+MULTICA_SMTP_USERNAME=
+MULTICA_SMTP_PASSWORD=
+MULTICA_SMTP_TLS=
+MULTICA_SMTP_TLS_INSECURE=false
+
+###
+### Google OAuth. The web login reads MULTICA_GOOGLE_CLIENT_ID from
+### /api/config at runtime — backend restart only, no web rebuild.
+### MULTICA_GOOGLE_REDIRECT_URI defaults to http://localhost:${MULTICA_WEB_PORT}/auth/callback.
+###
+MULTICA_GOOGLE_CLIENT_ID=
+MULTICA_GOOGLE_CLIENT_SECRET=
+MULTICA_GOOGLE_REDIRECT_URI=
+
+###
+### S3 / CloudFront (optional). When MULTICA_S3_BUCKET is unset, uploads
+### land in cfg/multica-uploads/ instead (bind-mounted, forever-persistent).
+### MULTICA_S3_BUCKET is the bucket NAME only (no ".s3.<region>.amazonaws.com").
+###
+MULTICA_S3_BUCKET=
+MULTICA_S3_REGION=us-west-2
+MULTICA_CLOUDFRONT_DOMAIN=
+MULTICA_CLOUDFRONT_KEY_PAIR_ID=
+MULTICA_CLOUDFRONT_PRIVATE_KEY=
+
+###
+### GitHub App integration (Settings → GitHub "Connect GitHub").
+### MULTICA_GITHUB_APP_SLUG is the tail of https://github.com/apps/<slug>.
+### Both must be set for the integration to enable.
+###
+MULTICA_GITHUB_APP_SLUG=
+MULTICA_GITHUB_WEBHOOK_SECRET=

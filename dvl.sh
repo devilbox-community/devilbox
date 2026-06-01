@@ -948,84 +948,282 @@ function EcePatchesCommand {
   CommandRequiringWorkFlavor "ece-patches" "$php_version" "$@"
 }
 
+# -------------------------------------------------------------------------------------------------
+# AGENT STACK LAYERING (Wave 8E0)
+# -------------------------------------------------------------------------------------------------
+# State file: <DEVILBOX_PATH>/.dvl/agent-stacks.list (gitignored)
+#   - One stack slug per line; lines starting with '#' and blank lines are ignored.
+#   - Each enabled slug maps to compose/docker-compose.override.yml-<slug>.
+# At runtime, AgentCommand exports
+#   COMPOSE_FILE=<DEVILBOX_PATH>/docker-compose.yml:<override-1>:<override-2>:...
+# so docker compose merges the layered overrides. No file is ever copied to the
+# repo root. See plan/.sisyphus/plans/docker-agentic.md §9.3.1.
+
+function _agent_validate_slug {
+  local slug="$1"
+  if [[ -z "$slug" ]] || ! [[ "$slug" =~ ^[a-z0-9-]+$ ]]; then
+    error "Invalid stack slug '${slug}' (must match [a-z0-9-]+)"
+    return 1
+  fi
+  return 0
+}
+
+function _agent_stacks_list_path {
+  printf '%s' "${DEVILBOX_PATH}/.dvl/agent-stacks.list"
+}
+
+function _agent_stacks_list_read {
+  local f
+  f="$(_agent_stacks_list_path)"
+  [[ -f "$f" ]] || return 0
+  grep -Ev '^[[:space:]]*(#|$)' "$f" || true
+}
+
+function _agent_stacks_list_has {
+  local slug="$1"
+  _agent_stacks_list_read | grep -Fxq -- "$slug"
+}
+
+function _agent_stacks_list_add {
+  local slug="$1"
+  _agent_validate_slug "$slug" || return 1
+  local f
+  f="$(_agent_stacks_list_path)"
+  mkdir -p "$(dirname "$f")"
+  [[ -f "$f" ]] || : > "$f"
+  if _agent_stacks_list_has "$slug"; then
+    return 0
+  fi
+  printf '%s\n' "$slug" >> "$f"
+}
+
+function _agent_stacks_list_remove {
+  local slug="$1"
+  _agent_validate_slug "$slug" || return 1
+  local f
+  f="$(_agent_stacks_list_path)"
+  [[ -f "$f" ]] || return 0
+  local tmp
+  tmp="$(mktemp)"
+  grep -Fxv -- "$slug" "$f" > "$tmp" || true
+  mv "$tmp" "$f"
+}
+
+function _agent_stack_file {
+  printf '%s' "${DEVILBOX_PATH}/compose/docker-compose.override.yml-$1"
+}
+
+function _agent_compose_files {
+  # Emit colon-separated absolute paths of enabled override files (existing only)
+  local out=""
+  local slug f
+  while IFS= read -r slug; do
+    [[ -z "$slug" ]] && continue
+    f="$(_agent_stack_file "$slug")"
+    if [[ -f "$f" ]]; then
+      if [[ -z "$out" ]]; then
+        out="$f"
+      else
+        out="${out}:${f}"
+      fi
+    fi
+  done < <(_agent_stacks_list_read)
+  printf '%s' "$out"
+}
+
+function _agent_available_stacks {
+  local f base
+  for f in "${DEVILBOX_PATH}"/compose/docker-compose.override.yml-*; do
+    [[ -e "$f" ]] || continue
+    base="${f##*/docker-compose.override.yml-}"
+    base="${base%.yml}"   # strip historical double-suffix (e.g. -php-multi.yml)
+    printf '%s\n' "$base"
+  done | sort -u
+}
+
+function _agent_export_compose_file {
+  local files
+  files="$(_agent_compose_files)"
+  if [[ -n "$files" ]]; then
+    export COMPOSE_FILE="${DEVILBOX_PATH}/docker-compose.yml:${files}"
+  else
+    export COMPOSE_FILE="${DEVILBOX_PATH}/docker-compose.yml"
+  fi
+}
+
+function _agent_migrate_legacy {
+  # One-time migration: if .dvl/agent-stacks.list is missing AND the root
+  # docker-compose.override.yml is a verbatim copy of the agentic stack, seed
+  # the list with 'agentic' and remove the copy.
+  local list root_override agentic_src
+  list="$(_agent_stacks_list_path)"
+  root_override="${DEVILBOX_PATH}/docker-compose.override.yml"
+  agentic_src="${DEVILBOX_PATH}/compose/docker-compose.override.yml-agentic"
+  [[ -f "$list" ]] && return 0
+  [[ -f "$root_override" ]] || return 0
+  [[ -f "$agentic_src" ]] || return 0
+  if cmp -s "$root_override" "$agentic_src"; then
+    info "Migrating legacy agentic override to .dvl/agent-stacks.list..."
+    _agent_stacks_list_add "agentic"
+    rm -f "$root_override"
+    success "Migration complete. Removed legacy docker-compose.override.yml."
+  fi
+}
+
+# -------------------------------------------------------------------------------------------------
+# Wave 8E0: refactored to layer multi-stack overrides via COMPOSE_FILE env var
+# instead of copying compose/docker-compose.override.yml-agentic to the repo
+# root. Stack state lives in .dvl/agent-stacks.list. Auto-migration from the
+# legacy copy-style runs on every invocation.
+# -------------------------------------------------------------------------------------------------
 function AgentCommand {
+  _agent_migrate_legacy
+
   local subcmd="${1:-}"
   shift || true
 
   case "${subcmd}" in
+    enable)
+      if [[ $# -eq 0 ]]; then error "Usage: dvl agent enable <stack...>"; return 1; fi
+      local slug f
+      for slug in "$@"; do
+        _agent_validate_slug "$slug" || return 1
+        f="$(_agent_stack_file "$slug")"
+        if [[ ! -f "$f" ]]; then
+          error "Unknown stack '${slug}': no override file at compose/docker-compose.override.yml-${slug}"
+          return 1
+        fi
+      done
+      for slug in "$@"; do
+        _agent_stacks_list_add "$slug" || return 1
+      done
+      local joined
+      joined="$(printf '%s, ' "$@")"
+      joined="${joined%, }"
+      success "Enabled: ${joined}"
+      info "Run: ./dvl.sh agent up"
+      ;;
+    disable)
+      if [[ $# -eq 0 ]]; then error "Usage: dvl agent disable <stack...>"; return 1; fi
+      local slug f services
+      for slug in "$@"; do
+        _agent_validate_slug "$slug" || return 1
+      done
+      for slug in "$@"; do
+        f="$(_agent_stack_file "$slug")"
+        if [[ -f "$f" ]]; then
+          # Enumerate services owned by this stack (orphan-safe per plan §9.8)
+          services="$(docker compose -f "$f" config --services 2>/dev/null || true)"
+          if [[ -n "$services" ]]; then
+            # shellcheck disable=SC2086
+            (cd "${DEVILBOX_PATH}" && docker compose -f "${DEVILBOX_PATH}/docker-compose.yml" rm -fsv $services 2>/dev/null || true)
+          fi
+        fi
+        _agent_stacks_list_remove "$slug" || return 1
+      done
+      local joined
+      joined="$(printf '%s, ' "$@")"
+      joined="${joined%, }"
+      success "Disabled: ${joined}"
+      # Re-up remaining stacks (if any) so orphans are pruned cleanly.
+      if [[ -n "$(_agent_stacks_list_read)" ]]; then
+        _agent_export_compose_file
+        (cd "${DEVILBOX_PATH}" && docker compose up -d --remove-orphans)
+      fi
+      ;;
+    list)
+      local enabled available s mark
+      enabled="$(_agent_stacks_list_read)"
+      available="$(_agent_available_stacks)"
+      info "Available agent stacks (compose/docker-compose.override.yml-*):"
+      if [[ -n "$available" ]]; then
+        while IFS= read -r s; do
+          [[ -z "$s" ]] && continue
+          if printf '%s\n' "$enabled" | grep -Fxq -- "$s"; then
+            mark="${GREEN}[enabled] ${NORMAL}"
+          else
+            mark="${DARK_GRAY}[disabled]${NORMAL}"
+          fi
+          printf '  %s %s\n' "$mark" "$s"
+        done <<< "$available"
+      fi
+      if [[ -n "$enabled" ]]; then
+        echo ""
+        info "Enabled order (.dvl/agent-stacks.list):"
+        while IFS= read -r s; do
+          [[ -z "$s" ]] && continue
+          printf '  %s\n' "$s"
+        done <<< "$enabled"
+      else
+        echo ""
+        info "No agent stacks enabled. Use: ./dvl.sh agent enable <stack>"
+      fi
+      ;;
     up|start)
-      info "Starting agentic container..."
-      BaseComposeCommand up -d agentic
+      _agent_export_compose_file
+      local svcs
+      svcs="$(_agent_stacks_list_read | tr '\n' ' ')"
+      info "Bringing up agent stacks:${svcs:+ }${svcs}"
+      (cd "${DEVILBOX_PATH}" && docker compose up -d --remove-orphans "$@")
       ;;
     down|stop)
-      info "Stopping agentic container..."
-      BaseComposeCommand stop agentic
+      _agent_export_compose_file
+      (cd "${DEVILBOX_PATH}" && docker compose down "$@")
       ;;
     restart)
-      BaseComposeCommand restart agentic
+      _agent_export_compose_file
+      (cd "${DEVILBOX_PATH}" && docker compose restart "$@")
       ;;
-    build|pull)
-      info "Pulling devilboxcommunity/agentic:${AGENTIC_SERVER:-latest}..."
-      BaseComposeCommand pull agentic &
-      spinner $!
+    status|ps)
+      _agent_export_compose_file
+      (cd "${DEVILBOX_PATH}" && docker compose ps "$@")
+      ;;
+    logs)
+      _agent_export_compose_file
+      (cd "${DEVILBOX_PATH}" && docker compose logs -f --tail=200 "$@")
       ;;
     shell)
-      BaseComposeCommand exec --user devilbox agentic bash -l
+      _agent_export_compose_file
+      local svc="${1:-agentic}"
+      (cd "${DEVILBOX_PATH}" && docker compose exec --user devilbox "$svc" bash -l)
       ;;
     exec)
       if [[ $# -eq 0 ]]; then error "Usage: dvl agent exec <cmd...>"; return 1; fi
-      BaseComposeCommand exec --user devilbox agentic bash -c "$*"
-      ;;
-    logs)
-      BaseComposeCommand logs -f --tail=200 agentic
-      ;;
-    status|ps)
-      BaseComposeCommand ps agentic
-      ;;
-    tools)
-      # Lists installed CLI tools by reading agentic_tools/ on host
-      local td="${DEVILBOX_PATH}/../docker-agentic/agentic_tools"
-      if [[ ! -d "${td}" ]]; then error "agentic_tools/ not found at ${td}"; return 1; fi
-      ls -1 "${td}" | sort
+      _agent_export_compose_file
+      (cd "${DEVILBOX_PATH}" && docker compose exec --user devilbox agentic bash -c "$*")
       ;;
     auth)
+      _agent_export_compose_file
       local tool="${1:-}"
       if [[ -z "${tool}" ]]; then error "Usage: dvl agent auth <tool-slug>"; return 1; fi
-      # Delegates to OAuth bridge (Wave 5)
       local bridge="${DEVILBOX_PATH}/.devilbox/oauth-bridge.sh"
       if [[ ! -x "${bridge}" ]]; then error "OAuth bridge not installed: ${bridge}"; return 1; fi
       "${bridge}" "${tool}"
       ;;
-    enable)
-      # Convenience: copy override file into place
-      local src="${DEVILBOX_PATH}/compose/docker-compose.override.yml-agentic"
-      local dst="${DEVILBOX_PATH}/docker-compose.override.yml"
-      if [[ -f "${dst}" ]]; then
-        question "Override file already exists at ${dst}. Overwrite? [y/N] "
-        read -r ans; [[ "${ans}" == "y" ]] || return 1
-      fi
-      cp "${src}" "${dst}" && success "Agentic enabled. Run: dvl agent up"
-      ;;
-    disable)
-      local dst="${DEVILBOX_PATH}/docker-compose.override.yml"
-      [[ -f "${dst}" ]] && rm "${dst}" && success "Agentic disabled."
+    tools)
+      local td="${DEVILBOX_PATH}/../docker-agentic/agentic_tools"
+      if [[ ! -d "${td}" ]]; then error "agentic_tools/ not found at ${td}"; return 1; fi
+      ls -1 "${td}" | sort
       ;;
     ""|help|-h|--help)
-      echo "${YELLOW}dvl agent${NORMAL} — control the agentic AI-coding container"
+      echo "${YELLOW}dvl agent${NORMAL} — manage layered agent compose stacks"
       echo ""
       echo "${YELLOW}Subcommands:${NORMAL}"
-      echo "  ${GREEN}enable${NORMAL}       Install compose override (opt-in)"
-      echo "  ${GREEN}disable${NORMAL}      Remove compose override"
-      echo "  ${GREEN}up${NORMAL} (start)   Start the agentic service"
-      echo "  ${GREEN}down${NORMAL} (stop)  Stop the agentic service"
-      echo "  ${GREEN}restart${NORMAL}      Restart the agentic service"
-      echo "  ${GREEN}build${NORMAL} (pull) Pull latest devilboxcommunity/agentic image"
-      echo "  ${GREEN}shell${NORMAL}        Open interactive shell as devilbox user"
-      echo "  ${GREEN}exec${NORMAL} <cmd>   Run a command inside the container"
-      echo "  ${GREEN}logs${NORMAL}         Follow container logs"
-      echo "  ${GREEN}status${NORMAL} (ps)  Show container status"
-      echo "  ${GREEN}tools${NORMAL}        List installed AI CLI tools"
-      echo "  ${GREEN}auth${NORMAL} <tool>  Authenticate a tool via host browser (Wave 5)"
+      echo "  ${GREEN}enable${NORMAL}  <stack...>   Add stack(s) to .dvl/agent-stacks.list"
+      echo "  ${GREEN}disable${NORMAL} <stack...>   Remove stack(s) (tears down their services first)"
+      echo "  ${GREEN}list${NORMAL}                 Show enabled vs available stacks"
+      echo "  ${GREEN}up${NORMAL} (start)           docker compose up -d for layered stacks"
+      echo "  ${GREEN}down${NORMAL} (stop)          docker compose down (layered)"
+      echo "  ${GREEN}restart${NORMAL} [svc...]     docker compose restart"
+      echo "  ${GREEN}status${NORMAL} (ps)          docker compose ps"
+      echo "  ${GREEN}logs${NORMAL} [svc...]        docker compose logs -f --tail=200"
+      echo "  ${GREEN}shell${NORMAL} [svc=agentic]  Open bash in container as devilbox user"
+      echo "  ${GREEN}exec${NORMAL} <cmd>           Run a command in the agentic container"
+      echo "  ${GREEN}auth${NORMAL} <tool-slug>     Authenticate a tool via host OAuth bridge"
+      echo "  ${GREEN}tools${NORMAL}                List installed AI CLI tools"
+      echo ""
+      echo "State : ${DEVILBOX_PATH}/.dvl/agent-stacks.list"
+      echo "Layers: COMPOSE_FILE=docker-compose.yml:compose/docker-compose.override.yml-<slug>:..."
       [[ "${subcmd}" == "" ]] && return 1 || return 0
       ;;
     *)
@@ -2455,4 +2653,7 @@ function Usage {
   esac
 }
 
-main "$@"
+# Only run main when executed directly; allow `source dvl.sh` for testing.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
