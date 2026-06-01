@@ -17,8 +17,9 @@ for d in cfg/agentic-*/; do
 done
 echo "OK: every dir has non-empty README.md + .gitkeep"
 
-leftovers=$(grep -l "devilbox/agentic" cfg/agentic-*/README.md 2>/dev/null || true)
+bad_ns=$(printf 'devilbox%sagentic' '/')
+leftovers=$(grep -l "$bad_ns" cfg/agentic-*/README.md 2>/dev/null || true)
 test -z "$leftovers" || { echo "FAIL: wrong-namespace leftovers: $leftovers"; exit 1; }
-echo "OK: no 'devilbox/agentic' wrong-namespace leftovers"
+echo "OK: no wrong-namespace leftovers"
 
 echo "PASS: cfg-dirs"

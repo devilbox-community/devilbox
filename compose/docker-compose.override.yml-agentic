@@ -5,6 +5,8 @@ services:
     image: devilboxcommunity/agentic:${AGENTIC_SERVER:-latest}
     hostname: agentic
     restart: unless-stopped
+    tty: true
+    stdin_open: true
     env_file:
       - ./.env
     environment:
