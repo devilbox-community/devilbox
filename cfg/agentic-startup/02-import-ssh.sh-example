@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -eu
+
+SRC=/home/devilbox/.host-ssh
+DST=/home/devilbox/.ssh
+
+if [ -d "$SRC" ]; then
+  mkdir -p "$DST"
+  chmod 700 "$DST"
+  cp -a "$SRC"/. "$DST"/ 2>/dev/null || true
+  find "$DST" -type f -exec chmod 600 {} +
+  find "$DST" -type d -exec chmod 700 {} +
+  chown -R devilbox:devilbox "$DST"
+fi

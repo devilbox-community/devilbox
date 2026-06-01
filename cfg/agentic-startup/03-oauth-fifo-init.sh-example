@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eu
+
+FIFO_DIR=/var/run/dvl-oauth
+FIFO_PATH="$FIFO_DIR/url"
+
+mkdir -p "$FIFO_DIR"
+chown devilbox:devilbox "$FIFO_DIR" 2>/dev/null || true
+
+if [ ! -p "$FIFO_PATH" ]; then
+  rm -f "$FIFO_PATH"
+  mkfifo "$FIFO_PATH"
+fi
+chown devilbox:devilbox "$FIFO_PATH" 2>/dev/null || true
+chmod 660 "$FIFO_PATH"
