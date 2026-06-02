@@ -4,238 +4,188 @@ title: "Work inside the PHP container"
 
 # Work inside the PHP container
 
-The Devilbox allows you to completely work inside the PHP container (no
-matter what version), instead of your host operating system.
+Use the PHP container as your project shell. It has the same mounted
+project files, the same service hostnames, and the toolchain expected by
+Devilbox workflows.
 
-This brings a lot of advantages, such as that you don't have to install
-any development tool on your OS or if you are on Windows, you get a full
-blown Linux environment.
+## Enter PHP
 
-Additionally, special port-bindings and forwards are in place that
-allows you to even interchangably work locally or inside the container
-without having to alter any php config for database and other
-connections.
+From the Devilbox repository root:
 
-<div class="seealso">
-
-`available-tools`
-
-</div>
-
-
-## Enter the container
-
-Entering the computer is fairly simple. The Devilbox ships with two
-scripts to do that. One for Linux and MacOS (`shell.sh`) and another one
-for Windows (`shell.bat`).
-
-### Entering from Linux or MacOS: `shell.sh`
-
-``` bash
-# Navigate to the Devilbox directory
-host> cd /path/to/devilbox
-
-# Run provided script
-host> ./shell.sh
-
-# Now you are inside the PHP Linux container
-devilbox@php-7.0.19 in /shared/httpd $
+```bash
+./dvl.sh up php
+./dvl.sh shell
 ```
 
-### Entering from Windows: `shell.bat`
+`./dvl.sh shell [php-version]` opens an interactive shell as the
+`devilbox` user. It auto-detects `.devilbox.yaml` from the current
+project path when possible.
 
-``` bash
-# Navigate to the Devilbox directory
-C:/> cd C:/Users/user1/devilbox
+Examples:
 
-# Run provided script
-C:/Users/user1/devilbox> shell.bat
-
-# Now you are inside the PHP Linux container
-devilbox@php-7.0.19 in /shared/httpd $
+```bash
+./dvl.sh shell
+./dvl.sh shell php82
+./dvl.sh shell php84
 ```
 
-## Inside the container
+:::tip
+See the full [DVL CLI reference](/intermediate/dvl-cli/) for every
+subcommand and alias.
+:::
 
-### `devilbox` user
+## Run one command without entering
 
-By using the provided scripts to enter the container you will become the
-user `devilbox`. This user will have the same uid and gid as the user
-from your host operating system.
+Use `exec` for short tasks:
 
-So no matter what files or directories you create inside the container,
-they will have the same permissions and uid/gid set your host operating
-system. This of course also works the other way round.
-
-The uid and gid mappings are controlled via two `.env` variables called
-`env-new-uid` and `env-new-gid`
-
-<div class="seealso">
-
-If you want to find out more about synronized container permissions read
-up here: `syncronize-container-permissions`
-
-</div>
-
-### `root` user
-
-Sometimes however it is also necessary to do some actions that require
-super user privileges. You can always become root inside the container
-by either impersonating it or by using `sudo` to issue commands.
-
-By default `sudo` is configured to be used without passwords, so you can
-simply do the following:
-
-``` bash
-# As user devilbox inside the container
-devilbox@php-7.0.19 in /shared/httpd $ sudo su -
-
-# You are now the root user
-root@php-7.0.19 in /shared/httpd $
+```bash
+./dvl.sh exec "php -v"
+./dvl.sh exec "composer --version"
 ```
 
-You can also use `sudo` to run commands with root privileges without
-having to become root first.
+Dedicated wrappers are better for common project commands:
 
-``` bash
-# As user devilbox inside the container
-devilbox@php-7.0.19 in /shared/httpd $ sudo apt update
-devilbox@php-7.0.19 in /shared/httpd $ sudo apt install nmap
+```bash
+./dvl.sh composer install
+./dvl.sh magento cache:clean
+./dvl.sh magerun cache:status
 ```
+
+## Work in a project
+
+Projects live under `data/www` on the host and `/shared/httpd` in PHP.
+
+```bash
+cd data/www/my-project
+../../../dvl.sh shell
+```
+
+Inside the container:
+
+```bash
+cd /shared/httpd/my-project
+composer install
+npm install
+npm run build
+```
+
+If you use the global installer symlink, the host command is shorter:
+
+```bash
+cd data/www/my-project
+dvl shell
+```
+
+## Magento workflow
+
+For Magento projects, prefer the DVL wrappers from the host:
+
+```bash
+./dvl.sh composer install
+./dvl.sh magento setup:upgrade
+./dvl.sh magento cache:clean
+./dvl.sh magento indexer:reindex
+```
+
+Inside the PHP shell, direct commands also work:
+
+```bash
+php bin/magento cache:clean
+php bin/magento setup:di:compile
+composer require vendor/package
+```
+
+## Node workflow
+
+Use the PHP container when your selected PHP image contains the required
+Node tooling:
+
+```bash
+npm install
+npm run dev
+npm run build
+```
+
+For long-running Vite, Next.js, or frontend dev servers, bind them to all
+interfaces so the host can reach them:
+
+```bash
+npm run dev -- --host 0.0.0.0
+```
+
+Then open the exposed host port configured for that project or stack.
+
+## User and permissions
+
+The shell runs as `devilbox`, mapped to `NEW_UID` and `NEW_GID` from
+`.env`. Files created in the container should be editable on the host.
+
+Check the mapping:
+
+```bash
+id
+touch /shared/httpd/permission-check.txt
+exit
+ls -l data/www/permission-check.txt
+rm data/www/permission-check.txt
+```
+
+If ownership is wrong, update `.env`:
+
+```dotenv
+NEW_UID=501
+NEW_GID=20
+```
+
+Then recreate containers:
+
+```bash
+./dvl.sh down
+./dvl.sh up
+```
+
+## Service hostnames
+
+Use service names from inside PHP:
+
+| Service | Hostname | Typical port |
+| --- | --- | --- |
+| HTTPD | `httpd` | `80` / `443` |
+| MySQL/MariaDB | `mysql` | `3306` |
+| Redis | `redis` | `6379` |
+| OpenSearch | `opensearch` | `9200` |
+| DNS | `bind` | `53` |
+
+Example database check:
+
+```bash
+mysql -h mysql -u root -p
+```
+
+## Become root only when needed
+
+The `devilbox` user can use passwordless `sudo` in the PHP image:
+
+```bash
+sudo apt update
+sudo apt install -y nmap
+```
+
+:::caution
+Avoid creating project files as root. If you must run a privileged
+command, switch back to `devilbox` before writing application files.
+:::
 
 ## Leave the container
 
-When you are inside the container and want to return to your host
-operating, just type `exit` and you are out.
+Exit the shell:
 
-``` bash
-# As user devilbox inside the container
-devilbox@php-7.0.19 in /shared/httpd $ exit
-
-# You are now back on your host operating system
-host>
+```bash
+exit
 ```
 
-## Host to Container mappings
+Stop the stack when finished:
 
-This section will give you an idea that there is actually no difference
-from inside the container and on your host operating system. Directory
-permissions, IP addresses, ports and DNS entries are fully syncronized
-allowing you to switch between container and host without having to
-change any settings.
-
-### File and directory Permissions
-
-The username inside the container (`devilbox`) might be different from
-your local host operating system username, however its actual uid and
-gid will match. This is to ensure file and directory permissions are
-synronized inside and outside the container and no matter from which
-side you create files and directories, it will always look as if they
-are owned by your system user.
-
-The uid and gid mappings are controlled via two `.env` variables called
-`env-new-uid` and `env-new-gid`
-
-### Directory mappings
-
-One thing you should understand is the relation between the directories
-on your host operating system and the corresponding directory inside the
-PHP container.
-
-The location of the data directory (`env-httpd-datadir`) on your host
-computer is controlled via the `HOST_PATH_HTTPD_DATADIR` variable inside
-the `.env` file. No matter what location you set it to, inside the
-container it will always be mapped to `/shared/httpd`.
-
-See the following table for a few examples:
-
-|          | Host operating system | Inside PHP container |
-|----------|-----------------------|----------------------|
-| Data dir | `./www/data`          | `/shared/httpd`      |
-| Data dir | `/home/user1/www`     | `/shared/httpd`      |
-| Data dir | `/var/www`            | `/shared/httpd`      |
-
-### IP address mappings
-
-The following table shows a mapping of IP addresses and hostnames. In
-other words, when you are inside the PHP container, you can reach the
-services via the below defined IP addresses or hostnames:
-
-| Container                 | Name  | Hostname | IP Address     |
-|---------------------------|-------|----------|----------------|
-| DNS                       | bind  | bind     | 172.16.238.100 |
-| PHP                       | php   | php      | 172.16.238.10  |
-| Apache, Nginx             | httpd | httpd    | 172.16.238.11  |
-| MySQL, MariaDB, PerconaDB | mysql | mysql    | 172.16.238.12  |
-| PostgreSQL                | pgsql | pgsql    | 172.16.238.13  |
-| Redis                     | redis | redis    | 172.16.238.14  |
-| Memcached                 | memcd | memcd    | 172.16.238.15  |
-| MongoDB                   | mongo | mongo    | 172.16.238.16  |
-
-> [!NOTE]
-> It is recommended to use hostnames as they can be remembered much
-> easiert.
-
-An example to access the MySQL database from within the PHP container:
-
-``` bash
-# Access MySQL from your host operating system
-host> mysql -h 127.0.0.1 -u root -p
-
-# Access MySQL from within the PHP container
-devilbox@php-7.0.19 in /shared/httpd $ mysql -h mysql -u root -p
+```bash
+./dvl.sh down
 ```
-
-So when setting up a configuration file from your PHP project you would
-for example use `mysql` as the host for your MySQL database connection:
-
-``` php
-<?php
-// MySQL server connection
-mysql_host = 'mysql';
-mysql_port = '3306';
-mysql_user = 'someusername';
-mysql_pass = 'somepassword';
-?>
-```
-
-### Port mappings
-
-By default, ports are also synronized between host operating system (the
-ports that are exposed) and the ports within the PHP container. This is
-however also configurable inside the `.env` file.
-
-| Service      | Port from host os | Port from within PHP container |
-|--------------|-------------------|--------------------------------|
-| PHP          | NA                | `9000`                         |
-| Apache/Nginx | `80`              | `80`                           |
-| MySQL        | `3306`            | `3306`                         |
-| PostgreSQL   | `5432`            | `5432`                         |
-| Redis        | `6379`            | `6379`                         |
-| Memcached    | `11211`           | `11211`                        |
-| MongoDB      | `27017`           | `27017`                        |
-
-### DNS mappings
-
-All project DNS records are also available from inside the PHP container
-independent of the value of `env-tld-suffix`.
-
-The PHP container is hooked up by default to the bundled DNS server and
-makes use `setup-auto-dns`.
-
-<div class="seealso">
-
-You can achieve the same on your host operating system by explicitly
-enabling auto-dns. See also: `setup-auto-dns`.
-
-</div>
-
-## Checklist
-
-1.  You know how to enter the PHP container
-2.  You know how to become root inside the PHP container
-3.  You know how to leave the container
-4.  You know that file and directory permissions are synronized
-5.  You know by what hostnames you can reach a specific service
-6.  You know that project urls are available inside the container and on
-    your host

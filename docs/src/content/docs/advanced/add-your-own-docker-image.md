@@ -4,160 +4,209 @@ title: "Add your own Docker image"
 
 # Add your own Docker image
 
-This section is all about customizing the Devilbox and its Docker images
-specifically to your needs.
+Add custom services with Compose override files. Keep the base
+`docker-compose.yml` unchanged.
 
+## Choose an override strategy
 
-## Prerequisites
+Use one of these approaches:
 
-The new Docker image definition will be added to a file called
-`docker-compose.override.yml`. So before going any further, read the
-following section that shows you how to create this file for the
-Devilbox as well as what pitfalls to watch out for.
+1. Add a local `docker-compose.override.yml` in the repository root.
+2. Copy or create a reusable file under `compose/docker-compose.override.yml-*`.
+3. Enable optional agent-style stacks through `CONTAINERS_CONFIG_OPTIONAL`.
 
-<div class="seealso">
+:::tip
+Existing optional containers are documented in
+[Enable all container](/custom-container/enable-all-container/). Agentic
+tool stacks are covered by
+[Agentic tools toggle](/getting-started/agentic-tools-toggle/).
+:::
 
-`docker-compose-override-yml`
+## Minimal service
 
-</div>
+Create `docker-compose.override.yml`:
 
-## What information do you need?
-
-1.  `<name>` - A name, which you can use to refer in the
-    `docker-compose` command
-2.  `<image-name>` - The Docker image name itself
-3.  `<image-version>` - The Docker image tag
-4.  `<unused-ip-address>` - An unused IP address from the devilbox
-    network (found inside `docker-compose.yml`)
-
-## How to add a new service?
-
-### Generic example
-
-#### A single new service
-
-Open `docker-compose.override.yml` with your favourite editor and paste
-the following snippets into it.
-
-``` yaml
-version: '2.1'
+```yaml
 services:
-  # Your custom Docker image here:
-  <name>:
-    image: <image-name>:<image-version>
-    networks:
-      app_net:
-        ipv4_address: <unused-ip-address>
-    # For ease of use always automatically start these:
-    depends_on:
-      - bind
-      - php
-      - httpd
-  # End of custom Docker image
-```
-
-> [!NOTE]
-> \* `<name>` has to be replaced with any name of your choice \*
-> `<image-name>` has to be replaced with the name of the Docker image \*
-> `<image-version>` has to be replaced with the tag of the Docker image
-> \* `<unused-ip-address>` has to be replaced with an unused IP address
-
-#### Two new services
-
-``` yaml
-version: '2.1'
-services:
-  # Your first custom Docker image here:
-  <name1>:
-    image: <image1-name>:<image1-version>
-    networks:
-      app_net:
-        ipv4_address: <unused-ip-address1>
-    # For ease of use always automatically start these:
-    depends_on:
-      - bind
-      - php
-      - httpd
-  # End of first custom Docker image
-  # Your second custom Docker image here:
-  <name2>:
-    image: <image2-name>:<image2-version>
-    networks:
-      app_net:
-        ipv4_address: <unused-ip-address2>
-    # For ease of use always automatically start these:
-    depends_on:
-      - bind
-      - php
-      - httpd
-  # End of second custom Docker image
-```
-
-> [!NOTE]
-> \* `<name1>` has to be replaced with any name of your choice \*
-> `<image1-name>` has to be replaced with the name of the Docker image
-> \* `<image1-version>` has to be replaced with the tag of the Docker
-> image \* `<unused-ip-address1>` has to be replaced with an unused IP
-> address
-
-> [!NOTE]
-> \* `<name2>` has to be replaced with any name of your choice \*
-> `<image2-name>` has to be replaced with the name of the Docker image
-> \* `<image2-version>` has to be replaced with the tag of the Docker
-> image \* `<unused-ip-address2>` has to be replaced with an unused IP
-> address
-
-### CockroachDB example
-
-Gather the requirements for the
-`docker image cockroach`
-Docker image:
-
-1.  Name: `cockroach`
-2.  Image: `cockroachdb/cockroach`
-3.  Tag: `latest`
-4.  IP: `172.16.238.240`
-
-Now add the information to `docker-compose.override.yml`:
-
-``` yaml
-version: '2.1'
-services:
-  # Your custom Docker image here:
-  cockroach:
-    image: cockroachdb/cockroach:latest
-    command: start --insecure
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
     networks:
       app_net:
         ipv4_address: 172.16.238.240
-    # For ease of use always automatically start these:
     depends_on:
       - bind
-      - php
       - httpd
-  # End of custom Docker image
+      - php
 ```
 
-## How to start the new service?
+Start it:
 
-The following will bring up your service including all of its dependent
-services, as defined with `depends-on` (bind, php and httpd). You need
-to replace `<name>` with the name you have chosen.
-
-``` bash
-host> docker-compose up <name>
+```bash
+docker compose up -d mailpit
 ```
 
-In the example of Cockroach DB the command would look like this
+Open the UI:
 
-``` bash
-host> docker-compose up cockroach
+```bash
+open http://127.0.0.1:8025
 ```
 
-## Further reading
+:::caution
+Pick an unused IP from the Devilbox `app_net` subnet in `docker-compose.yml`.
+Do not reuse an address already assigned to a core service.
+:::
 
-<div class="seealso">
+## Build your own image
 
-\* `docker-compose-override-yml` \* `overwrite-existing-docker-image`
+Create a service directory:
 
-</div>
+```bash
+mkdir -p docker/custom-node
+```
+
+Add `docker/custom-node/Dockerfile`:
+
+```dockerfile
+FROM node:22-alpine
+
+RUN apk add --no-cache bash git openssh-client
+
+WORKDIR /workspace
+
+CMD ["sleep", "infinity"]
+```
+
+Add the service to `docker-compose.override.yml`:
+
+```yaml
+services:
+  custom-node:
+    build:
+      context: ./docker/custom-node
+    working_dir: /shared/httpd
+    volumes:
+      - ${HOST_PATH_HTTPD_DATADIR:-./data/www}:/shared/httpd${MOUNT_OPTIONS:-}
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.241
+    depends_on:
+      - bind
+      - httpd
+      - php
+```
+
+Build and start it:
+
+```bash
+docker compose build custom-node
+docker compose up -d custom-node
+```
+
+Enter the container:
+
+```bash
+docker compose exec custom-node bash
+```
+
+## Debian-based example
+
+Use Debian when you need glibc or apt packages:
+
+```dockerfile
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl git \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+CMD ["sleep", "infinity"]
+```
+
+Reference it from Compose the same way:
+
+```yaml
+services:
+  custom-debian:
+    build:
+      context: ./docker/custom-debian
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.242
+```
+
+## Reusable override files
+
+For a repeatable stack, store the service as
+`compose/docker-compose.override.yml-mytool`:
+
+```yaml
+services:
+  mytool:
+    image: alpine:3.20
+    command: ["sleep", "infinity"]
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.243
+```
+
+Activate it with Compose directly:
+
+```bash
+COMPOSE_FILE=docker-compose.yml:compose/docker-compose.override.yml-mytool \
+  docker compose up -d mytool
+```
+
+This keeps root-level local overrides clean and makes the stack easy to
+share with a team.
+
+## Optional container configuration
+
+`env-example` defines the default and optional container roster:
+
+```dotenv
+CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+```
+
+The installer reads those values to export `DEVILBOX_CONTAINERS` into
+your shell profile. Add your own optional stack there only when it is a
+first-class service you want `dvl up` to start by default.
+
+:::note
+The `dvl agent` workflow uses the same override-file idea. Enabled agent
+stacks are stored in `.dvl/agent-stacks.list` and merged through
+`COMPOSE_FILE` at runtime.
+:::
+
+## Validate the service
+
+Render the merged Compose config:
+
+```bash
+docker compose config
+```
+
+Start only the custom service and its dependencies:
+
+```bash
+docker compose up -d mytool
+docker compose ps mytool
+```
+
+Show logs:
+
+```bash
+docker compose logs -f --tail=100 mytool
+```
+
+Remove it when done:
+
+```bash
+docker compose stop mytool
+docker compose rm -f mytool
+```

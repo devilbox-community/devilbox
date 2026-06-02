@@ -2,45 +2,88 @@
 title: "Host address alias on MacOS"
 ---
 
-orphan  
-
 # Host address alias on MacOS
 
-In order for Xdebug to work on Docker for MacOS, the container needs a
-well known IP address for its Xdebug remote host. This is achieved by
-adding an alias to the loopback device.
+Modern Docker Desktop for macOS already provides the host alias Xdebug
+needs. Do not add a loopback alias unless you have a custom Docker engine
+that lacks `host.docker.internal`.
 
+## Default macOS behavior
 
-## One-time alias
+Inside a Devilbox PHP container, the hostname below resolves to your Mac:
 
-In order to create this alias for testing purposes, which does not
-survive reboots, you can issue the command manually with `sudo` or root
-privileges.
-
-``` bash
-host> sudo ifconfig lo0 alias 10.254.254.254
+```text
+host.docker.internal
 ```
 
-## Boot persistent alias
+Use it as the Xdebug 3 client host:
 
-If you want to have this alias persistent across reboot, you need to
-download and enable a `plist` file:
-
-``` bash
-# Download the plist into the correct location
-host> sudo curl -o \
-        /Library/LaunchDaemons/org.devilbox.docker_10254_alias.plist \
-        https://raw.githubusercontent.com/devilbox/xdebug/master/osx/org.devilbox.docker_10254_alias.plist
-
-# Enable without reboot
-host> sudo launchctl load /Library/LaunchDaemons/org.devilbox.docker_10254_alias.plist
+```ini
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
 ```
 
-<div class="seealso">
+Start PHP and enter the container:
 
-\* `configure-php-xdebug` \*
-`github devilbox xdebug on mac`
-\*
-`github original xdebug on mac`
+```bash
+./dvl.sh up php
+./dvl.sh shell
+```
 
-</div>
+Verify resolution:
+
+```bash
+getent hosts host.docker.internal || ping -c1 host.docker.internal
+```
+
+:::note
+Docker Desktop injects this name into container DNS. The IP can change,
+so configure the hostname, not a hard-coded address.
+:::
+
+## When a custom alias is still relevant
+
+You only need a custom alias when all of these are true:
+
+1. You are not using Docker Desktop on macOS.
+2. `host.docker.internal` does not resolve inside the PHP container.
+3. Your Docker engine cannot add the host gateway name automatically.
+
+For Linux Docker Engine setups, use the Linux Xdebug guides instead:
+
+- [Linux PhpStorm](/intermediate/configure-php-xdebug/linux/phpstorm/)
+- [Linux VS Code](/intermediate/configure-php-xdebug/linux/vscode/)
+- [Linux Sublime](/intermediate/configure-php-xdebug/linux/sublime/)
+
+## Check your active Xdebug config
+
+Inside the PHP container:
+
+```bash
+php -i | grep -E 'xdebug.client_host|xdebug.client_port|xdebug.mode'
+```
+
+Expected host value:
+
+```text
+xdebug.client_host => host.docker.internal
+```
+
+## Troubleshooting
+
+If your IDE does not receive a connection:
+
+1. Confirm the IDE listens on port `9003`.
+2. Confirm Xdebug mode includes `debug`.
+3. Confirm macOS firewall rules allow incoming IDE connections.
+4. Restart the PHP container after changing Xdebug settings.
+
+```bash
+./dvl.sh restart php
+```
+
+:::caution
+Old `ifconfig lo0 alias` recipes are no longer the default macOS path.
+Prefer Docker's built-in host alias so the setup survives network and
+Docker Desktop changes.
+:::

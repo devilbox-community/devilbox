@@ -4,147 +4,182 @@ title: "Setup Auto DNS"
 
 # Setup Auto DNS
 
-If you don't want to add host records manually for every project, you
-can also use the bundled DNS server and use it's DNS catch-all feature
-to have all DNS records automatically available.
+Use the bundled `bind` container to resolve every project under your
+`TLD_SUFFIX`. This avoids adding each hostname to `/etc/hosts`.
 
-> [!IMPORTANT]
-> By default, the DNS server is set to listen on `1053` to avoid port
-> collisions during startup. You need to change it to `53` in `.env` via
-> `env-host-port-bind`.
+## How it works
 
+The Devilbox DNS service runs in the `dvlbox`/`bind` container and serves
+wildcard records for your configured suffix. If `.env` has
+`TLD_SUFFIX=loc`, names like these resolve automatically:
 
-## Native Docker
-
-The webserver as well as the DNS server must be available on `127.0.0.1`
-or on all interfaces on `0.0.0.0`. Additionally the DNS server port must
-be set to `53` (it is not by default).
-
-- Ensure `env-local-listen-addr` is set accordingly
-- Ensure `env-host-port-bind` is set accordingly
-- No other DNS resolver should listen on `127.0.0.1:53`
-
-### Prerequisites
-
-First ensure that `env-local-listen-addr` is either empty or listening
-on `127.0.0.1`.
-
-``` bash
-host> cd path/to/devilbox
-host> vi .env
-LOCAL_LISTEN_ADDR=
+```text
+project.loc
+www.project.loc
+admin.project.loc
 ```
 
-Then you need to ensure that `env-host-port-bind` is set to `53`.
+The DNS answer points at the Devilbox web entrypoint on your host.
 
-``` bash
-host> cd path/to/devilbox
-host> vi .env
+:::caution
+Do not use `.local` on macOS. Apple reserves it for Multicast DNS.
+Prefer `loc`, `lvh.me`, `dvl.to`, or another development-only suffix.
+:::
+
+## Configure Devilbox
+
+Edit `.env`:
+
+```bash
+nano .env
+```
+
+Use a suffix and bind the DNS service to port `53`:
+
+```dotenv
+TLD_SUFFIX=loc
+LOCAL_LISTEN_ADDR=127.0.0.1:
 HOST_PORT_BIND=53
 ```
 
-Before starting up the Devilbox, ensure that port `53` is not already
-used.
+Start DNS:
 
-``` bash
-host> netstat -an | grep -E 'LISTEN\s*$'
-tcp        0      0 127.0.0.1:53            0.0.0.0:*               LISTEN
-tcp        0      0 127.0.0.1:43477         0.0.0.0:*               LISTEN
-tcp        0      0 127.0.0.1:50267         0.0.0.0:*               LISTEN
+```bash
+./dvl.sh up bind
 ```
 
-If you see port `53` already being used as in the above example, ensure
-to stop any DNS resolver, otherwise it does not work.
+Verify the container is running:
 
-The output should look like this (It is only important that there is no
-`:53`.
-
-``` bash
-host> netstat -an | grep -E 'LISTEN\s*$'
-tcp        0      0 127.0.0.1:43477         0.0.0.0:*               LISTEN
-tcp        0      0 127.0.0.1:50267         0.0.0.0:*               LISTEN
+```bash
+docker compose ps bind
+docker compose logs --tail=50 bind
 ```
 
-### Docker on Linux
+:::note
+`env-example` defaults `HOST_PORT_BIND` to `1053` to avoid startup
+collisions. Host operating systems only use it as a resolver when you
+map DNS to port `53`.
+:::
 
-Your DNS server IP address is `127.0.0.1`.
+## macOS resolver
 
-<div class="seealso">
+Create a per-suffix resolver file:
 
-`howto-add-custom-dns-server-on-linux`
+```bash
+sudo mkdir -p /etc/resolver
+echo "nameserver 127.0.0.1" | sudo tee /etc/resolver/loc
+```
 
-</div>
+Flush the cache:
 
-### Docker for Mac
+```bash
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
 
-Your DNS server IP address is `127.0.0.1`.
+Verify:
 
-<div class="seealso">
+```bash
+scutil --dns | grep -A3 'domain : loc'
+dig project.loc @127.0.0.1
+ping -c1 project.loc
+```
 
-`howto-add-custom-dns-server-on-mac`
+If you only need one hostname, use the manual hosts-file flow instead:
+[Add project hosts entry on MacOS](/howto/dns/add-project-dns-entry-on-mac/).
 
-</div>
+## Linux with NetworkManager
 
-> [!IMPORTANT]
-> The <span class="title-ref">.local</span> TLD will not resolve on
-> MacOs, due to Apple's use of Multicast DNS for this TLD. If you want
-> to use <span class="title-ref">.local</span>, you will need to specify
-> each domain in <span class="title-ref">/etc/hosts</span> manually.
+Tell NetworkManager to use Devilbox DNS for the suffix:
 
-### Docker for Windows
+```bash
+nmcli connection show --active
+nmcli connection modify "Wired connection 1" \
+  +ipv4.dns 127.0.0.1 \
+  +ipv4.dns-search loc
+nmcli connection up "Wired connection 1"
+```
 
-Your DNS server IP address is `127.0.0.1`.
+If your connection name differs, replace `Wired connection 1` with the
+active name from the first command.
 
-<div class="seealso">
+Verify:
 
-`howto-add-custom-dns-server-on-win`
+```bash
+resolvectl query project.loc || getent hosts project.loc
+```
 
-</div>
+## Linux with systemd-resolved
 
-## Docker Toolbox
+Create a dedicated resolved drop-in:
 
-<div class="seealso">
+```bash
+sudo mkdir -p /etc/systemd/resolved.conf.d
+sudo tee /etc/systemd/resolved.conf.d/devilbox.conf >/dev/null <<'EOF'
+[Resolve]
+DNS=127.0.0.1
+Domains=~loc
+EOF
+```
 
-`howto-docker-toolbox-and-the-devilbox`
+Restart the resolver:
 
-</div>
+```bash
+sudo systemctl restart systemd-resolved
+```
 
-This part applies equally for Docker Toolbox on MacOS and on Windows:
+Verify:
 
-### Prerequisites
+```bash
+resolvectl dns
+resolvectl domain
+resolvectl query project.loc
+```
 
-- `env-local-listen-addr` must be empty in order to listen on all
-  interfaces
-- `env-host-port-bind` must be set to `53`
+## Port conflicts
 
-You need to create three port-forwards to make the DNS and web server
-available on your host os:
+If `./dvl.sh up bind` fails, another resolver already owns port `53`.
+Find it:
 
-- Port `80` from the Docker Toolbox virtual machine must be
-  port-forwarded to `127.0.0.1:80` on your host os
-- Port `443` from the Docker Toolbox virtual machine must be
-  port-forwarded to `127.0.0.1:443` on your host os
-- Port `53` from the Docker Toolbox virtual machine must be
-  port-forwarded to `127.0.0.1:53` on your host os
+```bash
+sudo lsof -nP -iUDP:53 -iTCP:53
+```
 
-Assuming the Docker Toolbox IP is `192.168.99.100` your forwards must be
-as follows:
+Stop the conflicting service or keep `HOST_PORT_BIND=1053` and query it
+manually:
 
-| From IP        | From port | To IP     | To port |
-|----------------|-----------|-----------|---------|
-| 192.168.99.100 | 53        | 127.0.0.1 | 53      |
-| 192.168.99.100 | 80        | 127.0.0.1 | 80      |
-| 192.168.99.100 | 443       | 127.0.0.1 | 443     |
+```bash
+dig project.loc @127.0.0.1 -p 1053
+```
 
-<div class="seealso">
+:::danger
+Do not disable your system resolver unless you understand the impact.
+Prefer a per-domain resolver on macOS or a routed domain with
+systemd-resolved.
+:::
 
-\* `howto-ssh-port-forward-on-docker-toolbox-from-host` \*
-`howto-find-docker-toolbox-ip-address`
+## Change the suffix
 
-</div>
+When `TLD_SUFFIX` changes, update both `.env` and the operating-system
+resolver config.
 
-### Actual setup
+For macOS, replace the resolver file name:
 
-> [!IMPORTANT]
-> After settings this up, follow the above guides for **Docker for Mac**
-> or **Docker for Windows** to finish the setup.
+```bash
+sudo rm -f /etc/resolver/loc
+echo "nameserver 127.0.0.1" | sudo tee /etc/resolver/test
+```
+
+Restart DNS:
+
+```bash
+./dvl.sh restart bind
+```
+
+## Checklist
+
+1. `.env` has `TLD_SUFFIX=loc` or your chosen suffix.
+2. `.env` has `HOST_PORT_BIND=53` for OS resolver integration.
+3. `./dvl.sh up bind` starts successfully.
+4. The host OS sends that suffix to `127.0.0.1`.
+5. `project.<suffix>` resolves before opening it in the browser.

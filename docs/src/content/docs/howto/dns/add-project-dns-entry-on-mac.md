@@ -2,100 +2,95 @@
 title: "Add project hosts entry on MacOS"
 ---
 
-orphan  
-
 # Add project hosts entry on MacOS
 
-On MacOS, custom DNS entries can be added to the `/etc/hosts` and will
-take precedence over the same entries provided by any DNS server.
+macOS resolves names from `/etc/hosts` before DNS. Use it for one-off
+project names, or use Devilbox auto DNS for every project under your
+`TLD_SUFFIX`.
 
+:::tip
+For wildcard project DNS, configure [automatic DNS](/intermediate/setup-auto-dns/)
+once instead of editing `/etc/hosts` per project.
+:::
 
-## Assumption
+## Example project names
 
-In order to better illustrate the process, we are going to use two
-projects as an example. See the following table for project directories
-and `env-tld-suffix`.
+Assume `.env` uses `TLD_SUFFIX=loc` and you have these project folders:
 
-| Project directory | TLD_SUFFIX | Project URL                | Required DNS name   |
-|-------------------|------------|----------------------------|---------------------|
-| project-1         | `loc`      | <http://project-1.loc>     | `project-1.loc`     |
-| www.project-1     | `loc`      | <http://www.project-1.loc> | `www.project-1.loc` |
+| Project directory | URL | Hostname to add |
+| --- | --- | --- |
+| `project-1` | `http://project-1.loc` | `project-1.loc` |
+| `www.project-1` | `http://www.project-1.loc` | `www.project-1.loc` |
 
-### Docker for Mac
+Use `127.0.0.1` with Docker Desktop on macOS.
 
-When using Docker for Mac you can use `127.0.0.1` for the IP address.
+## Add entries
 
-1.  Open `/etc/hosts` with admistrative privileges or via `sudo` with
-    your favorite editor
+Open the hosts file:
 
-    ``` bash
-    host> sudo vi /etc/hosts
-    ```
+```bash
+sudo nano /etc/hosts
+```
 
-2.  Add DNS records for the above listed examples:
+Add one line per hostname:
 
-    ``` bash
-    127.0.0.1  project-1.loc
-    127.0.0.1  www.project-1.loc
-    ```
+```text
+127.0.0.1  project-1.loc
+127.0.0.1  www.project-1.loc
+```
 
-3.  Safe the file and verify the DNS entries with the `ping` command
+Save the file, then flush the resolver cache:
 
-    ``` bash
-    host> ping -c1 project-1.loc
+```bash
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
 
-    PING project-1.loc (127.0.0.1) 56(84) bytes of data.
-    64 bytes from localhost (127.0.0.1): icmp_seq=1 ttl=64 time=0.066 ms
-    ```
+## Verify
 
-    ``` bash
-    host> ping -c1 www.project-1.loc
+Check that macOS returns loopback:
 
-    PING www.project-1.loc (127.0.0.1) 56(84) bytes of data.
-    64 bytes from localhost (127.0.0.1): icmp_seq=1 ttl=64 time=0.066 ms
-    ```
+```bash
+ping -c1 project-1.loc
+ping -c1 www.project-1.loc
+```
 
-### Docker Toolbox
+Expected result:
 
-When using the Docker Toolbox, you cannot use `127.0.0.1` for DNS
-entries, but rather need to use the IP address of the Docker Toolbox
-machine instead.
+```text
+PING project-1.loc (127.0.0.1): 56 data bytes
+64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.050 ms
+```
 
-<div class="seealso">
+Open the site:
 
-`howto-find-docker-toolbox-ip-address`
+```bash
+open http://project-1.loc
+```
 
-</div>
+## Use auto DNS instead
 
-For this example we will assume the Docker Toolbox IP address is
-`192.168.99.100`.
+Start the DNS container and configure macOS once:
 
-1.  Open `/etc/hosts` with admistrative privileges or via `sudo` with
-    your favorite editor
+```bash
+./dvl.sh up bind
+sudo mkdir -p /etc/resolver
+echo "nameserver 127.0.0.1" | sudo tee /etc/resolver/loc
+```
 
-    ``` bash
-    host> sudo vi /etc/hosts
-    ```
+Now every `*.loc` name resolves through Devilbox.
 
-2.  Add DNS records for the above listed examples:
+:::caution
+Avoid `.local` for Devilbox projects on macOS. Apple reserves it for
+Multicast DNS, so normal resolver rules are not reliable.
+:::
 
-    ``` bash
-    192.168.99.100  project-1.loc
-    192.168.99.100  www.project-1.loc
-    ```
+## Remove an entry
 
-3.  Safe the file and verify the DNS entries with the `ping` command
+Edit the file again, delete the matching line, and flush the cache:
 
-    ``` bash
-    host> ping -c1 project-1.loc
-
-    PING project-1.loc (192.168.99.100) 56(84) bytes of data.
-    64 bytes from localhost (192.168.99.100): icmp_seq=1 ttl=64 time=0.066 ms
-    ```
-
-    ``` bash
-    host> ping -c1 www.project-1.loc
-
-    PING www.project-1.loc (192.168.99.100) 56(84) bytes of data.
-    64 bytes from localhost (192.168.99.100): icmp_seq=1 ttl=64 time=0.066 ms
-    ```
+```bash
+sudo nano /etc/hosts
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
