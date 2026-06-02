@@ -4,160 +4,267 @@ title: "Install the Devilbox"
 
 # Install the Devilbox
 
-> [!IMPORTANT]
-> Ensure you have read and followed the `prerequisites`
+The canonical way to install Devilbox is the automated `install.sh` workflow. It detects your operating system, verifies Docker and Git, clones the repository, creates `.env`, configures your user and group IDs, exports Devilbox environment variables, and installs the `dvl` command.
 
+:::note
+Read [Prerequisites](/getting-started/prerequisites/) first. `install.sh` expects Docker to be installed and running before it starts.
+:::
 
-## Download the Devilbox
+## Recommended installation
 
-The Devilbox does not need to be installed. The only thing that is
-required is its git directory. To download that, open a terminal and
-copy/paste the following command.
+Run the installer from a terminal:
 
-``` bash
-host> git clone https://github.com/cytopia/devilbox
+```bash
+curl -sSL https://raw.githubusercontent.com/devilbox-community/devilbox/mainline/install.sh | bash
 ```
 
-<div class="seealso">
+This installs Devilbox to the default workspace path used by the script:
 
-- `howto-open-terminal-on-mac`
-- `howto-open-terminal-on-win`
-- `checkout-different-devilbox-release`
-
-</div>
-
-## Create `.env` file
-
-Inside the cloned Devilbox git directory, you will find a file called
-`env-example`. This file is the main configuration with sane defaults
-for Docker Compose. In order to use it, it must be copied to a file
-named `.env`. (Pay attention to the leading dot).
-
-``` bash
-host> cp env-example .env
+```bash
+~/Workspace
 ```
 
-The `.env` file does nothing else than providing environment variables
-for Docker Compose and in this case it is used as the main configuration
-file for the Devilbox by providing all kinds of settings (such as which
-version to start up).
+When installation completes, the final instructions tell you which shell profile was updated and how to start Devilbox with `dvl up`.
 
-<div class="seealso">
+:::tip
+For the full script reference, options, environment variables, and troubleshooting details, see [Automated Installation Script](/getting-started/install-script/).
+:::
 
-\*
-`docker compose env file`
-\* `env-file`
+## What the installer does
 
-</div>
+The installer is intentionally explicit. Its help output lists the workflow in order:
 
-## Set uid and gid
+1. Detect your OS and required package manager.
+2. Clone the Devilbox repository to the workspace directory.
+3. Create `.env` from `env-example`.
+4. Copy the Magento 2 compose override into `docker-compose.override.yml`.
+5. Load the default container roster from `env-example`.
+6. Set `DEVILBOX_CONTAINERS` and `DEVILBOX_PATH` in your shell profile.
+7. Configure `NEW_UID` and `NEW_GID` for host/container file ownership.
+8. On macOS, install Homebrew if it is missing.
+9. Create a symlink so the `dvl` command is available on your `PATH`.
 
-To get you started, there are only two variables that need to be
-adjusted:
+The important result is a ready-to-use workspace with a configured `.env` file and a working `dvl` command.
 
-- `NEW_UID`
-- `NEW_GID`
+## Supported installer options
 
-The values for those two variables refer to your local (on your host
-operating system) user id and group id. To find out what the values are
-required in your case, issue the following commands on a terminal:
+Use the script directly from a cloned checkout when you need flags:
 
-### Find your user id
-
-``` bash
-host> id -u
+```bash
+./install.sh [OPTIONS]
 ```
 
-### Find your group id
+| Option | Meaning |
+| --- | --- |
+| `-h`, `--help` | Show help and exit. |
+| `-f`, `--force` | Remove an existing target directory before cloning again. |
+| `-v`, `--verbose` | Print additional diagnostic output. |
+| `--non-interactive` | Never prompt; use safe defaults and fail on destructive operations. |
+| `--workspace <path>` | Install to a custom workspace path instead of `$HOME/Workspace`. |
 
-``` bash
-host> id -g
+The same behavior can be controlled with environment variables:
+
+| Variable | Equivalent option |
+| --- | --- |
+| `DEVILBOX_NONINTERACTIVE=1` | `--non-interactive` |
+| `DEVILBOX_WORKSPACE=/path/to/devilbox` | `--workspace /path/to/devilbox` |
+
+## Install to a custom path
+
+If you do not want the default workspace, download or clone the repository and run:
+
+```bash
+./install.sh --workspace /home/user/projects/devilbox
 ```
 
-In most cases both values will be `1000`, but for the sake of this
-example, let's assume a value of `1001` for the user id and `1002` for
-the group id.
+The installer writes the chosen path to `DEVILBOX_PATH` in your shell profile. The `dvl` command uses that variable to find the repository later.
 
-Open the `.env` file with your favorite text editor and adjust those
-values:
+:::caution
+Use `--force` carefully. When the target directory exists, force mode removes it before cloning a fresh copy.
+:::
 
-``` bash
-host> vi .env
+## Non-interactive installs
 
-NEW_UID=1001
-NEW_GID=1002
+For automation, combine `--non-interactive` with an explicit workspace. Add `--force` only when replacing the target directory is intentional:
+
+```bash
+DEVILBOX_NONINTERACTIVE=1 ./install.sh --workspace /opt/devilbox
 ```
 
-<div class="seealso">
+Non-interactive mode refuses to overwrite an existing directory unless `--force` is present. This prevents accidental data loss in CI, cloud-init, and provisioning scripts.
 
-\* `uid` \*
-`howto-find-uid-and-gid-on-mac` \* `howto-find-uid-and-gid-on-win` \*
-`syncronize-container-permissions`
+## Shell profile changes
 
-</div>
+The installer adds Devilbox configuration to the profile for your detected shell.
 
-## OS specific setup
+| Shell | Typical profile |
+| --- | --- |
+| zsh | `~/.zprofile` |
+| bash on macOS | `~/.bash_profile` |
+| bash on Linux | `~/.bashrc` |
+| fish | `~/.config/fish/config.fish` |
+| ash or sh | `~/.profile` |
 
-### Linux: SELinux
+The profile receives values like these:
 
-If you have SELinux enabled, you will also have to adjust the
-`env-mount-options` to allow shared mounts among multiple container:
-
-``` bash
-host> vi .env
-
-MOUNT_OPTIONS=,z
+```bash
+export DEVILBOX_CONTAINERS="bind httpd php mysql php74 php81 php82 php83 php84 redis opensearch buggregator"
+export DEVILBOX_PATH="$HOME/Workspace/devilbox"
 ```
 
-<div class="seealso">
+Restart your terminal after installation, or source the profile printed by the installer:
 
-\* <https://github.com/cytopia/devilbox/issues/255> \*
-`env-mount-options` \*
-`docker selinux label`
-\*
-`docker mount z flag`
-
-</div>
-
-### OSX: Performance
-
-Out of the box, Docker for Mac has some performance issues when it comes
-to mount directories with a lot of files inside. To mitigate this issue,
-you can adjust the caching settings for mounted directories.
-
-To do so, you will want to adjust the `env-mount-options` to allow
-caching on mounts.
-
-``` bash
-host> vi .env
-
-MOUNT_OPTIONS=,cached
+```bash
+source ~/.zprofile
 ```
 
-Ensure to read the links below to understand why this problem exists and
-how the fix works. The Docker documentation will also give you
-alternative caching options to consider.
+For fish shells, the installer writes `set -gx` syntax instead of `export`.
 
-<div class="seealso">
+## Container roster seeded by installation
 
-\* <https://github.com/cytopia/devilbox/issues/105> \*
-<https://forums.docker.com/t/file-access-in-mounted-volumes-extremely-slow-cpu-bound/8076/281>
-\* <https://docs.docker.com/docker-for-mac/osxfs/> \*
-`env-mount-options`
+The installer reads the default and optional rosters from `env-example`:
 
-</div>
+```bash
+CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+```
 
-## Checklist
+It combines those values and exports them as `DEVILBOX_CONTAINERS`. That is the list started by `dvl up` when you do not pass explicit services.
 
-1.  Devilbox is cloned
-2.  `.env` file is created
-3.  User and group id have been set in `.env` file
+If you want a smaller default stack later, edit `DEVILBOX_CONTAINERS` in your shell profile. For example:
 
-That's it, you have finished the first section and have a working
-Devilbox ready to be started.
+```bash
+export DEVILBOX_CONTAINERS="bind httpd php mysql redis"
+```
 
-<div class="seealso">
+Then restart your terminal or source the profile again.
 
-`troubleshooting`
+## `.env` initialization
 
-</div>
+The installer copies `env-example` to `.env` and updates these host-specific values:
+
+```bash
+NEW_UID=<your id -u>
+NEW_GID=<your id -g>
+```
+
+These values keep files created by containers editable by your host user. You can review them at any time:
+
+```bash
+grep '^NEW_UID\|^NEW_GID' .env
+```
+
+The installer also copies `compose/docker-compose.override.yml-magento2` to `docker-compose.override.yml`. If you do not need that override, you can edit or replace it after installation.
+
+## `dvl` command installation
+
+The installer makes `dvl` available as a command by linking it to `dvl.sh`.
+
+| Host | Symlink target directory |
+| --- | --- |
+| macOS with Apple Silicon Homebrew | `/opt/homebrew/bin` |
+| macOS with Intel Homebrew | `/usr/local/bin` |
+| Linux with writable system bin | `/usr/local/bin` |
+| Linux without writable system bin | `~/.local/bin` |
+| Alpine | `~/.local/bin` |
+
+If `dvl` is not found after install, restart your shell and verify that the target directory is on `PATH`.
+
+```bash
+command -v dvl
+dvl --help
+```
+
+## First commands after install
+
+After restarting your terminal or sourcing your profile, run:
+
+```bash
+dvl up
+dvl ps
+```
+
+Then open the intranet:
+
+```text
+http://localhost
+https://localhost
+```
+
+Use `dvl down` to stop the environment cleanly:
+
+```bash
+dvl down
+```
+
+## Manual fallback
+
+Manual installation is supported as an alternative when you cannot run the installer. It should mirror what `install.sh` does.
+
+```bash
+mkdir -p ~/Workspace
+git clone https://github.com/devilbox-community/devilbox ~/Workspace/devilbox
+cd ~/Workspace/devilbox
+cp env-example .env
+cp compose/docker-compose.override.yml-magento2 docker-compose.override.yml
+```
+
+Set UID and GID:
+
+```bash
+id -u
+id -g
+```
+
+Edit `.env`:
+
+```bash
+NEW_UID=1000
+NEW_GID=1000
+```
+
+Add shell profile exports:
+
+```bash
+export DEVILBOX_PATH="$HOME/Workspace/devilbox"
+export DEVILBOX_CONTAINERS="bind httpd php mysql php74 php81 php82 php83 php84 redis opensearch buggregator"
+```
+
+Create a symlink or alias for `dvl`:
+
+```bash
+chmod +x ~/Workspace/devilbox/dvl.sh
+ln -snf ~/Workspace/devilbox/dvl.sh ~/.local/bin/dvl
+```
+
+:::note
+The manual flow is a fallback. Prefer `install.sh` because it validates Docker, detects your OS, chooses the correct shell profile, and configures the CLI consistently.
+:::
+
+## Upgrade or reinstall
+
+For a fresh reinstall, run the installer with `--force` and the same workspace path. For an existing checkout you want to keep, update with Git instead:
+
+```bash
+cd "$DEVILBOX_PATH"
+git pull
+```
+
+After pulling major changes, compare `.env` with `env-example` or use `dvl sync-env` where appropriate.
+
+## Installation checklist
+
+- Docker is installed and running.
+- `docker compose version` works.
+- Git is installed.
+- `install.sh` completed successfully.
+- `.env` exists.
+- `NEW_UID` and `NEW_GID` match your host user.
+- `DEVILBOX_PATH` points to the repository.
+- `DEVILBOX_CONTAINERS` contains the services you want by default.
+- `dvl` is on your `PATH`.
+- `dvl --help` prints command help.
+
+## Next step
+
+Continue with [Start the Devilbox](/getting-started/start-the-devilbox/).

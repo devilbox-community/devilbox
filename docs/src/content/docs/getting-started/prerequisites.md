@@ -4,278 +4,282 @@ title: "Prerequisites"
 
 # Prerequisites
 
-> [!IMPORTANT]
-> `read-first` Ensure you have read this document to understand how this
-> documentation works.
+Before installing Devilbox, prepare a modern Docker host and a terminal that can run the `install.sh` workflow. Devilbox no longer targets the old VirtualBox-based Docker stacks or the Python Compose v1 binary. The supported path in 2026 is Docker Desktop 4.x on desktop systems, Docker Engine 24+ on Linux, and the Docker Compose v2 plugin exposed as `docker compose`.
 
-
-## Supported host OS
-
-The Devilbox runs on all major operating systems which provide `Docker`
-and `Docker Compose`. See the matrix below for supported versions:
-
-<table style="width:98%;">
-<colgroup>
-<col style="width: 19%" />
-<col style="width: 25%" />
-<col style="width: 37%" />
-<col style="width: 15%" />
-</colgroup>
-<thead>
-<tr>
-<th>OS</th>
-<th>Version</th>
-<th>Type</th>
-<th>Recommended</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><img src="https://raw.githubusercontent.com/cytopia/icons/master/64x64/linux.png" alt="Linux" width="64" /></td>
-<td>Any</td>
-<td><a target="_blank" href="https://docs.docker.com/install/#server">Docker</a></td>
-<td>yes</td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td rowspan="2"><img src="https://raw.githubusercontent.com/cytopia/icons/master/64x64/osx.png" alt="macOS" width="64" /></td>
-<td rowspan="2">Any</td>
-<td><a target="_blank" href="https://docs.docker.com/docker-for-mac/install/">Docker for Mac</a></td>
-<td>yes</td>
-</tr>
-<tr>
-<td><a target="_blank" href="https://docs.docker.com/toolbox/toolbox_install_mac/">Docker Toolbox</a></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td rowspan="4"><img src="https://raw.githubusercontent.com/cytopia/icons/master/64x64/windows.png" alt="Windows" width="64" /></td>
-<td>Windows 7</td>
-<td><a target="_blank" href="https://docs.docker.com/toolbox/toolbox_install_windows/">Docker Toolbox</a></td>
-<td>yes</td>
-</tr>
-<tr>
-<td rowspan="2">Windows 10</td>
-<td><a target="_blank" href="https://docs.docker.com/docker-for-windows/install/">Docker for Windows</a></td>
-<td>yes</td>
-</tr>
-<tr>
-<td><a target="_blank" href="https://docs.docker.com/toolbox/toolbox_install_windows/">Docker Toolbox</a></td>
-<td></td>
-</tr>
-<tr>
-<td>Windows Server 2016</td>
-<td><a target="_blank" href="https://www.docker.com/products/orchestration">Docker EE</a></td>
-<td>yes</td>
-</tr>
-</tbody>
-</table>
+:::note
+This page describes what your host must provide before you run [Install the Devilbox](/getting-started/install-the-devilbox/). The installer verifies most requirements for you, but checking them first makes failures easier to understand.
+:::
 
 ## Required software
 
-The only requirements for the Devilbox is to have `Docker` and
-`Docker Compose` installed, everything else is bundled and provided
-withing the Docker container. The minimum required versions are listed
-below:
+Install these tools before running Devilbox:
 
-- `Docker`: 17.06.0+
-- `Docker Compose`: 1.16.0+
+| Requirement | Minimum / supported version | Why it is needed |
+| --- | --- | --- |
+| Docker Desktop | 4.x | Provides the Docker daemon and Compose v2 on macOS and Windows/WSL2. |
+| Docker Engine | 24+ | Provides the Docker daemon on Linux hosts. |
+| Docker Compose | v2 plugin (`docker compose`) | Starts the multi-service Devilbox stack. |
+| Git | Current stable package from your OS | Used by `install.sh` to clone the Devilbox repository. |
+| curl | Current stable package from your OS | Used by installer and CLI helper downloads. |
+| make | Current stable package from your OS | Checked by the installer on Linux hosts. |
+| A POSIX-like shell | `bash`, `zsh`, `fish`, `ash`, or `sh` | Used for the installer and `dvl` CLI integration. |
 
-Additionally you will require `git` in order to clone the devilbox
-project.
+:::caution
+Do not install or rely on the old `docker-compose` v1 Python package for new setups. The modern Docker command is `docker compose`. The `dvl` command wraps Compose for normal Devilbox use, so most day-to-day examples use `dvl` instead of raw Compose commands.
+:::
 
-<div class="seealso">
+## Supported operating systems
 
-- `install docker`
-- `docker compose install`
-- `download git win`
-- `howto-find-docker-and-docker-compose-version`
+The current installer detects operating systems through `uname` and `/etc/os-release`. Its supported families are the source of truth for new installations:
 
-</div>
+| Host | Supported baseline | Installer family | Notes |
+| --- | --- | --- | --- |
+| macOS | macOS 13+ | `darwin` | Use Docker Desktop 4.x. Homebrew is installed automatically if missing. |
+| Ubuntu | 22.04 LTS or 24.04 LTS | `debian` | Use Docker Engine 24+ and the Compose v2 plugin package. |
+| Debian | Debian 12 | `debian` | Derivatives with `ID_LIKE=debian` follow the same path. |
+| Arch Linux | Current rolling release | `arch` | Includes Manjaro, EndeavourOS, Artix, and similar derivatives. |
+| Fedora | Fedora 40+ | `fedora` | RHEL-like distributions are detected through the same family. |
+| Alpine | Current stable release | `alpine` | The installer places the `dvl` symlink under `~/.local/bin`. |
+| WSL2 | A supported Linux distro inside WSL2 | distro family + WSL2 | Enable Docker Desktop WSL2 integration for that distro. |
 
-## Docker installation
+The script can be forced on unknown hosts, but unsupported systems may fail package-manager or shell-integration checks. Use `./install.sh --force` only when you understand the local Docker and shell setup.
 
-### Linux
+## Docker readiness checks
 
-`img logo lin`
+Verify Docker before installing Devilbox:
 
-Docker on Linux requires super user privileges which is granted to a
-system wide group called `docker`. After having installed Docker on your
-system, ensure that your local user is a member of the `docker` group.
-
-``` bash
-host> id
-
-uid=1000(cytopia) gid=1000(cytopia) groups=1000(cytopia),999(docker)
+```bash
+docker version
+docker info
+docker compose version
 ```
 
-<div class="seealso">
+You want all three commands to succeed. `docker info` is especially important because it proves the Docker daemon is running, not just that the client binary exists.
 
-- `install docker centos`
-- `install docker debian`
-- `install docker fedora`
-- `install docker ubuntu`
-- `install docker linux post steps`
-  (covers `docker` group)
+:::tip
+On macOS and Windows/WSL2, start Docker Desktop and wait until the engine reports that it is running before launching the installer.
+:::
 
-</div>
+## Docker Desktop hosts
 
-### Mac
+Docker Desktop is the expected Docker distribution for macOS and WSL2-based desktop workflows.
 
-`img logo mac`
+### macOS
 
-On MacOS Docker is available in two different forms: **Docker for Mac**
-and **Docker Toolbox**.
+Use Docker Desktop 4.x on macOS 13 or newer. Apple Silicon and Intel Macs are both supported by the installer and the `dvl` helper binaries. The installer detects `Darwin`, chooses the correct shell profile, and creates the `dvl` symlink in `/opt/homebrew/bin` or `/usr/local/bin`.
 
-#### Docker for Mac
+Recommended pre-flight checks:
 
-Docker for Mac is the native and recommended version to choose when
-using the Devilbox.
-
-Docker for Mac requires super user privileges which is granted to a
-system wide group called `docker`. After having installed Docker on your
-system, ensure that your local user is a member of the `docker` group.
-
-``` bash
-host> id
-
-uid=502(cytopia) gid=20(staff) groups=20(staff),999(docker)
+```bash
+sw_vers
+docker info
+docker compose version
+git --version
+curl --version
 ```
 
-<div class="seealso">
+If Homebrew is not available, the installer can install it. Docker itself is not installed by Devilbox; install Docker Desktop first and sign in or accept licenses as required by your organization.
 
-Docker for Mac  
-- `install docker mac`
-- `install docker mac get started`
+### Windows through WSL2
 
-</div>
+Run Devilbox from a WSL2 Linux distribution, not from legacy Windows-only Docker tooling. Install Docker Desktop for Windows, enable WSL2 integration for your distro, then run the Devilbox installer inside that distro's terminal.
 
-#### Docker Toolbox
+Recommended pre-flight checks inside WSL2:
 
-If you still want to use Docker Toolbox, ensure you have read its
-drawbacks in the below provided links.
+```bash
+cat /proc/version
+docker info
+docker compose version
+git --version
+```
 
-<div class="seealso">
+Use Linux paths inside WSL2 for your Devilbox workspace, for example `~/Workspace/devilbox`. Avoid placing active project files under `/mnt/c` when performance matters, because bind-mounted source trees can be slower from Windows filesystems.
 
-Docker Toolbox  
-- `install docker toolbox mac`
-- `install docker toolbox mac native vs toolbox`
-- `ext link docker machine`
+## Linux hosts
 
-</div>
+Linux hosts should use Docker Engine 24+ and the Compose v2 plugin from their distribution or Docker's official repositories. The installer verifies the package manager family and checks for baseline tools.
 
-> [!IMPORTANT]
-> `howto-docker-toolbox-and-the-devilbox`
+### Ubuntu and Debian
 
-### Windows
+The installer family is `debian`. It expects `apt-get`, `git`, `curl`, `make`, Docker, and Compose v2. Typical packages are provided by Docker's official repository or your distribution:
 
-`img logo win`
+```bash
+docker --version
+docker compose version
+id
+```
 
-On Windows Docker is available in two different forms: **Docker for
-Windows** and **Docker Toolbox**.
+Make sure your user can talk to Docker. Many Linux systems require adding the user to the `docker` group and starting a new login session:
 
-#### Docker for Windows
+```bash
+sudo usermod -aG docker "$USER"
+```
 
-Docker for Windows is the native and recommended version to choose when
-using the Devilbox. This however is only available since **Windows 10**.
+Then log out and back in before running Devilbox.
 
-Docker for Windows requires administrative privileges which is granted
-to a system wide group called `docker-users`. After having installed
-Docker on your system, ensure that your local user is a member of the
-`docker-users` group.
+### Arch-family systems
 
-<div class="seealso">
+The installer family is `arch`. It detects Arch, Manjaro, EndeavourOS, Artix, and related systems. Install Docker, start the daemon, enable it if you want it after reboot, and ensure `git`, `curl`, and `make` are present.
 
-Docker for Windows  
-- `install docker win`
-- `install docker win get started`
+```bash
+docker info
+docker compose version
+```
 
-</div>
+### Fedora-family systems
 
-#### Docker Toolbox
+The installer family is `fedora`. It uses `dnf` when available and falls back to `yum`. Fedora 40+ is the expected baseline for new documentation and testing. RHEL-compatible systems may work when they expose the same Docker and Compose capabilities.
 
-If you are on **Windows 7** or still want to use Docker Toolbox, ensure
-you have read its drawbacks in the below provided links.
+```bash
+docker info
+docker compose version
+```
 
-<div class="seealso">
+### Alpine
 
-Docker Toolbox  
-- `install docker toolbox win`
-- `ext link docker machine`
+The installer family is `alpine`. It uses `apk` and creates the `dvl` symlink under `~/.local/bin`. Ensure that directory is on your `PATH` before expecting `dvl` to be found in new shells.
 
-</div>
+```bash
+docker info
+docker compose version
+printf '%s\n' "$PATH"
+```
 
-> [!IMPORTANT]
-> `howto-docker-toolbox-and-the-devilbox`
+## Shell profile expectations
 
-## Post installation
+`install.sh` writes two environment variables to your shell profile:
 
-Read the Docker documentation carefully and follow all **install** and
-**post-install** steps. Below are a few stumbling blocks to check that
-might or might not apply depending on your host operating system and
-your Docker version.
+| Variable | Example value | Purpose |
+| --- | --- | --- |
+| `DEVILBOX_PATH` | `$HOME/Workspace/devilbox` | Tells `dvl` where the Devilbox repository lives. |
+| `DEVILBOX_CONTAINERS` | `bind httpd php mysql php74 php81 php82 php83 php84 redis opensearch buggregator` | Defines the services started by `dvl up`. |
 
-<div class="seealso">
+The installer chooses a profile based on your shell:
 
-`troubleshooting`
+| Shell | Profile file |
+| --- | --- |
+| zsh | `~/.zprofile` |
+| bash on macOS | `~/.bash_profile` |
+| bash on Linux | `~/.bashrc` |
+| fish | `~/.config/fish/config.fish` |
+| ash or sh | `~/.profile` |
 
-</div>
+Restart your terminal after installation, or source the profile printed by the installer.
 
-### User settings
+## Permissions and UID/GID mapping
 
-Some versions of Docker require your local user to be in the `docker`
-group (or `docker-users` on Windows).
+Devilbox containers run as the `devilbox` user. To keep files editable from your host, `.env` contains `NEW_UID` and `NEW_GID`. The installer sets these to your current user and group:
 
-### Shared drives
+```bash
+id -u
+id -g
+```
 
-Some versions of Docker require you to correctly setup shared drives.
-Ensure the desired locations are being made available to Docker and the
-correct credentials are applied.
+If you install manually, copy these values into `.env`. If they are wrong, files created in the PHP container may appear with unexpected ownership on the host.
 
-### Network and firewall
+## Network and port checks
 
-On Windows, ensure your firewall allows access to shared drives.
+By default, Devilbox publishes these common host ports:
 
-### SE Linux
+| Service | Default host port | Variable |
+| --- | --- | --- |
+| HTTP | `80` | `HOST_PORT_HTTPD` |
+| HTTPS | `443` | `HOST_PORT_HTTPD_SSL` |
+| MySQL | `3306` | `HOST_PORT_MYSQL` |
+| PostgreSQL | `5432` | `HOST_PORT_PGSQL` |
+| Redis | `6379` | `HOST_PORT_REDIS` |
+| MongoDB | `27017` | `HOST_PORT_MONGO` |
+| Bind DNS | `1053` | `HOST_PORT_BIND` |
 
-Make sure to read any shortcomings when SE Linux is enabled.
+If another local service already owns a port, change the matching variable in `.env` before starting Devilbox.
 
-### General
+:::note
+The default `LOCAL_LISTEN_ADDR` is empty in `env-example`, which means published ports can bind on all interfaces. If you want loopback-only binding, set `LOCAL_LISTEN_ADDR=127.0.0.1:` before starting services.
+:::
 
-It could also help to do a full system restart after the installation
-has been finished.
+## Filesystem and volume expectations
+
+The default project directory is `./data/www` relative to the Devilbox repository. That path is mounted into PHP and HTTPD containers as `/shared/httpd`.
+
+Important host paths from `.env`:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DEVILBOX_PATH` | `.` | Base path for many mounts. |
+| `HOST_PATH_HTTPD_DATADIR` | `./data/www` | Your web project workspace. |
+| `HOST_PATH_BACKUPDIR` | `./backups` | Database import/export storage. |
+| `HOST_PATH_SSH_DIR` | `~/.ssh` | Read-only SSH keys mounted into PHP. |
+| `MOUNT_OPTIONS` | empty | Optional mount flags such as SELinux labels or macOS caching. |
+
+On SELinux systems, `MOUNT_OPTIONS=,z` may still be required for shared bind mounts. On macOS, Docker Desktop file-sharing and performance settings may matter for large dependency trees.
 
 ## Optional previous knowledge
 
-In order to easily work with the Devilbox you should already be familiar
-with the following:
+You do not need PHP, MySQL, Redis, Composer, or Node installed on your host to use Devilbox. Those tools live in containers. You should, however, be comfortable with:
 
-- Navigate on the command line
-- Docker Compose commands
-  (`docker compose cmd up`,
-  `docker compose cmd stop`,
-  `docker compose cmd kill`,
-  `docker compose cmd rm`,
-  `docker compose cmd logs`
-  and
-  `docker compose cmd pull`)
-- Docker Compose `.env` file
-- Know how to use `git`
+- Opening a terminal.
+- Navigating directories with `cd`, `pwd`, and `ls`.
+- Editing text files such as `.env`.
+- Understanding that containers are disposable but named Docker volumes preserve database data.
+- Running `dvl up`, `dvl down`, `dvl shell`, and `dvl exec`.
+- Reading container logs when a service fails to start.
 
-<div class="seealso">
+## What you do not need on the host
 
-- `docker compose cmd reference`
-- `docker compose env file`
-- `troubleshooting`
+Devilbox intentionally keeps application tooling inside containers. A clean host can still work with many projects because the PHP workspace image supplies the runtime layer.
 
-</div>
+You normally do not need to install these directly on your computer:
+
+- PHP or PHP extensions.
+- Composer.
+- MySQL, MariaDB, PostgreSQL, Redis, Memcached, or MongoDB servers.
+- Apache or Nginx.
+- Project-specific CLIs that are already included in the selected PHP image.
+
+Install host-native versions only when you have a separate reason outside Devilbox.
+
+## What the installer verifies
+
+The automated installer performs these checks before it modifies your workspace:
+
+1. Detects the operating system family.
+2. Verifies that Git is available.
+3. Verifies that Docker is installed.
+4. Verifies that the Docker daemon is running.
+5. Verifies Compose v2 on non-macOS Linux hosts.
+6. Checks package-manager availability for supported Linux families.
+7. Checks `git`, `curl`, and `make` on Linux.
+8. Detects WSL2 and prints Docker Desktop integration guidance.
+
+If any hard requirement is missing, the installer exits before completing installation.
+
+## Pre-install checklist
+
+Use this checklist immediately before running [Install the Devilbox](/getting-started/install-the-devilbox/):
+
+- Docker Desktop 4.x or Docker Engine 24+ is installed.
+- `docker info` succeeds.
+- `docker compose version` succeeds.
+- Git is installed.
+- curl is installed.
+- make is installed on Linux.
+- Your Linux user can access Docker without permission errors.
+- WSL2 integration is enabled if you are on Windows.
+- Ports such as 80, 443, 3306, 5432, and 6379 are free or you know which `.env` variables to change.
+- You have chosen a workspace path, usually `~/Workspace/devilbox`.
+- You are ready to restart or source your shell profile after installation.
+
+## Troubleshooting quick map
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `Cannot connect to the Docker daemon` | Docker is not running | Start Docker Desktop or the Linux Docker service. |
+| `docker compose` is unknown | Compose v2 plugin missing | Install the Docker Compose plugin package for your OS. |
+| Permission denied on Docker socket | User not in Docker group | Add the user to the group and start a new login session. |
+| `dvl` command not found after install | Shell profile not loaded or symlink directory not on `PATH` | Restart terminal, source the printed profile, or add `~/.local/bin` to `PATH`. |
+| Port already allocated | Another service is running locally | Stop that service or change the matching `HOST_PORT_*` variable. |
+| Files owned by unexpected UID | `NEW_UID` / `NEW_GID` mismatch | Update `.env`, then recreate affected containers. |
+
+## Next step
+
+Once the checks above pass, continue with [Install the Devilbox](/getting-started/install-the-devilbox/).

@@ -4,195 +4,208 @@ title: "Start the Devilbox"
 
 # Start the Devilbox
 
-Congratulations, when you have reached this page everything has been set
-up and you can now get your hands dirty.
+After installation, use the `dvl` CLI to start and stop Devilbox. `dvl` is the canonical wrapper around Docker Compose for this project. It knows where your Devilbox checkout lives, starts the configured service roster, and keeps common workflows consistent across operating systems.
 
-> [!NOTE]
-> Starting and stopping containers is done via `docker-compose`. If you
-> have never worked with it before, have a look at their documentation
-> for
-> `docker compose cmd overview`,
-> `docker compose cmd up`,
-> `docker compose cmd stop`,
-> `docker compose cmd kill`,
-> `docker compose cmd rm`,
-> `docker compose cmd logs`
-> and
-> `docker compose cmd pull`
-> commands.
+:::note
+The default start command is `dvl up`. The raw Compose files still exist, but new documentation should use the `dvl` workflow.
+:::
 
+## Before you start
 
-## The Devilbox startup explained
+Confirm your shell profile is loaded and the CLI is available:
 
-To gain a brief understanding about what is happening under the hood
-during startup, read ahead or skip directly to:
-`start-the-devilbox-start-all-container`.
-
-Startup operations with the same configuration are idempotent, thus
-consecutive startups will not introduce any new changes. The following
-shows the brief startup steps:
-
-- Docker Compose will automatically pull all necessary Docker images if
-  they do not exist locally.
-- Once the HTTPD container start, it will automatically create a
-  Certificate Authority to be used for https connections and will place
-  it in the `ca/` directory.
-- The HTTPD container will then look for already available projects and
-  create virtual hosts configurations, apply vhost-gen templates as well
-  as CA-signed HTTPS certificates.
-- Once the Bind container start, it will create a wildcard DNS zone for
-  the given `env-tld-suffix`
-- In case MySQL or PgSQL container start, they will populate itself with
-  their required default databases.
-
-> [!NOTE]
-> Docker images are only pulled if they do not exist. They are not
-> updated automatically. If you want to update to new Docker images read
-> on: `update-the-devilbox`.
-
-## Start all container
-
-If you want all provided docker container to be available (as defined in
-`docker-compose.yml`), start them all by not explicitly specifying any
-image name.
-
-### Foreground
-
-For the first startup, foreground start is recommended to see any errors
-that might occur:
-
-``` bash
-host> docker-compose up
+```bash
+command -v dvl
+printf '%s\n' "$DEVILBOX_PATH"
+printf '%s\n' "$DEVILBOX_CONTAINERS"
 ```
 
-- If you want to gracefully stop all container, hit `Ctrl + c`
-- If you want to kill all container, hit `Ctrl + c` twice
-- Ensure to run `docker-compose rm -f` afterwards
+If `dvl` is not found, restart your terminal or source the profile printed by the installer. If `DEVILBOX_PATH` is empty, the CLI cannot locate the Devilbox repository.
 
-### Background
+## Default container roster
 
-For consecutive startups you can send them into background (`-d`):
+New installations derive their default container list from `env-example`. The current source-of-truth default line is:
 
-``` bash
-host> docker-compose up -d
+```bash
+CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
 ```
 
-- If you want to gracefully stop all container, enter
-  `docker-compose stop`
-- If you want to kill all container, enter `docker-compose kill`
-- Ensure to run `docker-compose rm -f` afterwards
+The installer also appends the optional roster to preserve the broader legacy start set:
 
-## Start some container
-
-If you don't require all container to be up and running and let's say
-just `PHP`, `HTTPD` and `MYSQL`, you must explicitly specify the image
-names to start:
-
-### Foreground
-
-``` bash
-host> docker-compose up httpd php mysql
+```bash
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
 ```
 
-- If you want to gracefully stop all started container, hit `Ctrl + c`
-- If you want to kill all started container, hit `Ctrl + c` twice
-- Ensure to run `docker-compose rm -f` afterwards
+Together, those values become `DEVILBOX_CONTAINERS` in your shell profile. `dvl up` starts that list when no services are passed.
 
-### Background
+:::tip
+For command details, see [`dvl up`](/intermediate/dvl-cli/#up).
+:::
 
-``` bash
-host> docker-compose up -d httpd php mysql
+## Start the default stack
+
+Start Devilbox in the background:
+
+```bash
+dvl up
 ```
 
-- If you want to gracefully stop all container, enter
-  `docker-compose stop`
-- If you want to kill all container, enter `docker-compose kil`
-- Ensure to run `docker-compose rm -f` afterwards
+The CLI changes into `DEVILBOX_PATH` and runs the Compose start workflow for the configured service list. On first start, Docker pulls missing images, creates networks and volumes, and initializes service data where needed.
 
-<div class="seealso">
+Common first-start events:
 
-`available-container` Have a look at this page to get an overview about
-all available container and by what name they have to be specified.
+- Docker pulls images that are not present locally.
+- The Bind DNS service starts on the configured DNS port.
+- The PHP service mounts your project directory at `/shared/httpd`.
+- The HTTPD service prepares the Devilbox intranet and mass-vhost configuration.
+- MySQL initializes a version-specific data volume if one does not already exist.
+- Redis, OpenSearch, Buggregator, and additional configured services start if they are in `DEVILBOX_CONTAINERS`.
 
-</div>
+:::note
+Images are pulled when missing. They are not automatically upgraded on every start. Pull new images explicitly when you want to update your local cache.
+:::
 
-## Stop and Restart
+## Check running services
 
-> [!IMPORTANT]
-> When stopping or restarting the Devilbox, ensure to also **remove
-> stopped container** before the next startup to prevent orphaned
-> runtime settings and always start fresh.
->
-> This will prevent many common Docker issues.
+Use Docker or the CLI help for status checks. The most common command is:
 
-<div class="seealso">
-
-**Troubleshooting:** `troubleshooting-what-to-do-first`
-
-</div>
-
-### Stop all container
-
-``` bash
-# Stop all container
-host> docker-compose stop
-# Remove stopped container (important!)
-host> docker-compose rm -f
+```bash
+dvl ps
 ```
 
-### Restart all container
+If your installed CLI version does not expose `ps`, use Docker directly from the Devilbox directory:
 
-``` bash
-# Stop all container
-host> docker-compose stop
-# Remove stopped container (important!)
-host> docker-compose rm -f
-# Start all container
-host> docker-compose up
+```bash
+cd "$DEVILBOX_PATH"
+docker compose ps
 ```
 
-## Open Devilbox intranet
+For logs:
 
-Once `docker-compose up` has finished and all or the selected container
-are up and running, you can visit the Devilbox intranet with your
-favorite Web browser at <http://localhost> or <http://127.0.0.1>
-(<https://localhost> or <https://127.0.0.1> respectively).
+```bash
+dvl logs
+```
 
-The Intranet start page will also show you all running and failed
-containers:
+If `dvl logs` is not available in your installed version, use:
 
-<figure>
-<img src="/_includes/figures/devilbox/devilbox-intranet-dash-all.png"
-alt="Devilbox intranet: index dash view for all started container" />
-<figcaption aria-hidden="true">Devilbox intranet: index dash view for
-all started container</figcaption>
-</figure>
+```bash
+cd "$DEVILBOX_PATH"
+docker compose logs -f
+```
 
-<figure>
-<img
-src="/_includes/figures/devilbox/devilbox-intranet-dash-selective.png"
-alt="Devilbox intranet: index dash view for some started container" />
-<figcaption aria-hidden="true">Devilbox intranet: index dash view for
-some started container</figcaption>
-</figure>
+## Start a smaller service set
 
-> [!IMPORTANT]
-> `howto-find-docker-toolbox-ip-address` When you are using
-> `Docker Toolbox` the Devilbox web server port will not be available on
-> your host computer. You first have to find out on which IP address the
-> Docker Toolbox machine is serving and use this one instead.
+The recommended way to change the default start set is editing `DEVILBOX_CONTAINERS` in your shell profile. For a minimal web/database stack:
+
+```bash
+export DEVILBOX_CONTAINERS="bind httpd php mysql"
+dvl up
+```
+
+For a PHP and Redis workflow:
+
+```bash
+export DEVILBOX_CONTAINERS="bind httpd php redis"
+dvl up
+```
+
+For a one-off Compose start of selected services, pass service names to raw Compose only when you intentionally bypass the CLI. Prefer updating `DEVILBOX_CONTAINERS` for repeatable day-to-day starts.
+
+## Service names
+
+The current core services in `docker-compose.yml` are:
+
+| Service | Purpose | Default image selector |
+| --- | --- | --- |
+| `bind` | DNS service | fixed Bind image |
+| `php` | Default PHP-FPM workspace | `PHP_SERVER` |
+| `httpd` | Apache or Nginx web server | `HTTPD_SERVER` and `HTTPD_FLAVOUR` |
+| `mysql` | MySQL/MariaDB/Percona database | `MYSQL_SERVER` |
+| `pgsql` | PostgreSQL database | `PGSQL_SERVER` |
+| `redis` | Redis cache | `REDIS_SERVER` |
+| `memcd` | Memcached cache | `MEMCD_SERVER` |
+| `mongo` | MongoDB database | `MONGO_SERVER` |
+
+Additional optional services can be layered from files in `compose/`, such as OpenSearch, Mailpit, MailHog, Buggregator, Varnish, Solr, Ngrok, and agent stacks.
+
+## Open the Devilbox intranet
+
+After `dvl up` succeeds, open the intranet in your browser:
+
+```text
+http://localhost
+https://localhost
+```
+
+The HTTP and HTTPS ports are controlled by `.env`:
+
+```bash
+HOST_PORT_HTTPD=80
+HOST_PORT_HTTPD_SSL=443
+```
+
+If those ports are busy, change the variables before starting the stack.
+
+:::tip
+The default `TLD_SUFFIX` is `lvh.me`, which resolves to `127.0.0.1`. Projects under `data/www` can be reached with names such as `my-project.lvh.me` when vhost generation is configured for that project.
+:::
+
+## Stop the Devilbox
+
+Stop and remove containers cleanly:
+
+```bash
+dvl down
+```
+
+The CLI performs a stop/down workflow and removes stopped containers so the next start is fresh. Named volumes remain intact, so database data is preserved unless you remove volumes separately.
+
+:::caution
+Do not confuse removing stopped containers with removing volumes. `dvl down` cleans runtime containers. Database data lives in named Docker volumes such as `devilbox-mariadb-10.4` and is not removed by the normal stop path.
+:::
+
+## Restart services
+
+Restart the full configured stack:
+
+```bash
+dvl restart
+```
+
+Restart one running service by name:
+
+```bash
+dvl restart php
+```
+
+When you change `.env` values that affect images, ports, or mounts, prefer a clean down/up cycle:
+
+```bash
+dvl down
+dvl up
+```
+
+## First-start troubleshooting
+
+| Symptom | Check | Fix |
+| --- | --- | --- |
+| `dvl` command not found | `command -v dvl` | Restart the terminal or add the symlink directory to `PATH`. |
+| `DEVILBOX_PATH` empty | `printf '%s\n' "$DEVILBOX_PATH"` | Source the shell profile or set the variable manually. |
+| Docker daemon error | `docker info` | Start Docker Desktop or the Linux Docker service. |
+| Compose command error | `docker compose version` | Install the Compose v2 plugin. |
+| Port conflict | `docker compose ps` or OS port tools | Change `HOST_PORT_*` variables in `.env`. |
+| DNS not resolving | `TLD_SUFFIX` and Bind logs | Use `lvh.me` or configure DNS forwarding for your host. |
+| HTTPD fails | HTTPD logs | Check `HTTPD_SERVER`, `HTTPD_FLAVOUR`, and port availability. |
 
 ## Checklist
 
-1.  Docker container are started successfully with `docker-compose up`
-2.  `docker-compose rm -f` is issued before restarting the Devilbox
-3.  Intranet is reachable via `http://localhost`, `http://127.0.0.1` or
-    Docker Toolbox IP address
-4.  Intranet is reachable via `https://localhost`, `https://127.0.0.1`
-    (HTTPS)
+- `dvl up` starts without errors.
+- `dvl ps` or `docker compose ps` shows the expected services.
+- The intranet opens at `http://localhost` or your configured HTTP port.
+- HTTPS opens at `https://localhost` or your configured HTTPS port.
+- Project files are under `data/www` or the path configured by `HOST_PATH_HTTPD_DATADIR`.
+- `dvl down` stops the environment cleanly.
 
-<div class="seealso">
+## Next step
 
-`troubleshooting`
-
-</div>
+Continue with [Enter the PHP container](/getting-started/enter-the-php-container/) to run tools inside the workspace container.

@@ -4,127 +4,151 @@ title: "Enter the PHP container"
 
 # Enter the PHP container
 
-Another core feature of the Devilbox, is to be totally independent of
-what you have or have not installed on your host operating system.
+One of Devilbox's core ideas is that your host does not need local PHP tooling. Composer, PHP extensions, framework CLIs, database clients, and many developer utilities live inside the PHP containers. Use `dvl shell` for an interactive shell and `dvl exec` for one-off commands.
 
-The Devilbox already ships with many common developer tools which are
-installed inside each PHP container, so why not make use of it.
+:::note
+The PHP container must be running before you can enter it. Start Devilbox with `dvl up` first.
+:::
 
-The only thing you might need to install on your host operating system
-is your favourite IDE or editor to actually start coding.
+## Default interactive shell
 
-<div class="seealso">
+Open a shell in the default PHP service:
 
-If you want to find out what tools are available inside the PHP
-container, visit the following section: `available-tools`.
-
-</div>
-
-
-## How to enter
-
-> [!NOTE]
-> You can only enter the PHP container if it is running.
-
-### Linux and MacOS
-
-On Linux and MacOS you can simply execute the provided shell script:
-`shell.sh`. By doing so it will enter you into the PHP container and
-bring you to `/shared/httpd`.
-
-``` bash
-# Execute on the host operating system
-host> ./shell.sh
-
-# Now you are inside the PHP Linux container
-devilbox@php-7.0.19 in /shared/httpd $
+```bash
+dvl shell
 ```
 
-### Windows
+The CLI enters the container as the `devilbox` user and starts a login shell. Your normal project workspace is mounted under:
 
-On Windows you have a different script to enter the PHP container:
-`shell.bat`. Just run it and it will enter you into the PHP container
-and bring you to `/shared/httpd`.
-
-``` bash
-# Execute on the host operating system
-C:/Users/user1/devilbox> shell.bat
-
-# Now you are inside the PHP Linux container
-devilbox@php-7.0.19 in /shared/httpd $
+```text
+/shared/httpd
 ```
 
-## How to become root
+The default service is `php`, which maps to the `PHP_SERVER` value in `.env`.
 
-When you enter the container with the provided scripts, you are doing so
-as the user `devilbox`. If you do need to perform any actions as root
-(such as installing new software), you can use the password-less `sudo`.
+## Choose a specific PHP service
 
-``` bash
-# Inside the PHP Linux container as user devilbox
-devilbox@php-7.0.19 in /shared/httpd $ sudo su -
+The current default installation can include versioned PHP service names:
 
-# Now you are root and can do anything you want
-root@php-7.0.19 in /shared/httpd $
+| Service | Intended runtime |
+| --- | --- |
+| `php` | Default PHP selected by `PHP_SERVER` in `.env`. |
+| `php74` | PHP 7.4 service. |
+| `php81` | PHP 8.1 service. |
+| `php82` | PHP 8.2 service. |
+| `php83` | PHP 8.3 service. |
+| `php84` | PHP 8.4 service. |
+
+Enter a specific service with:
+
+```bash
+dvl shell php82
 ```
 
-> [!NOTE]
-> As this action is inside a Docker container, there is no difference
-> between Linux, MacOS or Windows. Every host operating system is using
-> the same Docker container - equal accross all platforms.
+If the CLI detects a `.devilbox.yaml` for the current project, it can ask whether to use the detected PHP service instead of the default one.
 
-## Tools
+:::tip
+Use project-level `.devilbox.yaml` files when different projects need different PHP runtimes. The `dvl` CLI searches the current directory, parent directories, and common document-root locations.
+:::
 
-### What is available
+## Run a one-off command
 
-There are lots of tools available, for a full overview see
-`available-tools`. If you think you are missing a tool, install it
-yourself as root, or open up an issue on github to get it backed into
-the Docker image permanently.
+Use `dvl exec` when you do not need an interactive shell:
 
-<div class="seealso">
+```bash
+dvl exec "php -v"
+dvl exec "composer install"
+dvl exec "ls -la"
+```
 
-`available-tools`
+`dvl exec` maps the current host working directory to the corresponding container path when you are inside the `data/www` tree. That lets commands run from the same project directory you are using on the host.
 
-</div>
+## Common PHP workflows
 
-### How to update them
+Composer:
 
-There is no need to update the tools itself. All Docker images are
-rebuilt every night and automatically pushed to Docker hub to ensure
-versions are outdated at a maximum of 24 hours.
+```bash
+dvl composer install
+dvl composer require monolog/monolog
+```
 
-The only thing you have to do, is to update the Docker images itself,
-simply by pulling a new version.
+Magento:
 
-<div class="seealso">
+```bash
+dvl magento setup:upgrade
+dvl magento cache:flush
+dvl magerun cache:status
+```
 
-`update-the-devilbox-update-the-docker-images`
+Generic PHP:
 
-</div>
+```bash
+dvl exec "php -m"
+dvl exec "php vendor/bin/phpunit"
+```
 
-## Advanced
+The dedicated `dvl composer`, `dvl magento`, and `dvl magerun` commands add project detection and PHP image flavor checks on top of raw command execution.
 
-This is just a short overview about the possibility to work inside the
-container. If you want to dig deeper into this topic there is also a
-more advanced tutorial available:
+## Become root inside the container
 
-<div class="seealso">
+The normal container user is `devilbox`, mapped to your host UID/GID through `NEW_UID` and `NEW_GID`. If you need root for debugging, use passwordless `sudo` inside the container:
 
-`work-inside-the-php-container`
+```bash
+dvl shell
+sudo su -
+```
 
-</div>
+:::caution
+Changes made as root inside a running container are usually temporary. For repeatable customizations, prefer `.env`, `cfg/`, `autostart/`, or a custom Docker image override.
+:::
+
+## Tools inside PHP containers
+
+The `work` flavor PHP images include development tools commonly needed by PHP projects, including Composer and framework CLIs. The exact tool set depends on the image build and PHP version.
+
+Useful checks:
+
+```bash
+dvl exec "php -v"
+dvl exec "composer --version"
+dvl exec "git --version"
+```
+
+If a command is missing, first check whether the PHP service is using a `work` image flavor. Some `dvl` commands can offer to switch a service from `slim` to `work` when required.
+
+## Legacy script compatibility
+
+Older Devilbox documentation used `./shell.sh` to enter PHP. That script is still kept for backward compatibility, but new workflows should use:
+
+```bash
+dvl shell
+dvl exec "php -v"
+```
+
+The modern CLI centralizes project detection, working-directory mapping, and service selection, which makes it safer than calling legacy scripts directly.
+
+## Host versus container paths
+
+| Host path | Container path | Purpose |
+| --- | --- | --- |
+| `data/www` | `/shared/httpd` | Web projects. |
+| `backups` | `/shared/backups` | Database dumps and restore files. |
+| `~/.ssh` | `/home/devilbox/.ssh` | Read-only SSH keys for Git operations. |
+| `cfg/php-ini-<version>` | `/etc/php-custom.d` | Custom PHP ini files. |
+| `cfg/php-fpm-<version>` | `/etc/php-fpm-custom.d` | Custom PHP-FPM configuration. |
+
+Knowing these paths helps when copying commands from host instructions into a container shell.
 
 ## Checklist
 
-- You know how to enter the PHP container on Linux, MacOS or Windows
-- You know how to become `root` inside the PHP container
-- You know what tools are available inside the PHP container
-- You know how to update the tools by pulling new versions of the Docker
-  images
+- Devilbox is running with `dvl up`.
+- `dvl shell` enters the default PHP service.
+- `dvl shell php82` or another service name enters a specific PHP runtime.
+- `dvl exec "php -v"` runs a one-off command successfully.
+- You know that `/shared/httpd` is the project workspace inside the container.
+- You know to use `sudo` only for temporary root debugging.
+- You know `./shell.sh` remains compatible but is no longer the recommended entry point.
 
-<div class="seealso">
+## Next step
 
-`troubleshooting`
-
-</div>
+Use the PHP shell to install project dependencies, run framework CLIs, or continue with container version changes in [Change container versions](/getting-started/change-container-versions/).

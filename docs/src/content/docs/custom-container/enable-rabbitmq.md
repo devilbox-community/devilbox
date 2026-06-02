@@ -1,179 +1,54 @@
 ---
-title: "Enable and configure RabbitMQ"
+title: Enable and configure RabbitMQ (deprecated)
+description: This integration is no longer maintained.
+sidebar:
+  badge:
+    text: Deprecated
+    variant: danger
 ---
 
-# Enable and configure RabbitMQ
+# Enable and configure RabbitMQ (deprecated)
 
-This section will guide you through getting RabbitMQ integrated into the
-Devilbox.
+:::danger[Deprecated]
+This page documents an integration that has been removed from Devilbox.
+:::
 
-<div class="seealso">
+## Why?
 
-\* `rabbitmq github` \*
-`rabbitmq dockerhub`
-\* `custom-container-enable-all-additional-container` \*
-`docker-compose-override-yml-how-does-it-work`
+The RabbitMQ container was removed from the default and optional Devilbox rosters. The historical page described a bundled override and environment variables that are no longer maintained as part of the supported documentation path. RabbitMQ remains a valid project dependency, but it should now be defined and versioned by the project that needs it.
 
-</div>
+## Migration
 
+If you still need this, define your own service in `docker-compose.override.yml`. See [Add your own Docker image](/advanced/add-your-own-docker-image/).
 
-## Overview
+Recommended migration steps:
 
-### Available overwrites
+1. Pick the RabbitMQ image tag you want to own.
+2. Add a `rabbitmq` or project-specific service name to your override file.
+3. Publish AMQP and management UI ports only when needed.
+4. Store broker data in a named volume or project-owned directory.
+5. Keep credentials in `.env` or another secret-management mechanism.
+6. Start the service with the rest of your Devilbox workflow.
 
-The Devilbox ships various example configurations to overwrite the
-default stack. Those files are located under `compose/` in the Devilbox
-git directory.
+:::caution
+Do not reuse old default credentials or unpinned broker versions for shared environments. Treat RabbitMQ as application infrastructure and maintain it with the same care as your database services.
+:::
 
-`docker-compose.override.yml-all` has all examples combined in one file
-for easy copy/paste. However, each example also exists in its standalone
-file as shown below:
+## Replacement pattern
 
-``` bash
-host> tree -L 1 compose/
-compose/
-├── docker-compose.override.yml-all
-├── docker-compose.override.yml-blackfire
-├── docker-compose.override.yml-elk
-├── docker-compose.override.yml-mailhog
-├── docker-compose.override.yml-meilisearch
-├── docker-compose.override.yml-ngrok
-├── docker-compose.override.yml-php-community
-├── docker-compose.override.yml-python-flask
-├── docker-compose.override.yml-rabbitmq
-├── docker-compose.override.yml-solr
-├── docker-compose.override.yml-varnish
-└── README.md
+Use the custom-image documentation as the maintained pattern:
 
-0 directories, 10 files
+```yaml
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
 ```
 
-<div class="seealso">
+Adjust the image tag, credentials, volumes, and published ports for your project.
 
-`custom-container-enable-all-additional-container`
+## History
 
-</div>
-
-### RabbitMQ settings
-
-In case of RabbitMQ, the file is
-`compose/docker-compose.override.yml-rabbitmq`. This file must be copied
-into the root of the Devilbox git directory.
-
-| What | How and where |
-|----|----|
-| Example compose file | `compose/docker-compose.override.yml-all` or `br` `compose/docker-compose.override.yml-rabbitmq` |
-| Container IP address | `172.16.238.210` |
-| Container host name | `rabbit` |
-| Container name | `rabbit` |
-| Mount points | via Docker volumes |
-| Exposed port | `5672` and `15672` (can be changed via `.env`) |
-| Available at | `http://localhost:15672` (Admin WebUI) |
-| Further configuration | none |
-
-### RabbitMQ env variables
-
-Additionally the following `.env` variables can be created for easy
-configuration:
-
-| Variable | Default value | Description |
-|----|----|----|
-| `HOST_PORT_RABBIT` | `5672` | Controls the host port on which RabbitMQ API will be available at. |
-| `HOST_PORT_RABBIT_MGMT` | `15672` | Controls the host port on which RabbitMQ Admin WebUI will be available at. |
-| `RABBIT_SERVER` | `management` | Controls the RabbitMQ version to use. |
-| `RABBIT_DEFAULT_VHOST` | `my-vhost` | Default RabbitMQ vhost name. (not a webserver vhost name) |
-| `RABBIT_DEFAULT_USER` | `guest` | Default username for Admin WebUI. |
-| `RABBIT_DEFAULT_PASS` | `guest` | Default password for Admin WebUI. |
-
-## Instructions
-
-### 1. Copy docker-compose.override.yml
-
-Copy the RabbitMQ Docker Compose overwrite file into the root of the
-Devilbox git directory. (It must be at the same level as the default
-`docker-compose.yml` file).
-
-``` bash
-host> cp compose/docker-compose.override.yml-rabbitmq docker-compose.override.yml
-```
-
-<div class="seealso">
-
-\* `docker-compose-override-yml` \* `add-your-own-docker-image` \*
-`overwrite-existing-docker-image`
-
-</div>
-
-### 2. Adjust `.env` settings (optional)
-
-RabbitMQ is using sane defaults, which can be changed by adding
-variables to the `.env` file and assigning custom values.
-
-Add the following variables to `.env` and adjust them to your needs:
-
-``` bash
-# RabbitMQ version to choose
-#RABBIT_SERVER=3.6
-#RABBIT_SERVER=3.6-management
-#RABBIT_SERVER=3.7
-#RABBIT_SERVER=3.7-management
-#RABBIT_SERVER=latest
-RABBIT_SERVER=management
-
-RABBIT_DEFAULT_VHOST=my_vhost
-RABBIT_DEFAULT_USER=guest
-RABBIT_DEFAULT_PASS=guest
-
-HOST_PORT_RABBIT=5672
-HOST_PORT_RABBIT_MGMT=15672
-```
-
-<div class="seealso">
-
-`env-file`
-
-</div>
-
-### 3. Start the Devilbox
-
-The final step is to start the Devilbox with RabbitMQ.
-
-Let's assume you want to start `php`, `httpd`, `bind`, `rabbit`.
-
-``` bash
-host> docker-compose up -d php httpd bind rabbit
-```
-
-<div class="seealso">
-
-`start-the-devilbox`
-
-</div>
-
-## TL;DR
-
-For the lazy readers, here are all commands required to get you started.
-Simply copy and paste the following block into your terminal from the
-root of your Devilbox git directory:
-
-``` bash
-# Copy compose-override.yml into place
-cp compose/docker-compose.override.yml-rabbitmq docker-compose.override.yml
-
-# Create .env variable
-echo "# RabbitMQ version to choose"           >> .env
-echo "#RABBIT_SERVER=3.6"                     >> .env
-echo "#RABBIT_SERVER=3.6-management"          >> .env
-echo "#RABBIT_SERVER=3.7"                     >> .env
-echo "#RABBIT_SERVER=3.7-management"          >> .env
-echo "#RABBIT_SERVER=latest"                  >> .env
-echo "RABBIT_SERVER=management"               >> .env
-echo "RABBIT_DEFAULT_VHOST=my_vhost"          >> .env
-echo "RABBIT_DEFAULT_USER=guest"              >> .env
-echo "RABBIT_DEFAULT_PASS=guest"              >> .env
-echo "HOST_PORT_RABBIT=5672"                  >> .env
-echo "HOST_PORT_RABBIT_MGMT=15672"            >> .env
-
-# Start container
-docker-compose up -d php httpd bind rabbit
-```
+Removed in 2026 during the Starlight documentation rewrite. Historical docs are preserved in git history at commit `2e93feb47b0eb0ff8a2819bda132e1f23f41a330`.
