@@ -163,6 +163,27 @@ NEW_GID=1000
 TIMEZONE=UTC
 
 
+###
+### Agentic container -- tool toggles + runtime env
+###
+### Comma-separated tool slugs to additionally enable at runtime.
+### (default-enabled set is baked at build time; this adds to it).
+### AGENTIC_TOOLS_ENABLE=kimi,qoder
+###
+### Comma-separated tool slugs to disable (wins over ENABLE on collision).
+### AGENTIC_TOOLS_DISABLE=gemini
+###
+### Container timezone (passed to tzdata).
+### TIMEZONE=America/Los_Angeles
+###
+### Forward host ports into container (CSV of host_port:container_port).
+### FORWARD_PORTS_TO_LOCALHOST=3306:3306,6379:6379
+###
+### Map devilbox user UID/GID to host values.
+### NEW_UID=1000
+### NEW_GID=1000
+
+
 
 ################################################################################
 ###
