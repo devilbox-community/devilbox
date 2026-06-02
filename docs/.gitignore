@@ -4,9 +4,17 @@ dist/
 .astro/
 .cache/
 
-# Astro env
+# Astro env (do NOT commit secrets or per-environment overrides)
 .env
+.env.local
 .env.production
+.env.*.local
+
+# Package manager debug logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Editor
 .DS_Store

@@ -169,12 +169,22 @@
 !/bash/bashrc.sh-example
 !/bash/README.md
 
-# Ignore documentation sphinx build
-/docs/_build/
-/docs/make.bat
-/docs/linkcheck
-/docs/venv
-*.rst.todo
+# Documentation (Astro Starlight) build artifacts.
+# Layered: docs/.gitignore covers node_modules/, dist/, .astro/, .cache/.
+# The entries below are kept as belt-and-braces for tooling that ignores
+# nested .gitignore files (some IDEs, archive scripts, etc.).
+/docs/node_modules/
+/docs/dist/
+/docs/.astro/
+/docs/.cache/
+/docs/.env
+/docs/.env.local
+/docs/.env.production
+/docs/.env.*.local
+/docs/npm-debug.log*
+/docs/pnpm-debug.log*
+/docs/yarn-debug.log*
+/docs/yarn-error.log*
 
 # Ignore vhost-gen files in test dir (copied on the fly)
 /.tests/tmp/*
