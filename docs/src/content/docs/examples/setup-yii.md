@@ -4,219 +4,109 @@ title: "Setup Yii"
 
 # Setup Yii
 
-This example will use `composer` to install Yii from within the Devilbox
-PHP container.
-
-> [!IMPORTANT]
-> Using `composer` requires the underlying file system to support
-> symlinks. If you use **Docker Toolbox** you need to explicitly
-> allow/enable this. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-After completing the below listed steps, you will have a working Yii
-setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example yii documentation`
-
-</div>
-
+This example installs the current Yii 2 basic application with Composer from inside the Devilbox PHP container and serves its `web/` directory through `htdocs`.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-yii` | `/shared/httpd/my-yii` | optional | `lvh.me` | <http://my-yii.lvh.me> / <https://my-yii.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-yii | /shared/httpd/my-yii | n.a. | loc | <http://my-yii.loc> `br` <https://my-yii.loc> |
+Projects live in `/shared/httpd/` in the PHP container and in `./data/www/` on the host.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox installed from the current `env-example`.
+- PHP 8.3 or PHP 8.4 available.
+- Composer available in the PHP container.
+- HTTPD and Bind services.
+
+Start the required services:
+
+```bash
+./dvl.sh up php httpd bind
+```
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in six steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Yii2 via `composer`
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-wp.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install Yii 2.
+4. Link the webroot to `htdocs`.
+5. Verify DNS.
+6. Open the project.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-yii
+```bash
+mkdir -p /shared/httpd/my-yii
+cd /shared/httpd/my-yii
 ```
 
-<div class="seealso">
+### 3. Install Yii 2
 
-`env-tld-suffix`
-
-</div>
-
-### 3. Install Yii2 via `composer`
-
-Navigate into your newly created vhost directory and install Yii2 with
-`composer`.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-yii
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ composer create-project --prefer-dist --stability=dev yiisoft/yii2-app-basic yii2-dev
+```bash
+composer create-project --prefer-dist yiisoft/yii2-app-basic:^2.0 yii2
 ```
 
-How does the directory structure look after installation:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ tree -L 1
+```bash
+tree -L 1
 .
-└── yii2-dev
-
-1 directory, 0 files
+└── yii2
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+The Devilbox web server serves `<vhost>/htdocs`, while Yii 2 keeps its entrypoint in `web/`.
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ ln -s yii2-dev/web/ htdocs
+```bash
+ln -s yii2/web htdocs
 ```
 
-How does the directory structure look after symlinking:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ tree -L 1
+```bash
+tree -L 1
 .
-├── yii2-dev
-└── htdocs -> yii2-dev/web
-
-2 directories, 0 files
+├── htdocs -> yii2/web
+└── yii2
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Verify DNS
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
+With the default `lvh.me` suffix, no hosts-file entry is required. For a custom suffix, add:
 
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-yii.loc
+```bash
+127.0.0.1 my-yii.example
 ```
-
-<div class="seealso">
-
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
-
-</div>
 
 ### 6. Open your browser
 
-Open your browser at <http://my-yii.loc> or <https://my-yii.loc>
+Visit <http://my-yii.lvh.me> or <https://my-yii.lvh.me>.
+
+## Optional database setup
+
+If your Yii application needs MySQL, start MySQL and create a database:
+
+```bash
+./dvl.sh up mysql
+./dvl.sh exec "mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_yii CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'"
+```
+
+Then edit `yii2/config/db.php` and point Yii to `127.0.0.1`, database `my_yii`, and your Devilbox MySQL credentials.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Run Yii console commands with `./dvl.sh exec "php yii"` from the project directory.
+- Add MySQL, cache, or queue services only when the application requires them.
+- Configure valid local HTTPS if your browser warns about the certificate.

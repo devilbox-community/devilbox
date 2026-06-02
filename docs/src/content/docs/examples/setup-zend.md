@@ -4,216 +4,113 @@ title: "Setup Zend"
 
 # Setup Zend
 
-This example will use `composer` to install Zend from within the PHP
-container.
+Zend Framework is now Laminas. This example keeps the established page URL and title, but uses the maintained Laminas MVC skeleton 3.x package and serves its `public/` directory through the Devilbox `htdocs` document root.
 
-> [!IMPORTANT]
-> Using `composer` requires the underlying file system to support
-> symlinks. If you use **Docker Toolbox** you need to explicitly
-> allow/enable this. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-<div class="seealso">
-
-`example zend documentation`
-
-</div>
-
+:::caution[Zend became Laminas]
+Do not start new projects with the abandoned `zendframework/*` packages. Use `laminas/laminas-mvc-skeleton` for new applications and migrate legacy Zend Framework code before upgrading PHP.
+:::
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-zend` | `/shared/httpd/my-zend` | optional | `lvh.me` | <http://my-zend.lvh.me> / <https://my-zend.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-zend | /shared/httpd/my-zend | n.a. | loc | <http://my-zend.loc> `br` <https://my-zend.loc> |
+Projects live in `/shared/httpd/` in the PHP container and in `./data/www/` on the host.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox installed from the current `env-example`.
+- PHP 8.3 or PHP 8.4 available.
+- Composer available in the PHP container.
+- HTTPD and Bind services.
+
+Start the required services:
+
+```bash
+./dvl.sh up php httpd bind
+```
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in six steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Zend via `composer`
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-wp.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install Laminas MVC skeleton 3.x.
+4. Link the webroot to `htdocs`.
+5. Verify DNS.
+6. Open the project.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-zend
+```bash
+mkdir -p /shared/httpd/my-zend
+cd /shared/httpd/my-zend
 ```
 
-<div class="seealso">
+### 3. Install Laminas 3.x
 
-`env-tld-suffix`
-
-</div>
-
-### 3. Install Zend via `composer`
-
-Navigate into your newly created vhost directory and install Zend with
-`composer`.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-zend
-devilbox@php-7.0.20 in /shared/httpd/my-zend $ composer create-project --prefer-dist zendframework/skeleton-application zend
+```bash
+composer create-project --prefer-dist laminas/laminas-mvc-skeleton:^3.0 laminas
 ```
 
-How does the directory structure look after installation:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-zend $ tree -L 1
+```bash
+tree -L 1
 .
-└── zend
-
-1 directory, 0 files
+└── laminas
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+The Devilbox web server serves `<vhost>/htdocs`, while Laminas keeps its entrypoint in `public/`.
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-zend $ ln -s zend/public/ htdocs
+```bash
+ln -s laminas/public htdocs
 ```
 
-How does the directory structure look after symlinking:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-zend $ tree -L 1
+```bash
+tree -L 1
 .
-├── zend
-└── htdocs -> zend/public
-
-2 directories, 0 files
+├── htdocs -> laminas/public
+└── laminas
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Verify DNS
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
+With the default `lvh.me` suffix, no hosts-file entry is required. For a custom suffix, add:
 
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-zend.loc
+```bash
+127.0.0.1 my-zend.example
 ```
-
-<div class="seealso">
-
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
-
-</div>
 
 ### 6. Open your browser
 
-Open your browser at <http://my-zend.loc> or <https://my-zend.loc>
+Visit <http://my-zend.lvh.me> or <https://my-zend.lvh.me>.
+
+## Optional database setup
+
+If your Laminas app needs MySQL, start MySQL and create a database:
+
+```bash
+./dvl.sh up mysql
+./dvl.sh exec "mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_zend CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'"
+```
+
+Configure the application with host `127.0.0.1`, database `my_zend`, and your Devilbox MySQL credentials.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Run Laminas or Composer commands with `./dvl.sh exec "composer"` from the project directory.
+- Plan migrations for legacy Zend Framework projects before switching to modern PHP runtimes.
+- Add database, cache, or search services only when the application requires them.

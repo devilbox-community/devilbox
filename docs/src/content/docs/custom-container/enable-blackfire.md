@@ -1,247 +1,37 @@
 ---
-title: "Enable and configure Blackfire"
+title: Enable and configure Blackfire (deprecated)
+description: This integration is no longer part of the optional container roster.
+sidebar:
+  order: 2
+  badge:
+    text: Deprecated
+    variant: danger
 ---
 
-# Enable and configure Blackfire
+# Enable and configure Blackfire (deprecated)
 
-This section will guide you through getting Blackfire integrated into
-the Devilbox.
+:::danger[Deprecated]
+Blackfire is not listed in the current `CONTAINERS_CONFIG_OPTIONAL` roster in `env-example`.
+:::
 
-<div class="seealso">
+## Why?
 
-\* `blackfire github`
-\*
-`blackfire dockerhub`
-\* `custom-container-enable-all-additional-container` \*
-`docker-compose-override-yml-how-does-it-work`
+The historical Blackfire page relied on copying `compose/docker-compose.override.yml-blackfire` into `docker-compose.override.yml` and then starting the service manually. Devilbox now documents optional containers through `CONTAINERS_CONFIG_OPTIONAL`, and `blackfire` is not one of the supported optional slugs in the current roster.
 
-</div>
+The old compose snippet still exists for reference, but it is not provisioned by the supported optional-container mechanism.
 
+## Migration
 
-## Overview
+If your project still needs Blackfire, own it as project infrastructure:
 
-### Available overwrites
+1. Add a project-specific Blackfire service to `docker-compose.override.yml`.
+2. Pin the Blackfire image tag you want to maintain.
+3. Store `BLACKFIRE_SERVER_ID`, `BLACKFIRE_SERVER_TOKEN`, `BLACKFIRE_CLIENT_ID`, and `BLACKFIRE_CLIENT_TOKEN` in `.env` or your secret manager.
+4. Enable the PHP Blackfire extension in the PHP runtime you actually use.
+5. Start Devilbox with `./dvl.sh up` after your project override is in place.
 
-The Devilbox ships various example configurations to overwrite the
-default stack. Those files are located under `compose/` in the Devilbox
-git directory.
+## Replacement pattern
 
-`docker-compose.override.yml-all` has all examples combined in one file
-for easy copy/paste. However, each example also exists in its standalone
-file as shown below:
+Use the maintained environment-variable pattern for supported optional containers only. See [Agentic tool toggles](/getting-started/agentic-tools-toggle/) for the same default-plus-optional pattern, and read `env-example` for the authoritative Devilbox container roster.
 
-``` bash
-host> tree -L 1 compose/
-compose/
-├── docker-compose.override.yml-all
-├── docker-compose.override.yml-blackfire
-├── docker-compose.override.yml-elk
-├── docker-compose.override.yml-mailhog
-├── docker-compose.override.yml-meilisearch
-├── docker-compose.override.yml-ngrok
-├── docker-compose.override.yml-php-community
-├── docker-compose.override.yml-python-flask
-├── docker-compose.override.yml-rabbitmq
-├── docker-compose.override.yml-solr
-├── docker-compose.override.yml-varnish
-└── README.md
-
-0 directories, 10 files
-```
-
-<div class="seealso">
-
-`custom-container-enable-all-additional-container`
-
-</div>
-
-### Blackfire settings
-
-In case of Blackfire, the file is
-`compose/docker-compose.override.yml-blackfire`. This file must be
-copied into the root of the Devilbox git directory.
-
-| What | How and where |
-|----|----|
-| Example compose file | `compose/docker-compose.override.yml-all` or `br` `compose/docker-compose.override.yml-blackfire` |
-| Container IP address | `172.16.238.200` |
-| Container host name | `blackfire` |
-| Container name | `blackfire` |
-| Mount points | none |
-| Exposed port | none |
-| Available at | n.a. |
-| Further configuration | `BLACKFIRE_SERVER_ID` and `BLACKFIRE_SERVER_TOKEN` must be set via `.env` |
-
-### Blackfire env variables
-
-Additionally the following `.env` variables can be created for easy
-configuration:
-
-| Variable | Default value | Description |
-|----|----|----|
-| `BLACKFIRE_SERVER` | `latest` | Controls the Blackfire version to use. |
-| `BLACKFIRE_SERVER_ID` | `id` | A valid server id is required in order to start `blackfire-agent`. |
-| `BLACKFIRE_SERVER_TOKEN` | `token` | A valid server token is required in order to start `blackfire-agent`. |
-| `BLACKFIRE_CLIENT_ID` | `id` | A valid client id is required in order to use `blackfire` cli. |
-| `BLACKFIRE_CLIENT_TOKEN` | `token` | A valid client token is required in order to use `blackfire` cli. |
-
-## Instructions
-
-### 1. Copy docker-compose.override.yml
-
-Copy the Blackfire Docker Compose overwrite file into the root of the
-Devilbox git directory. (It must be at the same level as the default
-`docker-compose.yml` file).
-
-``` bash
-host> cp compose/docker-compose.override.yml-blackfire docker-compose.override.yml
-```
-
-<div class="seealso">
-
-\* `docker-compose-override-yml` \* `add-your-own-docker-image` \*
-`overwrite-existing-docker-image`
-
-</div>
-
-### 2. Adjust `env` settings
-
-By default Blackfire is using some dummy values for BLACKFIRE_SERVER_ID
-and BLACKFIRE_SERVER_TOKEN. You must however aquire valid values and set
-the in your `.env` file in order for Blackfire to properly start. Those
-values can be obtained at their official webpage.
-
-``` bash
-BLACKFIRE_SERVER_ID=<valid server id>
-BLACKFIRE_SERVER_TOKEN=<valid server token>
-
-#BLACKFIRE_SERVER=1.12.0
-#BLACKFIRE_SERVER=1.13.0
-#BLACKFIRE_SERVER=1.14.0
-#BLACKFIRE_SERVER=1.14.1
-#BLACKFIRE_SERVER=1.15.0
-#BLACKFIRE_SERVER=1.16.0
-#BLACKFIRE_SERVER=1.17.0
-#BLACKFIRE_SERVER=1.17.1
-#BLACKFIRE_SERVER=1.18.0
-BLACKFIRE_SERVER=latest
-```
-
-You must also explicitly enable the PHP `blackfire` module and disable
-`xdebug` via `.env`
-
-``` bash
-PHP_MODULES_ENABLE=blackfire
-PHP_MODULES_DISABLE=xdebug
-```
-
-<div class="seealso">
-
-`env-file`
-
-</div>
-
-### 3. Copy blackfire php.ini template
-
-In order for the PHP `blackfire` module to know where the
-`blackfire-agent` is listening, we must configure its PHP settings.
-There is already a default template that you can simply copy.
-
-``` bash
-host> cp cfg/php-ini-7.2/devilbox-php.ini-blackfire cfg/php-ini-7.2/blackfire.ini
-```
-
-<div class="seealso">
-
-The above example shows the procedure for PHP 7.2, if you are using a
-different version, you must navigate to its corresponding configuration
-directory.
-
-Read more here: `php-ini`
-
-</div>
-
-### 4. Configure blackfire cli (optional)
-
-If you want to use the `blackfire` cli from within the PHP container,
-its configuration must be configured. There is already a startup
-template which does it for you.
-
-You first need to add the Blackfire client id and token to `.env`:
-
-``` bash
-BLACKFIRE_CLIENT_ID=<valid client id>
-BLACKFIRE_CLIENT_TOKEN=<valid client token>
-```
-
-Then all that's left to do is to copy the startup script which
-configures the blackfire cli for you.
-
-``` bash
-host> cp autostart/configure-blackfire-cli.sh-example autostart/configure-blackfire-cli.sh
-```
-
-<div class="seealso">
-
-\* `custom-scripts-globally`
-
-</div>
-
-### 5. Start the Devilbox
-
-The final step is to start the Devilbox with Blackfire.
-
-Let's assume you want to start `php`, `httpd`, `bind` and `blackfire`.
-
-``` bash
-host> docker-compose up -d php httpd bind blackfire
-```
-
-<div class="seealso">
-
-`start-the-devilbox`
-
-</div>
-
-## TL;DR
-
-For the lazy readers, here are all commands required to get you started.
-Simply copy and paste the following block into your terminal from the
-root of your Devilbox git directory:
-
-``` bash
-# Copy compose-override.yml into place
-cp compose/docker-compose.override.yml-blackfire docker-compose.override.yml
-
-# Copy php.ini into place
-cp cfg/php-ini-7.2/devilbox-php.ini-blackfire cfg/php-ini-7.2/blackfire.ini
-
-# Set Blackfire server id and token
-echo "BLACKFIRE_SERVER_ID=<valid server id>"       >> .env
-echo "BLACKFIRE_SERVER_TOKEN=<valid server token>" >> .env
-
-# Set Blackfire client id and token
-echo "BLACKFIRE_CLIENT_ID=<valid client id>"       >> .env
-echo "BLACKFIRE_CLIENT_TOKEN=<valid client token>" >> .env
-
-echo "#BLACKFIRE_SERVER=1.12.0"                    >> .env
-echo "#BLACKFIRE_SERVER=1.13.0"                    >> .env
-echo "#BLACKFIRE_SERVER=1.14.0"                    >> .env
-echo "#BLACKFIRE_SERVER=1.14.1"                    >> .env
-echo "#BLACKFIRE_SERVER=1.15.0"                    >> .env
-echo "#BLACKFIRE_SERVER=1.16.0"                    >> .env
-echo "#BLACKFIRE_SERVER=1.17.0"                    >> .env
-echo "#BLACKFIRE_SERVER=1.17.1"                    >> .env
-echo "#BLACKFIRE_SERVER=1.18.0"                    >> .env
-echo "BLACKFIRE_SERVER=latest"                     >> .env
-
-# Ensure blackfire is enabled and xdebug is disabled
-# IMPORTANT: This replacement is only an example and will overwrite
-#            all other enabled/disabled modules.
-#            Do not do it this way.
-sed -i'' 's/^PHP_MODULES_ENABLE=.*/PHP_MODULES_ENABLE=blackfire/g' .env
-sed -i'' 's/^PHP_MODULES_DISABLE=.*/PHP_MODULES_ENABLE=xdebug/g' .env
-
-# Start container
-docker-compose up -d php httpd bind blackfire
-```
+For custom services, use [Add your own Docker image](/advanced/add-your-own-docker-image/).
