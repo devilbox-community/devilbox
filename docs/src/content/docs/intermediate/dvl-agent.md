@@ -89,7 +89,7 @@ The `auth` command requires a functional web browser on your host machine to com
 3. **Browser**: Your host's default browser will open the provider's login page (e.g., Anthropic or GitHub).
 4. **Grant**: Approve the access request in your browser.
 5. **Callback**: The browser redirects to a local loopback port (`AGENTIC_OAUTH_PORT`), which passes the token back into the container.
-6. **Persistence**: The token is saved in the tool's persistent config directory (e.g., `cfg/agentic-claude`).
+6. **Persistence**: The token is saved in the tool's persistent config directory (e.g., `cfg/agentic/claude`).
 </Steps>
 
 ## Volume Persistence
@@ -98,9 +98,8 @@ The following directories in the agentic container are mounted from your host to
 
 | Container Path | Host Source | Survives `-v`? |
 |---|---|---|
-| `/home/devilbox` | `cfg/agentic-home` | Yes |
-| `/home/devilbox/.claude` | `cfg/agentic-claude` | Yes |
-| `/home/devilbox/.config/opencode` | `cfg/agentic-opencode` | Yes |
+| `/home/devilbox/.claude` | `cfg/agentic/claude` | Yes |
+| `/home/devilbox/.config/opencode` | `cfg/agentic/opencode` | Yes |
 | `/shared/httpd` | `HOST_PATH_HTTPD_DATADIR` | Yes |
 
 <Aside type="note">

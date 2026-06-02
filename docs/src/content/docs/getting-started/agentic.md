@@ -37,11 +37,11 @@ Configuration for these tools is stored in the `cfg/` directory of your Devilbox
 ```text
 devilbox/
 ├── cfg/
-│   ├── agentic-home/      # Persistent $HOME directory
-│   ├── agentic-claude/    # ~/.claude configs
-│   ├── agentic-opencode/  # opencode state
-│   ├── agentic-copilot/   # GitHub credentials
-│   └── ...                # Other tool-specific mounts
+│   └── agentic/
+│       ├── claude/        # ~/.claude configs
+│       ├── opencode/      # opencode state
+│       ├── copilot/       # GitHub credentials
+│       └── ...            # Other tool-specific mounts
 └── data/
     └── www/               # Shared with /shared/httpd
 ```

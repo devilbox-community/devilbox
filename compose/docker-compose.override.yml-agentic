@@ -29,23 +29,28 @@ services:
     volumes:
       # Workspace (same as php /shared/httpd) so agents can edit user code
       - ${HOST_PATH_HTTPD_DATADIR}:/shared/httpd:rw${MOUNT_OPTIONS}
-      # Persistent home + per-tool config (survives `docker compose down -v`)
-      - ${DEVILBOX_PATH}/cfg/agentic-home:/home/devilbox:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-claude:/home/devilbox/.claude:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-opencode:/home/devilbox/.config/opencode:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-codex:/home/devilbox/.codex:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-copilot:/home/devilbox/.config/gh:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-aider:/home/devilbox/.aider:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-goose:/home/devilbox/.config/goose:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-cline:/home/devilbox/.config/cline:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-continue:/home/devilbox/.continue:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-cursor:/home/devilbox/.cursor:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-llm:/home/devilbox/.config/io.datasette.llm:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic-crush:/home/devilbox/.config/crush:rw${MOUNT_OPTIONS}
+      # Per-tool config (survives `docker compose down -v`)
+      - ${DEVILBOX_PATH}/cfg/agentic/claude:/home/devilbox/.claude:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/opencode:/home/devilbox/.config/opencode:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/codex:/home/devilbox/.codex:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/copilot:/home/devilbox/.config/gh:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/aider:/home/devilbox/.aider:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/goose:/home/devilbox/.config/goose:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/cline:/home/devilbox/.config/cline:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/continue:/home/devilbox/.continue:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/cursor:/home/devilbox/.cursor:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/llm:/home/devilbox/.config/io.datasette.llm:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/crush:/home/devilbox/.config/crush:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/openclaude:/home/devilbox/.openclaude:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/openspec:/home/devilbox/.openspec:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/speckit:/home/devilbox/.specify:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/kilocode:/home/devilbox/.kilocode:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/kimi:/home/devilbox/.kimi:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/qoder:/home/devilbox/.qoder:rw${MOUNT_OPTIONS}
       # Cross-tool shared: gitconfig, ssh, env shims
-      - ${DEVILBOX_PATH}/cfg/agentic-shared:/home/devilbox/.shared:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/shared:/home/devilbox/.shared:rw${MOUNT_OPTIONS}
       # Startup scripts (mirrors php-startup-* → /startup.1.d pattern, docker-compose.yml line 217)
-      - ${DEVILBOX_PATH}/cfg/agentic-startup:/startup.1.d:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/startup:/startup.1.d:rw${MOUNT_OPTIONS}
       # Generic autostart (shared with php; matches line 218)
       - ${DEVILBOX_PATH}/autostart:/startup.2.d:rw${MOUNT_OPTIONS}
       # Bash profile injection (shared with php; matches line 221)

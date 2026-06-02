@@ -97,7 +97,7 @@ set_login_command() {
       LOGIN_CMD=(gh auth login --web)
       ;;
     aider)
-      echo "aider uses env vars; set OPENAI_API_KEY in cfg/agentic-shared/.env" >&2
+      echo "aider uses env vars; set OPENAI_API_KEY in cfg/agentic/shared/.env" >&2
       return 2
       ;;
     *)
