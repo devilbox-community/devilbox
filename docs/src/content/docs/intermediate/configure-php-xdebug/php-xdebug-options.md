@@ -2,84 +2,92 @@
 title: "Xdebug options explained"
 ---
 
-orphan  
+orphan
 
 # Xdebug options explained
 
+Devilbox uses normal PHP ini snippets for Xdebug. Create an
+`xdebug.ini` file in the PHP version directory you run, for example
+`cfg/php-ini-8.4/xdebug.ini` or `cfg/php-ini-8.3/xdebug.ini`.
 
 ## Example
 
-Consider the following `xdebug.ini` as an example:
+```ini
+zend_extension=xdebug.so
 
-``` ini
-xdebug.default_enable=1
-xdebug.remote_enable=1
-xdebug.remote_handler=dbgp
-xdebug.remote_port=9000
-xdebug.remote_autostart=1
-xdebug.idekey="PHPSTORM"
-xdebug.remote_log=/var/log/php/xdebug.log
+xdebug.mode=debug
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
+xdebug.start_with_request=yes
+xdebug.idekey=PHPSTORM
+xdebug.log=/var/log/php/xdebug.log
 ```
 
-<div class="seealso">
+## `zend_extension`
 
-`xdebug settings`
+Loads the Xdebug extension. Keep `zend_extension=xdebug.so` in the
+version-specific ini file unless your image already loads Xdebug another
+way.
 
-</div>
+## `xdebug.mode`
 
-### default_enable
+Controls which Xdebug features are active. Use `debug` for step
+debugging from an IDE or editor.
 
-By enabling this, stacktraces will be shown by default on an error
-event. It is advisable to leave this setting set to 1.
+Multiple modes can be comma-separated if you need other Xdebug features,
+but enabling fewer modes keeps PHP startup and requests lighter.
 
-### remote_enable
+## `xdebug.client_host`
 
-This switch controls whether Xdebug should try to contact a debug client
-which is listening on the host and port as set with the settings
-`xdebug.remote_host` and `xdebug.remote_port`. If a connection can not
-be established the script will just continue as if this setting was 0.
+Defines where the PHP container connects when a debug session starts. For
+current Docker Desktop on macOS and Windows, use
+`host.docker.internal`.
 
-### remote_handler
+On Linux, Devilbox maps `host.docker.internal` to Docker Engine's
+`host-gateway` in `docker-compose.yml`. If you use a customized compose
+file without that mapping, either add it back or set this value to the
+host IP reachable from the PHP container.
 
-Can be either `'php3'` which selects the old PHP 3 style debugger
-output, `'gdb'` which enables the GDB like debugger interface or
-`'dbgp'` - the debugger protocol. The DBGp protocol is the only
-supported protocol.
+## `xdebug.client_port`
 
-**Note:** Xdebug 2.1 and later only support `'dbgp'` as protocol.
+Defines the port where your IDE or editor listens for DBGp connections.
+Xdebug 3 defaults to `9003`; configure the same port in PhpStorm, Visual
+Studio Code, Sublime Text, or another debug client.
 
-### remote_port
+:::caution
+Port `9003` must be open on the host. If a firewall prompt appears, allow
+your IDE or editor to accept incoming connections on private/local
+networks.
+:::
 
-The port to which Xdebug tries to connect on the remote host. Port
-`9000` is the default for both the client and the bundled debugclient.
-As many clients use this port number, it is best to leave this setting
-unchanged.
+## `xdebug.start_with_request`
 
-### remote_autostart
+Controls when Xdebug starts a debugging session. Use `yes` for the
+Devilbox examples so every request tries to connect to the listening
+client.
 
-Normally you need to use a specific HTTP GET/POST variable to start
-remote debugging (see
-`xdebug remote debugging`).
-When this setting is set to `1`, Xdebug will always attempt to start a
-remote debugging session and try to connect to a client, even if the
-GET/POST/COOKIE variable was not present.
+For day-to-day work you can switch this to `trigger` and start sessions
+only when your browser extension or request sets an Xdebug trigger.
 
-### idekey
+## `xdebug.idekey`
 
-Controls which IDE Key Xdebug should pass on to the DBGp debugger
-handler. The default is based on environment settings. First the
-environment setting DBGP_IDEKEY is consulted, then USER and as last
-USERNAME. The default is set to the first environment variable that is
-found. If none could be found the setting has as default ''. If this
-setting is set, it always overrides the environment variables.
+Passes an IDE key to the DBGp client. Many modern clients do not require
+a specific key, but setting one keeps behavior explicit and helps when
+multiple tools listen on the same workstation.
 
-> [!IMPORTANT]
-> Many IDE/editors require a specific value for `xdebug.idekey`. Make
-> sure you pay special attention to that variable when it comes to
-> configuring your IDE/editor.
+Common values used in these guides are:
 
-### remote_log
+- `PHPSTORM` for PhpStorm.
+- `VSCODE` for Visual Studio Code.
+- `sublime.xdebug` for Sublime Text.
 
-Keep the exact path of `/var/log/php/xdebug.log`. You will then have the
-log file available in the Devilbox log directory of the PHP version for
-which you have configured Xdebug.
+## `xdebug.log`
+
+Writes Xdebug connection diagnostics. Keep the path
+`/var/log/php/xdebug.log` so the log is available through Devilbox's
+normal PHP log directory for the selected PHP version.
+
+:::tip
+Enable the log while validating a new setup, then remove or comment it if
+the file becomes too noisy during normal development.
+:::

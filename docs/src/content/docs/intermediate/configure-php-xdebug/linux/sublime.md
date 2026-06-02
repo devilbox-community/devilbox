@@ -2,140 +2,113 @@
 title: "Docker on Linux: Xdebug for Sublime Text 3"
 ---
 
-orphan  
+orphan
 
-# Docker on Linux: Xdebug for Sublime Text 3
+# Docker on Linux: Xdebug for Sublime Text
 
-Docker on Linux allows Xdebug to automatically connect back to the host
-system without the need of an explicit IP address.
-
+Use this guide to debug Devilbox projects with Sublime Text 4, the
+`xdebug-client` package, PHP 8.3 or 8.4, and Xdebug 3 on Docker Engine
+for Linux.
 
 ## Prerequisites
 
-Ensure you know how to customize `php.ini` values for the Devilbox and
-have a rough understanding about common Xdebug options.
+- A running Devilbox checkout on Linux.
+- Sublime Text 4 with Package Control installed.
+- The `xdebug-client` package installed from Package Control.
+- A project below `./data/www` or the directory configured for HTTPD data.
 
-<div class="seealso">
+See also: [Xdebug options explained](../php-xdebug-options/).
 
-\* `php-ini` \* `configure-php-xdebug-options`
+:::caution
+On Linux, `host.docker.internal` needs Docker Engine 20.10+ host-gateway
+support. Devilbox already declares `host.docker.internal:host-gateway` in
+`docker-compose.yml` for PHP containers. Keep that mapping in custom
+compose files or use the host IP address reachable from the container.
+:::
 
-</div>
+## Assumptions
 
-## Assumption
+| Setting | Example |
+|---|---|
+| Devilbox directory | `/home/cytopia/repo/devilbox` |
+| Local project path | `/home/cytopia/repo/devilbox/data/www/myapp` |
+| Container project path | `/shared/httpd/myapp` |
+| PHP version | `8.4` |
+| Xdebug client host | `host.docker.internal` |
+| Xdebug client port | `9003` |
 
-For the sake of this example, we will assume the following settings and
-file system paths:
+The local project path is where Sublime opens your files. The container
+path is what PHP reports to the debug client.
 
-| Directory                    | Path                                   |
-|------------------------------|----------------------------------------|
-| Devilbox git directory       | `/home/cytopia/repo/devilbox`          |
-| `env-httpd-datadir`          | `./data/www`                           |
-| Resulting local project path | `/home/cytopia/repo/devilbox/data/www` |
-| Selected PHP version         | `5.6`                                  |
+## Configure Sublime Text 4
 
-The **Resulting local project path** is the path where all projects are
-stored locally on your host operating system. No matter what this path
-is, the equivalent remote path (inside the Docker container) is always
-`/shared/httpd`.
+1. Install `xdebug-client` with Package Control.
+2. Open **Preferences | Package Settings | Xdebug Client | Settings**.
+3. Configure the listener and path mapping for your project.
 
-> [!IMPORTANT]
-> Remember this, when it comes to path mapping in your IDE/editor
-> configuration.
+```json
+{
+  "path_mapping": {
+    "/shared/httpd/myapp": "/home/cytopia/repo/devilbox/data/www/myapp"
+  },
+  "url": "http://myapp.lvh.me/",
+  "ide_key": "sublime.xdebug",
+  "host": "0.0.0.0",
+  "port": 9003
+}
+```
 
-## Configuration
+Start the Sublime debug listener before loading the page in your browser.
 
-### Install Xdebug Client for Sublime
+:::tip
+Keep the mapping as specific as your project root. Mapping all of
+`/shared/httpd` works, but project-level mappings make breakpoint issues
+easier to diagnose.
+:::
 
-Use Sublime's Package Control to search for and install `Xdebug Client`.
+## Configure Xdebug 3
 
-> <div class="seealso">
->
-> `xdebug ide sublime xdebug client`
->
-> </div>
+Create `cfg/php-ini-8.4/xdebug.ini` in your Devilbox checkout. Use
+`cfg/php-ini-8.3/xdebug.ini` if your project runs on PHP 8.3.
 
-### Configure Sublime
+```bash
+host> cd /home/cytopia/repo/devilbox
+host> vi cfg/php-ini-8.4/xdebug.ini
+```
 
-- Navigate to `Tools` -\> `Xdebug` -\> `Settings - User` in the menu
+Add the current Xdebug 3 settings:
 
-- This will open the configuration file in Sublime
+```ini
+zend_extension=xdebug.so
 
-  > ``` json
-  > {
-  >     "path_mapping": {
-  >         "/shared/httpd" : "/home/cytopia/repo/devilbox/data/www"
-  >     },
-  >     "url": "",
-  >     "ide_key": "sublime.xdebug",
-  >     "host": "0.0.0.0",
-  >     "port": 9000
-  > }
-  > ```
-  >
-  > > [!IMPORTANT]
-  > > Recall the path settings from the *Assumption* section and adjust
-  > > if your configuration differs!
+xdebug.mode=debug
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
+xdebug.start_with_request=yes
+xdebug.idekey=sublime.xdebug
 
-### Configure php.ini
+; Optional, useful while testing connections
+xdebug.log=/var/log/php/xdebug.log
+```
 
-> [!NOTE]
-> The following example show how to configure PHP Xdebug for PHP 5.6:
+If `host.docker.internal` is not available in your custom Linux setup,
+replace it with the host IP address reachable from the PHP container.
 
-Create an `xdebug.ini` file (must end by `.ini`):
+## Restart Devilbox
 
-> ``` bash
-> # Navigate to the Devilbox git directory
-> host> cd path/to/devilbox
->
-> # Navigate to PHP 5.6 ini configuration directory
-> host> cd cfg/php-ini-5.6/
->
-> # Create and open debug.ini file
-> host> vi xdebug.ini
-> ```
+Restart the PHP container so the new ini file is loaded:
 
-Copy/paste all of the following lines into the above created
-`xdebug.ini` file:
-
-> ``` ini
-> ; Defaults
-> xdebug.default_enable=1
-> xdebug.remote_enable=1
-> xdebug.remote_port=9000
->
-> ; The Linux way
-> xdebug.remote_connect_back=1
->
-> ; idekey value is specific to Sublime
-> xdebug.idekey=sublime.xdebug
->
-> ; Optional: Set to true to always auto-start xdebug
-> xdebug.remote_autostart=false
-> ```
-
-> [!NOTE]
-> Host os and editor specific settings are highlighted in yellow and are
-> worth googling to get a better understanding of the tools you use and
-> to be more efficient at troubleshooting.
-
-### Restart the Devilbox
-
-Restarting the Devilbox is important in order for it to read the new PHP
-settings. Note that the following example only starts up PHP, HTTPD and
-Bind.
-
-``` bash
-# Navigate to the Devilbox git directory
-host> cd path/to/devilbox
-
-# Stop, remove stopped container and start
-host> docker-compose stop
-host> docker-compose rm
+```bash
+host> cd /home/cytopia/repo/devilbox
+host> docker-compose stop php
+host> docker-compose rm -f php
 host> docker-compose up php httpd bind
 ```
 
-<div class="seealso">
+Open your project URL with the Sublime listener active. Sublime should
+stop at breakpoints once the path mapping matches the container path.
 
-`start-the-devilbox-stop-and-restart` (Why do `docker-compose rm`?)
-
-</div>
+:::caution
+If Sublime listens but never stops, confirm that no local firewall blocks
+port `9003` and that the PHP container can resolve `host.docker.internal`.
+:::

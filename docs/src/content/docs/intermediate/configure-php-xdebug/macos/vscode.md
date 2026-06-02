@@ -2,173 +2,117 @@
 title: "Docker on MacOS: Xdebug for Visual Studio Code"
 ---
 
-orphan  
+orphan
 
 # Docker on MacOS: Xdebug for Visual Studio Code
 
-> [!NOTE]
-> Docker on MacOS requires you to create a **host address alias** on
-> your loopback device.
-
+Use this guide to debug Devilbox projects with the current Visual Studio
+Code release, the `xdebug.php-debug` extension, PHP 8.3 or 8.4, Xdebug
+3, and Docker Desktop on macOS.
 
 ## Prerequisites
 
-Ensure you know how to customize `php.ini` values for the Devilbox and
-have a rough understanding about common Xdebug options.
+- A running Devilbox checkout on macOS.
+- Docker Desktop for Mac.
+- Visual Studio Code with the `xdebug.php-debug` extension installed.
+- A project below `./data/www` or the directory configured for HTTPD data.
 
-<div class="seealso">
+See also: [Xdebug options explained](../php-xdebug-options/).
 
-\* `php-ini` \* `configure-php-xdebug-options`
+:::tip
+Current Docker Desktop provides `host.docker.internal` automatically. The
+old macOS loopback alias workaround is no longer required for this setup.
+:::
 
-</div>
+## Assumptions
 
-> [!IMPORTANT]
-> Ensure you have created an `howto-host-address-alias-on-mac` and
-> `10.254.254.254` is aliased to your localhost.
+| Setting | Example |
+|---|---|
+| Devilbox directory | `/Users/cytopia/repo/devilbox` |
+| Local project path | `/Users/cytopia/repo/devilbox/data/www/myapp` |
+| Container project path | `/shared/httpd/myapp` |
+| PHP version | `8.4` |
+| Xdebug client host | `host.docker.internal` |
+| Xdebug client port | `9003` |
 
-## Assumption
+Open the project directory, such as `data/www/myapp`, as your VS Code
+workspace. The examples below assume the web root is `htdocs`.
 
-For the sake of this example, we will assume the following settings and
-file system paths:
+## Configure VS Code
 
-| Directory                    | Path                                   |
-|------------------------------|----------------------------------------|
-| Devilbox git directory       | `/home/cytopia/repo/devilbox`          |
-| `env-httpd-datadir`          | `./data/www`                           |
-| Resulting local project path | `/home/cytopia/repo/devilbox/data/www` |
-| Selected PHP version         | `5.6`                                  |
-| Host address alias           | `10.254.254.254` (see prerequisites)   |
+Create or update `.vscode/launch.json` in the project workspace:
 
-The **Resulting local project path** is the path where all projects are
-stored locally on your host operating system. No matter what this path
-is, the equivalent remote path (inside the Docker container) is always
-`/shared/httpd`.
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Listen for Devilbox Xdebug",
+      "type": "php",
+      "request": "launch",
+      "port": 9003,
+      "pathMappings": {
+        "/shared/httpd/myapp": "${workspaceFolder}"
+      },
+      "log": true,
+      "xdebugSettings": {
+        "max_children": 128,
+        "max_data": 512,
+        "max_depth": 3
+      }
+    }
+  ]
+}
+```
 
-> [!IMPORTANT]
-> Remember this, when it comes to path mapping in your IDE/editor
-> configuration.
+Start **Listen for Devilbox Xdebug** before loading the page in your
+browser.
 
-## Configuration
+:::tip
+The extension ID is `xdebug.php-debug`. If an older guide mentions a
+different PHP debug extension name, replace it with this extension.
+:::
 
-### Install vscode-php-debug for VSCode
+## Configure Xdebug 3
 
-Ensure you have `vscode-php-debug` installed for Visual Studio Code.
+Create `cfg/php-ini-8.4/xdebug.ini` in your Devilbox checkout. Use
+`cfg/php-ini-8.3/xdebug.ini` if your project runs on PHP 8.3.
 
-> <div class="seealso">
->
-> `xdebug ide vscode php debug`
->
-> </div>
+```bash
+host> cd /Users/cytopia/repo/devilbox
+host> vi cfg/php-ini-8.4/xdebug.ini
+```
 
-### Configure VSCode
+Add the current Xdebug 3 settings:
 
-You will need to configure the path mapping in `launch.json` (VSCode
-configuration file):
+```ini
+zend_extension=xdebug.so
 
-> ``` json
-> {
->     "version": "0.2.0",
->     "configurations": [
->         {
->             "name": "Xdebug for Project mytest",
->             "type": "php",
->             "request": "launch",
->             "port": 9000,
->             "pathMappings": {
->                 "/shared/httpd/mytest/htdocs": "${workspaceFolder}/htdocs"
->             }
->         }, {
->             "name": "Launch currently open script",
->             "type": "php",
->             "request": "launch",
->             "program": "${file}",
->             "cwd": "${fileDirname}",
->             "port": 9000
->         }
->     ]
-> }
-> ```
->
-> > [!IMPORTANT]
-> > Recall the path settings from the *Assumption* section and adjust if
-> > your configuration differs!
->
-> > [!IMPORTANT]
-> > The above example configures Xdebug for a single project **mytest**.
-> > Add more projects as you need.
->
-> <div class="seealso">
->
-> \* <https://go.microsoft.com/fwlink/?linkid=830387> \*
-> <https://github.com/cytopia/devilbox/issues/381>
->
-> </div>
+xdebug.mode=debug
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
+xdebug.start_with_request=yes
+xdebug.idekey=VSCODE
 
-### Configure php.ini
+; Optional, useful while testing connections
+xdebug.log=/var/log/php/xdebug.log
+```
 
-> [!NOTE]
-> The following example show how to configure PHP Xdebug for PHP 5.6:
+## Restart Devilbox
 
-Create an `xdebug.ini` file (must end by `.ini`):
+Restart the PHP container so the new ini file is loaded:
 
-> ``` bash
-> # Navigate to the Devilbox git directory
-> host> cd path/to/devilbox
->
-> # Navigate to PHP 5.6 ini configuration directory
-> host> cd cfg/php-ini-5.6/
->
-> # Create and open debug.ini file
-> host> vi xdebug.ini
-> ```
-
-Copy/paste all of the following lines into the above created
-`xdebug.ini` file:
-
-> ``` ini
-> ; Defaults
-> xdebug.default_enable=1
-> xdebug.remote_enable=1
-> xdebug.remote_port=9000
->
-> ; The MacOS way
-> xdebug.remote_connect_back=0
-> xdebug.remote_host=10.254.254.254
->
-> ; idekey value is specific to Visual Studio Code
-> xdebug.idekey=VSCODE
->
-> ; Optional: Set to true to always auto-start xdebug
-> xdebug.remote_autostart=false
-> ```
-
-> [!IMPORTANT]
-> Ensure you have created a `howto-host-address-alias-on-mac` pointing
-> to `10.254.254.254` as stated in the prerequisites section above!
-
-> [!NOTE]
-> Host os and editor specific settings are highlighted in yellow and are
-> worth googling to get a better understanding of the tools you use and
-> to be more efficient at troubleshooting.
-
-### Restart the Devilbox
-
-Restarting the Devilbox is important in order for it to read the new PHP
-settings. Note that the following example only starts up PHP, HTTPD and
-Bind.
-
-``` bash
-# Navigate to the Devilbox git directory
-host> cd path/to/devilbox
-
-# Stop, remove stopped container and start
-host> docker-compose stop
-host> docker-compose rm
+```bash
+host> cd /Users/cytopia/repo/devilbox
+host> docker-compose stop php
+host> docker-compose rm -f php
 host> docker-compose up php httpd bind
 ```
 
-<div class="seealso">
+Open your project URL while the VS Code listener is running. Breakpoints
+should bind once the path mapping matches the container path.
 
-`start-the-devilbox-stop-and-restart` (Why do `docker-compose rm`?)
-
-</div>
+:::caution
+If VS Code receives connections but opens duplicate files, correct the
+`pathMappings` entry before changing the PHP configuration again.
+:::

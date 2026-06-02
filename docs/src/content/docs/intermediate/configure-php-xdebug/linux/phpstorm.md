@@ -2,144 +2,105 @@
 title: "Docker on Linux: Xdebug for PhpStorm"
 ---
 
-orphan  
+orphan
 
 # Docker on Linux: Xdebug for PhpStorm
 
-Docker on Linux allows Xdebug to automatically connect back to the host
-system without the need of an explicit IP address.
-
+Use this guide to debug Devilbox projects with PhpStorm 2024.3 or 2025.1,
+PHP 8.3 or 8.4, and Xdebug 3 on Docker Engine for Linux.
 
 ## Prerequisites
 
-Ensure you know how to customize `php.ini` values for the Devilbox and
-have a rough understanding about common Xdebug options.
+- A running Devilbox checkout on Linux.
+- PhpStorm 2024.3 or 2025.1.
+- A project below `./data/www` or the directory configured for HTTPD data.
+- Familiarity with custom PHP ini files in Devilbox.
 
-<div class="seealso">
+See also: [Xdebug options explained](../php-xdebug-options/).
 
-\* `php-ini` \* `configure-php-xdebug-options`
+:::caution
+On Linux, `host.docker.internal` is provided by Docker Engine 20.10+
+through the `host-gateway` mapping. Devilbox already declares
+`host.docker.internal:host-gateway` in `docker-compose.yml` for PHP
+containers. If you run a heavily customized compose file, keep that
+mapping or use your host IP address instead.
+:::
 
-</div>
+## Assumptions
 
-## Assumption
+| Setting | Example |
+|---|---|
+| Devilbox directory | `/home/cytopia/repo/devilbox` |
+| Local project path | `/home/cytopia/repo/devilbox/data/www/myapp` |
+| Container project path | `/shared/httpd/myapp` |
+| PHP version | `8.4` |
+| Xdebug client host | `host.docker.internal` |
+| Xdebug client port | `9003` |
 
-For the sake of this example, we will assume the following settings and
-file system paths:
+Adjust the local project path if your `HTTPD_DOCROOT_DIR` or project name
+differs. The container-side HTTPD root remains below `/shared/httpd`.
 
-| Directory                    | Path                                   |
-|------------------------------|----------------------------------------|
-| Devilbox git directory       | `/home/cytopia/repo/devilbox`          |
-| `env-httpd-datadir`          | `./data/www`                           |
-| Resulting local project path | `/home/cytopia/repo/devilbox/data/www` |
-| Selected PHP version         | `5.6`                                  |
+## Configure PhpStorm
 
-The **Resulting local project path** is the path where all projects are
-stored locally on your host operating system. No matter what this path
-is, the equivalent remote path (inside the Docker container) is always
-`/shared/httpd`.
+1. Open **Settings | PHP | Debug** and set the Xdebug debug port to
+   `9003`.
+2. Open **Settings | PHP | Servers** and create a server named after your
+   local Devilbox vhost, for example `myapp.lvh.me`.
+3. Set the host to your vhost, keep the debugger as **Xdebug**, and enable
+   path mappings.
+4. Map `/home/cytopia/repo/devilbox/data/www/myapp` to
+   `/shared/httpd/myapp`.
+5. Start listening with **Run | Start Listening for PHP Debug
+   Connections**.
 
-> [!IMPORTANT]
-> Remember this, when it comes to path mapping in your IDE/editor
-> configuration.
+:::tip
+Use PhpStorm's **Validate** button in the server dialog if breakpoints do
+not bind. Most issues are caused by a wrong local-to-container path map.
+:::
 
-## Configuration
+## Configure Xdebug 3
 
-### Configure PhpStorm
+Create `cfg/php-ini-8.4/xdebug.ini` in your Devilbox checkout. Use
+`cfg/php-ini-8.3/xdebug.ini` if your project runs on PHP 8.3.
 
-**1. Ensure Xdebug port is set to 9000**
+```bash
+host> cd /home/cytopia/repo/devilbox
+host> vi cfg/php-ini-8.4/xdebug.ini
+```
 
-> <figure>
-> <img src="/_includes/figures/xdebug/phpstorm-settings.png"
-> alt="PHPStorm settings: Xdebug" />
-> <figcaption aria-hidden="true">PHPStorm settings: Xdebug</figcaption>
-> </figure>
+Add the current Xdebug 3 settings:
 
-**2. Set path mapping**
+```ini
+zend_extension=xdebug.so
 
-> Create a new PHP server and set a path mapping. This tutorial assumes
-> your local Devilbox projects to be in `./data/www` of the Devilbox git
-> directory:
->
-> <figure>
-> <img src="/_includes/figures/xdebug/phpstorm-path-mapping.png"
-> alt="PHPStorm settings: path mapping" />
-> <figcaption aria-hidden="true">PHPStorm settings: path
-> mapping</figcaption>
-> </figure>
->
-> > [!IMPORTANT]
-> > Recall the path settings from the *Assumption* section and adjust if
-> > your configuration differs!
+xdebug.mode=debug
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
+xdebug.start_with_request=yes
+xdebug.idekey=PHPSTORM
 
-**3. Ensure DBGp proxy settings are configured**
+; Optional, useful while testing connections
+xdebug.log=/var/log/php/xdebug.log
+```
 
-> <figure>
-> <img src="/_includes/figures/xdebug/phpstorm-dbgp-proxy.png"
-> alt="PHPStorm settings: DBGp Proxy" />
-> <figcaption aria-hidden="true">PHPStorm settings: DBGp
-> Proxy</figcaption>
-> </figure>
+If `host.docker.internal` is not available in your custom Linux setup,
+replace it with the host IP address reachable from the PHP container.
 
-### Configure php.ini
+## Restart Devilbox
 
-> [!NOTE]
-> The following example show how to configure PHP Xdebug for PHP 5.6:
+Restart the PHP container so the new ini file is loaded:
 
-Create an `xdebug.ini` file (must end by `.ini`):
-
-> ``` bash
-> # Navigate to the Devilbox git directory
-> host> cd path/to/devilbox
->
-> # Navigate to PHP 5.6 ini configuration directory
-> host> cd cfg/php-ini-5.6/
->
-> # Create and open debug.ini file
-> host> vi xdebug.ini
-> ```
-
-Copy/paste all of the following lines into the above created
-`xdebug.ini` file:
-
-> ``` ini
-> ; Defaults
-> xdebug.default_enable=1
-> xdebug.remote_enable=1
-> xdebug.remote_port=9000
->
-> ; The Linux way
-> xdebug.remote_connect_back=1
->
-> ; idekey value is specific to PhpStorm
-> xdebug.idekey=PHPSTORM
->
-> ; Optional: Set to true to always auto-start xdebug
-> xdebug.remote_autostart=false
-> ```
-
-> [!NOTE]
-> Host os and editor specific settings are highlighted in yellow and are
-> worth googling to get a better understanding of the tools you use and
-> to be more efficient at troubleshooting.
-
-### Restart the Devilbox
-
-Restarting the Devilbox is important in order for it to read the new PHP
-settings. Note that the following example only starts up PHP, HTTPD and
-Bind.
-
-``` bash
-# Navigate to the Devilbox git directory
-host> cd path/to/devilbox
-
-# Stop, remove stopped container and start
-host> docker-compose stop
-host> docker-compose rm
+```bash
+host> cd /home/cytopia/repo/devilbox
+host> docker-compose stop php
+host> docker-compose rm -f php
 host> docker-compose up php httpd bind
 ```
 
-<div class="seealso">
+Open a page in the browser with a breakpoint set in PhpStorm. PhpStorm
+should receive the DBGp connection on port `9003`.
 
-`start-the-devilbox-stop-and-restart` (Why do `docker-compose rm`?)
-
-</div>
+:::caution
+If the connection reaches PhpStorm but files open as read-only container
+paths, fix the PHP server mapping before changing Xdebug settings again.
+:::
