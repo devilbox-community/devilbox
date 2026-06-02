@@ -1,115 +1,170 @@
 ---
 title: "my.cnf"
+description: "Configure MySQL, Percona and MariaDB server options in Devilbox."
 ---
 
 # my.cnf
 
-`my.ini` changes are global to all projects, but will only affect the
-currently selected MySQL version.
+Devilbox lets you override MySQL-compatible server configuration per selected
+database image. The active directory is derived from `MYSQL_SERVER` in `.env`;
+for example `MYSQL_SERVER=mysql-8.0` reads files from `cfg/mysql-8.0/`, while
+`MYSQL_SERVER=mariadb-11.4` reads files from `cfg/mariadb-11.4/`.
 
-> [!IMPORTANT]
-> When using `howto-docker-toolbox-and-the-devilbox` on Windows, `*.cnf`
-> files must have read-only file permissions, otherwise they are not
-> sourced by the MySQL server.
->
-> Make sure to `chmod 0444 *.cnf` after adding your values.
+The current Compose mount is:
 
-
-## General
-
-You can set custom MySQL options via your own defined `my.cnf` files for
-each version separately. See the directory structure for MySQL
-configuration directories inside `./cfg/` directory:
-
-``` bash
-host> ls -l path/to/devilbox/cfg/ | grep -E 'mysql|mariadb|percona'
-
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mariadb-5.5/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mariadb-10.0/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mariadb-10.1/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mariadb-10.2/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mariadb-10.3/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mariadb-10.4/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mysql-5.5/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mysql-5.6/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mysql-5.7/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 mysql-8.0/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 percona-5.5/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 percona-5.6/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 percona-5.7/
-drwxr-xr-x  2 cytopia cytopia 4096 Mar  5 21:53 percona-8.0/
+```yaml
+- ${DEVILBOX_PATH}/cfg/${MYSQL_SERVER}:/etc/mysql/docker-default.d:ro${MOUNT_OPTIONS}
 ```
 
-Customization is achieved by placing a file into `cfg/mysql-X.X/`,
-`cfg/mariadb-X.X/` or `cfg/percona-X-X` (where `X.X` stands for your
-MySQL version). The file must end by `.cnf` in order to be sourced by
-the MySQL server.
+That means every `*.cnf` file in the matching `cfg/<MYSQL_SERVER>/` directory is
+mounted read-only into the database container and loaded by the image startup.
 
-Each of the MySQL cnf configuration directories already contain an
-example file: `devilbox-custom.cnf-example`, that can simply be renamed
-to `devilbox-custom.cnf`. This file holds some example values that can
-be adjusted or commented out.
+:::note
+Changing `MYSQL_SERVER` itself belongs in [the `.env` file](/configuration-files/env-file/).
+Updating Devilbox versions is covered by [update the Devilbox](/maintenance/update-the-devilbox/).
+:::
 
-In order for the changes to be applied, you will have to restart the
-Devilbox.
+## Supported configuration directories
 
-## Examples
+Use the directory that matches the `MYSQL_SERVER` value you run. The modern
+targets in this repository include:
 
-### Change key_buffer_size for MySQL 5.5
+- `cfg/mysql-5.7/`
+- `cfg/mysql-8.0/`
+- `cfg/mysql-8.4/` when present in your checkout
+- `cfg/percona-5.7/`
+- `cfg/percona-8.0/`
+- `cfg/mariadb-10.4/` through newer MariaDB 10.x directories present in `cfg/`
+- `cfg/mariadb-11.4/`
 
-The following examples shows you how to change the
-[key_buffer_size](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_key_buffer_size)
-of MySQL 5.5 to 16 MB.
+Older directories may still exist for compatibility in some checkouts, but this
+page focuses on the MySQL 5.7, MySQL 8.x, Percona 5.7/8.0 and MariaDB 10.4+
+or 11.x generation used by current `.env` examples.
 
-``` bash
-# Navigate to the Devilbox directory
-host> cd path/to/devilbox
+## Override mechanism
 
-# Navigate to MySQL 5.5 config directory
-host> cd cfg/mysql-5.5
+Each database configuration directory ships examples such as:
 
-# Create new cnf file
-host> touch key_buffer_size.cnf
+- `devilbox-custom.cnf-example` — a minimal template for local overrides.
+- `devilbox-performance.cnf-example` — a larger performance-oriented sample.
+
+Copy an example to a new `*.cnf` file in the same directory and edit it. Do not
+edit the `*-example` file if you want the database to load the setting.
+
+```bash
+cd path/to/devilbox
+cp cfg/mysql-8.0/devilbox-custom.cnf-example cfg/mysql-8.0/local.cnf
 ```
 
-Now add the following content to the file:
+Then edit `cfg/mysql-8.0/local.cnf`:
 
-``` ini
-[mysqld]
-key_buffer_size=16M
-```
-
-In order to apply the changes you need to restart the Devilbox. You can
-validate that the changes have taken place by visiting the Devilbox
-intranet MySQL info page.
-
-### Change timeout and packet size for PerconaDB 5.7
-
-The following examples shows you how to change the
-[wait_timeout](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_wait_timeout)
-and
-[max_allowed_packet](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_allowed_packet)
-of PerconaDB 5.7
-
-``` bash
-# Navigate to the Devilbox directory
-host> cd path/to/devilbox
-
-# Navigate to PerconaDB 5.7 config directory
-host> cd cfg/percona-5.7
-
-# Create new ini file
-host> touch timeouts.cnf
-```
-
-Now add the following content to the file:
-
-``` ini
+```ini
 [mysqld]
 max_allowed_packet=256M
-wait_timeout = 86400
+innodb_buffer_pool_size=1024M
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+sql_mode="NO_ENGINE_SUBSTITUTION"
 ```
 
-In order to apply the changes you need to restart the Devilbox. You can
-validate that the changes have taken place by visiting the Devilbox
-intranet MySQL info page.
+Restart the database container after changing configuration:
+
+```bash
+./dvl.sh restart mysql
+```
+
+If you are not using `dvl.sh`, restart the `mysql` service with your normal
+Compose workflow from the Devilbox root.
+
+## Common settings
+
+### max_allowed_packet
+
+`max_allowed_packet` controls the largest packet the server accepts. Increase it
+when imports or applications fail with packet-size errors.
+
+```ini
+[mysqld]
+max_allowed_packet=256M
+```
+
+The performance examples in `cfg/mysql-8.0/` use a much larger byte value for
+heavy local workloads. Use only as much as your projects require.
+
+### innodb_buffer_pool_size
+
+`innodb_buffer_pool_size` controls how much memory InnoDB can use for cached data
+and indexes. Local development values are usually smaller than production.
+
+```ini
+[mysqld]
+innodb_buffer_pool_size=1024M
+```
+
+Keep this below the memory available to Docker and the database container.
+
+### character-set-server
+
+Use `utf8mb4` for modern Unicode support.
+
+```ini
+[mysqld]
+character-set-server=utf8mb4
+```
+
+Pair it with a matching collation.
+
+### collation-server
+
+Choose the default collation for newly created schemas and tables.
+
+```ini
+[mysqld]
+collation-server=utf8mb4_unicode_ci
+```
+
+Use a collation supported by your selected MySQL, Percona or MariaDB version.
+
+### sql_mode
+
+`sql_mode` controls server compatibility and strictness. The performance example
+for MySQL 8.0 includes:
+
+```ini
+[mysqld]
+sql_mode="NO_ENGINE_SUBSTITUTION"
+```
+
+Only relax modes when a local legacy project requires it. Prefer matching
+production behavior for application development.
+
+## Verify loaded values
+
+`dvl.sh` exposes an `exec` subcommand and forwards the remaining arguments into
+the target container. To verify a MySQL variable:
+
+```bash
+./dvl.sh exec mysql mysql -u root -p -e "SHOW VARIABLES LIKE '%packet%'"
+```
+
+For a passwordless local root account, press Enter at the password prompt. If
+`MYSQL_ROOT_PASSWORD` is set in `.env`, use that value.
+
+You can verify other settings in the same way:
+
+```bash
+./dvl.sh exec mysql mysql -u root -p -e "SHOW VARIABLES LIKE 'innodb_buffer_pool_size'"
+./dvl.sh exec mysql mysql -u root -p -e "SHOW VARIABLES LIKE 'character_set_server'"
+./dvl.sh exec mysql mysql -u root -p -e "SHOW VARIABLES LIKE 'collation_server'"
+./dvl.sh exec mysql mysql -u root -p -e "SHOW VARIABLES LIKE 'sql_mode'"
+```
+
+## Troubleshooting
+
+- Confirm `MYSQL_SERVER` in `.env` matches the directory you edited.
+- Confirm the file ends in `.cnf`; `*.cnf-example` files are examples only.
+- Put server settings under `[mysqld]` and client/export settings under their
+  matching sections such as `[mysqldump]`.
+- Restart the database container after every change.
+- If a setting is rejected, check whether your selected MySQL, Percona or
+  MariaDB version supports that variable name and value.
