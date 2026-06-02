@@ -14,12 +14,10 @@ on:
   pull_request:
     paths:
       - 'docs/**'
-      - '!**.md'
   # Runs on mainline Branch and Tags
   push:
     paths:
       - 'docs/**'
-      - '!**.md'
     branches:
       - mainline
 
@@ -54,3 +52,39 @@ jobs:
           workdir: "${{ github.workspace }}/docs/"
           command: |
             make ${{ matrix.target }}
+
+
+  # ------------------------------------------------------------------------------------------------
+  # Deploy built docs to GitHub Pages (mainline pushes only)
+  # ------------------------------------------------------------------------------------------------
+  deploy:
+    needs: docs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/mainline'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    name: "[Docs deploy to GitHub Pages]"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build documentation site
+        uses: devilbox-community/github-actions/.github/actions/shell-command-retry-action@master
+        with:
+          retries: 5
+          workdir: "${{ github.workspace }}/docs/"
+          command: |
+            make build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/dist/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

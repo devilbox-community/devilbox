@@ -1,0 +1,28 @@
+/* Devilbox brand palette — Red/Orange on dark default. */
+:root {
+  --sl-color-accent-low: #3a0a04;
+  --sl-color-accent: #d33619;
+  --sl-color-accent-high: #ffb8a3;
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #e8e8e8;
+  --sl-color-gray-2: #c5c5c5;
+  --sl-color-gray-3: #8a8a8a;
+  --sl-color-gray-4: #535353;
+  --sl-color-gray-5: #2a2a2a;
+  --sl-color-gray-6: #1a1a1a;
+  --sl-color-black: #0d0d0d;
+  --sl-font: 'Inter', system-ui, -apple-system, sans-serif;
+  --sl-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Light mode complement */
+:root[data-theme='light'] {
+  --sl-color-accent-low: #ffd6cc;
+  --sl-color-accent: #c0301a;
+  --sl-color-accent-high: #5a0f04;
+}
+
+/* Subtle accent on hero tagline */
+.hero .tagline {
+  color: var(--sl-color-accent-high);
+}

@@ -1,0 +1,12 @@
+# Astro Starlight build artifacts
+node_modules/
+dist/
+.astro/
+.cache/
+
+# Astro env
+.env
+.env.production
+
+# Editor
+.DS_Store

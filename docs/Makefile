@@ -6,6 +6,8 @@ endif
 # Default configuration
 # -------------------------------------------------------------------------------------------------
 .PHONY: help build autobuild linkcheck linkcheck2
+NODE_IMAGE := node:lts-alpine
+DOCKER_RUN := docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD):/docs -w /docs
 
 
 # -------------------------------------------------------------------------------------------------
@@ -13,56 +15,24 @@ endif
 # -------------------------------------------------------------------------------------------------
 
 help:
-	@echo "build            Build and test documentation"
-	@echo "autobuild        Continuously run and build (http://0.0.0.0:8000)"
-	@echo "linkcheck        Sphinx linkcheck"
-	@echo "linkcheck2       Custom linkcheck"
+	@echo "build            Build static documentation site (Astro Starlight) into ./dist"
+	@echo "autobuild        Continuously rebuild and serve at http://0.0.0.0:4321"
+	@echo "linkcheck        Build + run cytopia/linkcheck against ./dist"
+	@echo "linkcheck2       Legacy RST include linkchecker (removed after D2.1)"
 
 
 # -------------------------------------------------------------------------------------------------
-#  Target
+#  Targets
 # -------------------------------------------------------------------------------------------------
-
-linkcheck2:
-	docker run \
-		--rm \
-		$$(tty -s && echo "-it" || echo) \
-		-v $(PWD):/data \
-		cytopia/linkcheck -l -k -r 60 -t 30 -e rst -c '200,204,403' _includes/
-
-linkcheck:
-	docker run \
-		--rm \
-		$$(tty -s && echo "-it" || echo) \
-		-e SPHINX_PROJECT="docs" \
-		-e SPHINX_PORT=8000 \
-		-e NEW_UID="$$(id -u)" \
-		-e NEW_GID="$$(id -g)" \
-		-v $(PWD)/..:/shared/httpd \
-		devilbox/python-sphinx:3.8-dev \
-		sphinx-build -M linkcheck . _build
 
 build:
-	docker run \
-		--rm \
-		$$(tty -s && echo "-it" || echo) \
-		-e SPHINX_PROJECT="docs" \
-		-e SPHINX_PORT=8000 \
-		-e NEW_UID="$$(id -u)" \
-		-e NEW_GID="$$(id -g)" \
-		-v $(PWD)/..:/shared/httpd \
-		devilbox/python-sphinx:3.8-dev \
-		sphinx-build -a -E -n -j auto -W . _build/html
+	$(DOCKER_RUN) $(NODE_IMAGE) sh -c "npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro build"
 
 autobuild:
-	docker run \
-		--rm \
-		$$(tty -s && echo "-it" || echo) \
-		-e SPHINX_PROJECT="docs" \
-		-e SPHINX_PORT=8000 \
-		-e NEW_UID="$$(id -u)" \
-		-e NEW_GID="$$(id -g)" \
-		-p "8000:8000" \
-		-v $(PWD)/..:/shared/httpd \
-		devilbox/python-sphinx:3.8-dev \
-		sphinx-autobuild -a -E -n -j auto -W --host 0.0.0.0 --port 8000 . _build/html
+	docker run --rm $$(tty -s && echo "-it" || echo) -p 4321:4321 -v $(PWD):/docs -w /docs $(NODE_IMAGE) sh -c "npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro dev --host 0.0.0.0"
+
+linkcheck: build
+	docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD)/dist:/data cytopia/linkcheck -l -k -r 60 -t 30 -e html
+
+linkcheck2:
+	docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD):/data cytopia/linkcheck -l -k -r 60 -t 30 -e rst -c '200,204,403' _includes/
