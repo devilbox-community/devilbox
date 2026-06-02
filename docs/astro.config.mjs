@@ -39,6 +39,8 @@ export default defineConfig({
             { slug: 'getting-started/change-container-versions' },
             { slug: 'getting-started/important' },
             { slug: 'getting-started/agentic' },
+            { slug: 'getting-started/agentic-auth' },
+            { slug: 'getting-started/agentic-tools-toggle' },
           ],
         },
         {
@@ -46,6 +48,8 @@ export default defineConfig({
           items: [
             { slug: 'intermediate/dvl-cli' },
             { slug: 'intermediate/dvl-agent' },
+            { slug: 'intermediate/hermes-workspace' },
+            { slug: 'intermediate/multica' },
             { slug: 'intermediate/setup-auto-dns' },
             { slug: 'intermediate/setup-valid-https' },
             { slug: 'intermediate/configure-php-xdebug' },
