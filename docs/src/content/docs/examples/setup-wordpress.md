@@ -4,18 +4,14 @@ title: "Setup WordPress"
 
 # Setup WordPress
 
-This example will use `git` to install WordPress from within the
-Devilbox PHP container.
-
-After completing the below listed steps, you will have a working
-WordPress setup ready to be served via http and https.
+This example installs WordPress 6.x from inside the Devilbox PHP container and
+serves it through a standard Devilbox virtual host.
 
 <div class="seealso">
 
 `example wordpress documentation`
 
 </div>
-
 
 ## Overview
 
@@ -26,33 +22,34 @@ The following configuration will be used:
 | my-wp | /shared/httpd/my-wp | my_wp | loc | <http://my-wp.loc> `br` <https://my-wp.loc> |
 
 > [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+> Inside the Devilbox PHP container, projects are always in `/shared/httpd/`.
+> On your host, projects are stored in `./data/www/` by default. This path can
+> be changed via `env-httpd-datadir`.
 
 ## Walk through
 
-It will be ready in seven simple steps:
+It will be ready in seven steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Download WordPress via `git`
-4.  Symlink webroot directory
-5.  Add MySQL database
-6.  Setup DNS record
-7.  Visit <http://my-wp.loc> in your browser
+1. Start Devilbox
+2. Enter the PHP container
+3. Create a new VirtualHost directory
+4. Download WordPress 6.x
+5. Symlink the webroot directory
+6. Create the MySQL database and DNS record
+7. Open WordPress in your browser
 
-### 1. Enter the PHP container
+### 1. Start Devilbox
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
+```bash
+host> ./dvl.sh up
+```
 
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
+### 2. Enter the PHP container
 
-``` bash
-host> ./shell.sh
+All work will be done inside the PHP container:
+
+```bash
+host> ./dvl.sh shell
 ```
 
 <div class="seealso">
@@ -62,14 +59,14 @@ host> ./shell.sh
 
 </div>
 
-### 2. Create new vhost directory
+### 3. Create new vhost directory
 
 The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
+available.
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-wp
+```bash
+devilbox@php-8.3 in /shared/httpd $ mkdir my-wp
+devilbox@php-8.3 in /shared/httpd $ cd my-wp
 ```
 
 <div class="seealso">
@@ -78,46 +75,36 @@ devilbox@php-7.0.20 in /shared/httpd $ mkdir my-wp
 
 </div>
 
-### 3. Download WordPress via `git`
+### 4. Download WordPress 6.x
 
-Navigate into your newly created vhost directory and install WordPress
-with `git`.
+Use Git to download the current WordPress branch:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-wp
-devilbox@php-7.0.20 in /shared/httpd/my-wp $ git clone https://github.com/WordPress/WordPress wordpress.git
+```bash
+devilbox@php-8.3 in /shared/httpd/my-wp $ git clone --branch 6.8 https://github.com/WordPress/WordPress wordpress.git
 ```
 
-How does the directory structure look after installation:
+How the directory structure looks after installation:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-wp $ tree -L 1
+```bash
+devilbox@php-8.3 in /shared/httpd/my-wp $ tree -L 1
 .
 └── wordpress.git
 
 1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 5. Symlink webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+The web server expects every project document root in `<vhost dir>/htdocs/`.
+WordPress serves directly from the checkout directory, so symlink it to
+`htdocs`:
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-wp $ ln -s wordpress.git/ htdocs
+```bash
+devilbox@php-8.3 in /shared/httpd/my-wp $ ln -s wordpress.git/ htdocs
 ```
 
-How does the directory structure look after symlinking:
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-wp $ tree -L 1
+```bash
+devilbox@php-8.3 in /shared/httpd/my-wp $ tree -L 1
 .
 ├── wordpress.git
 └── htdocs -> wordpress.git
@@ -125,33 +112,18 @@ devilbox@php-7.0.20 in /shared/httpd/my-wp $ tree -L 1
 2 directories, 0 files
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 6. Database and DNS record
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
+Create the WordPress database:
 
-### 5. Add MySQL Database
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-wp $ mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_wp;'
+```bash
+devilbox@php-8.3 in /shared/httpd/my-wp $ mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_wp;'
 ```
 
-### 6. DNS record
+If Auto DNS is configured you can skip the hosts entry. Otherwise add this line
+to your host operating system's hosts file:
 
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
+```bash
 127.0.0.1 my-wp.loc
 ```
 
@@ -165,85 +137,18 @@ following line to your host operating systems `/etc/hosts` file (or
 
 ### 7. Open your browser
 
-Open your browser at <http://my-wp.loc> or <https://my-wp.loc> and
-follow the installation steps.
+Open <http://my-wp.loc> or <https://my-wp.loc> and follow the WordPress setup:
 
-**(1/7) Choose your desired WordPress language**
-
-<figure>
-<img src="/_includes/figures/examples/wordpress/01-choose-language.png"
-width="400" alt="Wordpress installation: Choose language" />
-<figcaption aria-hidden="true">Wordpress installation: Choose
-language</figcaption>
-</figure>
-
-**(2/7) Read pre-installation information**
-
-<figure>
-<img src="/_includes/figures/examples/wordpress/02-overview.png"
-alt="Wordpress installation: Overview" />
-<figcaption aria-hidden="true">Wordpress installation:
-Overview</figcaption>
-</figure>
-
-**(3/7) Setup database connection**
-
-> [!IMPORTANT]
-> Choose `127.0.0.1` as the database host
-
-<figure>
-<img src="/_includes/figures/examples/wordpress/03-setup-database.png"
-alt="Wordpress installation: Setup database" />
-<figcaption aria-hidden="true">Wordpress installation: Setup
-database</figcaption>
-</figure>
-
-**(4/7) Database setup post screen**
-
-<figure>
-<img
-src="/_includes/figures/examples/wordpress/04-finished-database.png"
-alt="Wordpress installation: Database setup finished" />
-<figcaption aria-hidden="true">Wordpress installation: Database setup
-finished</figcaption>
-</figure>
-
-**(5/7) Start WordPress installation**
-
-<figure>
-<img src="/_includes/figures/examples/wordpress/05-installation.png"
-alt="Wordpress installation: Installation" />
-<figcaption aria-hidden="true">Wordpress installation:
-Installation</figcaption>
-</figure>
-
-**(6/7) Installation success view**
-
-<figure>
-<img
-src="/_includes/figures/examples/wordpress/06-finished-installation.png"
-alt="Wordpress installation: Installation finished" />
-<figcaption aria-hidden="true">Wordpress installation: Installation
-finished</figcaption>
-</figure>
-
-**(7/7) Login to Admin panel**
-
-<figure>
-<img src="/_includes/figures/examples/wordpress/07-login.png"
-width="300" alt="Wordpress installation: Login" />
-<figcaption aria-hidden="true">Wordpress installation:
-Login</figcaption>
-</figure>
+1. Choose a language.
+2. Enter database name `my_wp`, user `root`, your database password, and host
+   `127.0.0.1`.
+3. Run the installation.
+4. Create the site title and administrator account.
+5. Log in to the WordPress admin panel.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
 ### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
 
 <div class="seealso">
 
@@ -255,9 +160,6 @@ The Devilbox ships most common Web UIs accessible from the intranet.
 
 ### Enhance the Devilbox
 
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
 <div class="seealso">
 
 \* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
@@ -266,25 +168,11 @@ features.
 
 ### Add services
 
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
 <div class="seealso">
 
 - `custom-container-enable-blackfire`
 - `custom-container-enable-rabbitmq`
 - `custom-container-enable-solr`
 - `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
 
 </div>

@@ -4,26 +4,14 @@ title: "Setup TYPO3"
 
 # Setup TYPO3
 
-This example will use `composer` to install TYPO3 from within the
-Devilbox PHP container.
-
-> [!IMPORTANT]
-> Using `composer` requires the underlying file system to support
-> symlinks. If you use **Docker Toolbox** you need to explicitly
-> allow/enable this. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-After completing the below listed steps, you will have a working TYPO3
-setup ready to be served via http and https.
+This example installs TYPO3 13 LTS with Composer from inside the Devilbox PHP
+container and serves it through a standard Devilbox virtual host.
 
 <div class="seealso">
 
 `example typo3 documentation`
 
 </div>
-
 
 ## Overview
 
@@ -34,34 +22,37 @@ The following configuration will be used:
 | my-typo | /shared/httpd/my-typo | my_typo | loc | <http://my-typo.loc> `br` <https://my-typo.loc> |
 
 > [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+> Inside the Devilbox PHP container, projects are always in `/shared/httpd/`.
+> On your host, projects are stored in `./data/www/` by default. This path can
+> be changed via `env-httpd-datadir`.
 
 ## Walk through
 
-It will be ready in eight simple steps:
+It will be ready in eight steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install TYPO3 via `composer`
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Create `FIRST_INSTALL` file
-7.  Open your browser
-8.  Step through guided web installation
+1. Start Devilbox
+2. Enter the PHP container
+3. Create a new VirtualHost directory
+4. Install TYPO3 13 LTS via Composer
+5. Symlink the webroot directory
+6. Create the database and DNS record
+7. Create the `FIRST_INSTALL` file
+8. Complete the guided web installation
 
-### 1. Enter the PHP container
+### 1. Start Devilbox
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
+Navigate to the Devilbox git directory and start the stack:
 
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
+```bash
+host> ./dvl.sh up
+```
 
-``` bash
-host> ./shell.sh
+### 2. Enter the PHP container
+
+All project commands run inside the PHP container:
+
+```bash
+host> ./dvl.sh shell
 ```
 
 <div class="seealso">
@@ -71,14 +62,14 @@ host> ./shell.sh
 
 </div>
 
-### 2. Create new vhost directory
+### 3. Create new vhost directory
 
 The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
+available. `<vhost dir>.TLD_SUFFIX` becomes the final URL.
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-typo
+```bash
+devilbox@php-8.3 in /shared/httpd $ mkdir my-typo
+devilbox@php-8.3 in /shared/httpd $ cd my-typo
 ```
 
 <div class="seealso">
@@ -87,46 +78,35 @@ devilbox@php-7.0.20 in /shared/httpd $ mkdir my-typo
 
 </div>
 
-### 3. Install TYPO3
+### 4. Install TYPO3 13 LTS
 
-Navigate into your newly created vhost directory and install TYPO3 with
-`composer`.
+Install the current TYPO3 LTS distribution with Composer:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-typo
-devilbox@php-7.0.20 in /shared/httpd/my-typo $ composer create-project typo3/cms-base-distribution typo3
+```bash
+devilbox@php-8.3 in /shared/httpd/my-typo $ composer create-project typo3/cms-base-distribution:^13 typo3
 ```
 
-How does the directory structure look after installation:
+How the directory structure looks after installation:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-typo $ tree -L 1
+```bash
+devilbox@php-8.3 in /shared/httpd/my-typo $ tree -L 1
 .
 └── typo3
 
 1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 5. Symlink webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+The web server expects every project document root in `<vhost dir>/htdocs/`.
+TYPO3 keeps its entry point in `public/`, so symlink it to `htdocs`:
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-typo $ ln -s typo3/public htdocs
+```bash
+devilbox@php-8.3 in /shared/httpd/my-typo $ ln -s typo3/public htdocs
 ```
 
-How does the directory structure look after symlinking:
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-typo $ tree -L 1
+```bash
+devilbox@php-8.3 in /shared/httpd/my-typo $ tree -L 1
 .
 ├── typo3
 └── htdocs -> typo3/public
@@ -134,27 +114,18 @@ devilbox@php-7.0.20 in /shared/httpd/my-typo $ tree -L 1
 2 directories, 0 files
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 6. Database and DNS record
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
+Create the TYPO3 database from inside the container:
 
-### 5. DNS record
+```bash
+devilbox@php-8.3 in /shared/httpd/my-typo $ mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_typo;'
+```
 
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
+If Auto DNS is configured you can skip the hosts entry. Otherwise add this line
+to your host operating system's hosts file:
 
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
+```bash
 127.0.0.1 my-typo.loc
 ```
 
@@ -166,44 +137,28 @@ following line to your host operating systems `/etc/hosts` file (or
 
 </div>
 
-### 6. Create `FIRST_INSTALL` file
+### 7. Create `FIRST_INSTALL`
 
-To continue installing via the guided web install, you need to create a
-file called `FIRST_INSTALL` in the document root.
+TYPO3 starts the guided installer only when `FIRST_INSTALL` exists in the
+document root:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-typo $ touch htdocs/FIRST_INSTALL
+```bash
+devilbox@php-8.3 in /shared/httpd/my-typo $ touch htdocs/FIRST_INSTALL
 ```
 
-### 7. Open your browser
+### 8. Open your browser
 
-Open your browser at <http://my-typo.loc> or <https://my-typo.loc>.
+Open <http://my-typo.loc> or <https://my-typo.loc> and follow the TYPO3 setup:
 
-### 8. Step through guided web installation
-
-1.  Select database
-    - Connection: Manually configured MySWQL TCP/IP connection
-    - Username: root
-    - Password
-    - Host: mysql
-    - Port: 3306
-2.  Select database
-    - Create a new database: `typo3`
-3.  Create Administrative User / Specify Site Name
-    - Username: admin
-    - Password: choose a secure password
-    - Site name: My Typo
-4.  Installation complete
-    - Create empty starting page
+1. Select the database driver and enter `root` as user, your database password,
+   `mysql` as host, and `3306` as port.
+2. Select the `my_typo` database.
+3. Create the administrator user and site name.
+4. Finish the installation and create an empty starting page.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
 ### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
 
 <div class="seealso">
 
@@ -215,9 +170,6 @@ The Devilbox ships most common Web UIs accessible from the intranet.
 
 ### Enhance the Devilbox
 
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
 <div class="seealso">
 
 \* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
@@ -226,25 +178,11 @@ features.
 
 ### Add services
 
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
 <div class="seealso">
 
 - `custom-container-enable-blackfire`
 - `custom-container-enable-rabbitmq`
 - `custom-container-enable-solr`
 - `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
 
 </div>

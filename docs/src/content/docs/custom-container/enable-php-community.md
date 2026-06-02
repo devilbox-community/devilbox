@@ -1,152 +1,89 @@
 ---
 title: "Enable and configure PHP Community"
+description: "Switch Devilbox PHP to the community image with the maintained compose override snippet."
 ---
 
 # Enable and configure PHP Community
 
-This section will guide you through getting PHP community images
-integrated into the Devilbox.
+PHP Community replaces the default Devilbox PHP-FPM image with a community
+flavour while keeping the same `php` service, mounts, and network identity.
 
-<div class="seealso">
+## How it works
 
-\*
-`php community github`
-\*
-`php community dockerhub`
-\* `custom-container-enable-all-additional-container` \*
-`docker-compose-override-yml-how-does-it-work`
+Devilbox keeps optional integrations as override snippets in the `compose/`
+directory. To enable PHP Community, copy its snippet into the project root as
+`docker-compose.override.yml`, then start the stack.
 
-</div>
+## Enable
 
-
-## Overview
-
-### Available overwrites
-
-The Devilbox ships various example configurations to overwrite the
-default stack. Those files are located under `compose/` in the Devilbox
-git directory.
-
-`docker-compose.override.yml-all` has all examples combined in one file
-for easy copy/paste. However, each example also exists in its standalone
-file as shown below:
-
-``` bash
-host> tree -L 1 compose/
-compose/
-├── docker-compose.override.yml-all
-├── docker-compose.override.yml-blackfire
-├── docker-compose.override.yml-elk
-├── docker-compose.override.yml-mailhog
-├── docker-compose.override.yml-meilisearch
-├── docker-compose.override.yml-ngrok
-├── docker-compose.override.yml-php-community
-├── docker-compose.override.yml-python-flask
-├── docker-compose.override.yml-rabbitmq
-├── docker-compose.override.yml-solr
-├── docker-compose.override.yml-varnish
-└── README.md
-
-0 directories, 10 files
+```bash
+cp compose/docker-compose.override.yml-php-community docker-compose.override.yml
+./dvl.sh up
 ```
 
-<div class="seealso">
+## Configuration
 
-`custom-container-enable-all-additional-container`
+The snippet overrides the existing `php` service image:
 
-</div>
-
-### PHP-FPM Community settings
-
-In case of PHP-FPM Community, the file is
-`compose/docker-compose.override.yml-php-community`. This file must be
-copied into the root of the Devilbox git directory.
-
-| What | How and where |
-|----|----|
-| Example compose file | `compose/docker-compose.override.yml-all` or `br` `compose/docker-compose.override.yml-php-community` |
-| Container IP address | `172.16.238.10` |
-| Container host name | `php` |
-| Container name | `php` |
-| Mount points | Same as default php image |
-| Exposed port | Same as default php image |
-| Available at | n.a. |
-| Further configuration | `PHP_COMMUNITY_FLAVOUR` must be set via `.env` |
-
-### PHP Community env variables
-
-Additionally the following `.env` variables can be created for easy
-configuration:
-
-| Variable                | Default value | Description                         |
-|-------------------------|---------------|-------------------------------------|
-| `PHP_COMMUNITY_FLAVOUR` | `devilbox`    | Controls the PHP Community flavour. |
-
-## Instructions
-
-### 1. Copy docker-compose.override.yml
-
-Copy the PHP-FPM Community Docker Compose overwrite file into the root
-of the Devilbox git directory. (It must be at the same level as the
-default `docker-compose.yml` file).
-
-``` bash
-host> cp compose/docker-compose.override.yml-php-community docker-compose.override.yml
+```yaml
+image: devilbox/php-fpm-community:${PHP_SERVER}-${PHP_COMMUNITY_FLAVOUR:-devilbox}
 ```
 
-<div class="seealso">
+It uses the same service name, hostname, ports, volumes, and IP address as the
+standard PHP service. Configure it with existing PHP settings plus:
 
-\* `docker-compose-override-yml` \* `add-your-own-docker-image` \*
-`overwrite-existing-docker-image`
+| Variable | Default | Purpose |
+|---|---|---|
+| `PHP_SERVER` | from your `.env` | PHP version tag used by the PHP service. |
+| `PHP_COMMUNITY_FLAVOUR` | `devilbox` | Community image flavour suffix. |
 
-</div>
+Example `.env` entries:
 
-### 2. Adjust `env` settings
-
-By default PHP-FPM Community is using the Devilbox reference flavour
-`devilbox`. You can change this flavour via the `.env` variable
-`PHP_COMMUNITY_FLAVOUR`.
-
-``` bash
+```bash
+PHP_SERVER=8.3
 PHP_COMMUNITY_FLAVOUR=devilbox
 ```
 
-<div class="seealso">
+## Usage
 
-`env-file`
+Start the stack and confirm the PHP image:
 
-</div>
-
-### 3. Start the Devilbox
-
-The final step is to start the Devilbox with the newly added PHP-FPM
-Community images.
-
-Let's assume you want to start `php`, `httpd`, and `bind`.
-
-``` bash
-host> docker-compose up -d php httpd bind
+```bash
+./dvl.sh up
+docker compose ps php
 ```
 
-<div class="seealso">
+Check the active PHP version from inside the container:
 
-`start-the-devilbox`
-
-</div>
-
-## TL;DR
-
-For the lazy readers, here are all commands required to get you started.
-Simply copy and paste the following block into your terminal from the
-root of your Devilbox git directory:
-
-``` bash
-# Copy compose-override.yml into place
-cp compose/docker-compose.override.yml-php-community docker-compose.override.yml
-
-# Set Community flavour
-echo "PHP_COMMUNITY_FLAVOUR=devilbox" >> .env
-
-# Start container
-docker-compose up -d php httpd bind
+```bash
+./dvl.sh exec php -v
 ```
+
+Use the same project workflow as the standard PHP container:
+
+```bash
+./dvl.sh shell
+composer install
+```
+
+## Disable
+
+```bash
+./dvl.sh down
+rm docker-compose.override.yml
+./dvl.sh up
+```
+
+## Troubleshooting
+
+- If Docker cannot pull the image, verify the combination of `PHP_SERVER` and
+  `PHP_COMMUNITY_FLAVOUR` exists.
+- If PHP still uses the old image, recreate the service with `./dvl.sh down`
+  before starting it again.
+- If extensions differ from the standard image, review `PHP_MODULES_ENABLE` and
+  `PHP_MODULES_DISABLE` in `.env`.
+
+## See also
+
+- [Add your own Docker image](/advanced/add-your-own-docker-image/)
+- [Docker Compose override file](/configuration-files/docker-compose-override-yml/)

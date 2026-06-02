@@ -1,12 +1,14 @@
 ---
 title: "Enable all additional container"
+description: "Enable Devilbox optional services with compose override snippets and understand how that differs from the agentic optional-container toggle."
 ---
 
 # Enable all additional container
 
-Besides providing basic LAMP/MEAN stack container, which are well
-integrated into the Devilbox intranet, the Devilbox also ships
-additional pre-configured container that can easily be enabled.
+Devilbox has two distinct ways to add optional services. Classic optional
+services are enabled by copying Docker Compose override snippets from
+`compose/`; agentic optional services are enabled with
+`CONTAINERS_CONFIG_OPTIONAL` before running the installer.
 
 <div class="seealso">
 
@@ -14,67 +16,101 @@ additional pre-configured container that can easily be enabled.
 
 </div>
 
+## Available classic optional container
 
-## Available additional container
+The `compose/` directory contains maintained snippets for these classic
+optional services:
 
-The following table shows you the currently additional available
-container:
+| Container | Service name | Hostname | IP Address |
+|---|---|---|---|
+| PHP Community | php | php | 172.16.238.10 |
+| Blackfire | blackfire | blackfire | 172.16.238.200 |
+| Meilisearch | meilisearch | meilisearch | 172.16.238.203 |
+| MailHog | mailhog | mailhog | 172.16.238.252 |
+| Ngrok | ngrok | ngrok | 172.16.238.202 |
+| RabbitMQ | rabbit | rabbit | 172.16.238.210 |
+| Solr | solr | solr | 172.16.238.220 |
+| Varnish | varnish | varnish | 172.16.238.230 |
+| HAProxy for Varnish | haproxy | haproxy | 172.16.238.231 |
+| ELK: Elasticsearch | elastic | elastic | 172.16.238.240 |
+| ELK: Logstash | logstash | logstash | 172.16.238.241 |
+| ELK: Kibana | kibana | kibana | 172.16.238.242 |
 
-| Container                           | Name      | Hostname  | IP Address     |
-|-------------------------------------|-----------|-----------|----------------|
-| PHP Community                       | php       | php       | 172.16.238.10  |
-| Blackfire                           | blackfire | blackfire | 172.16.238.200 |
-| MailHog                             | mailhog   | mailhog   | 172.16.238.201 |
-| Ngrok                               | ngrok     | ngrok     | 172.16.238.202 |
-| RabbitMQ                            | rabbit    | rabbit    | 172.16.238.210 |
-| Solr                                | solr      | solr      | 172.16.238.220 |
-| Varnish                             | varnish   | varnish   | 172.16.238.230 |
-| HAProxy (SSL offloader for Varnish) | haproxy   | haproxy   | 172.16.238.231 |
-| ELK: Elastic Search                 | elastic   | elastic   | 172.16.238.240 |
-| ELK: Logstash                       | logstash  | logstash  | 172.16.238.241 |
-| ELK: Kibana                         | kibana    | kibana    | 172.16.238.242 |
-| Python Flask                        | flask1    | flask1    | 172.16.238.250 |
+## Enable all classic optional container
 
-## Enable all additional container
+If `compose/docker-compose.override.yml-all` exists, copy it into the root of
+the Devilbox git directory:
 
-Copy `docker-compose.override.yml-all` into the root of the Devilbox git
-directory.
-
-``` bash
-host> cp compose/docker-compose.override.yml-all docker-compose.override.yml
+```bash
+cp compose/docker-compose.override.yml-all docker-compose.override.yml
+./dvl.sh up
 ```
 
-That's it, if you `docker-compose up`, all container will be started.
-This however is not adviced as it will eat up a lot of resources. You
-are better off by selectively specifying the container you want to run.
+This starts every classic optional service defined in the combined override.
+That is convenient for testing, but it consumes significantly more CPU, memory,
+and ports than selecting only the services you need.
+
+## Enable selected classic optional container
+
+For one service, copy only its snippet:
+
+```bash
+cp compose/docker-compose.override.yml-mailhog docker-compose.override.yml
+./dvl.sh up
+```
+
+For multiple snippets, create a local override file or chain the snippets when
+starting Docker Compose directly:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f compose/docker-compose.override.yml-mailhog \
+  -f compose/docker-compose.override.yml-rabbitmq \
+  up -d
+```
+
+When using `./dvl.sh up`, keep the selected services in the root-level
+`docker-compose.override.yml` so the Devilbox wrapper sees them consistently.
+
+## Agentic optional containers are separate
+
+`CONTAINERS_CONFIG_OPTIONAL` is only the agentic-tool toggle. It belongs in
+`.env` before running `install.sh`, and it is consumed by the installer for the
+agentic optional roster:
+
+- `php74`
+- `php81`
+- `php82`
+- `php83`
+- `php84`
+- `redis`
+- `opensearch`
+- `buggregator`
+
+It does not replace the `docker-compose.override.yml` mechanism for Blackfire,
+Varnish, Solr, MailHog, Meilisearch, Ngrok, PHP Community, ELK, or RabbitMQ.
 
 <div class="seealso">
 
-`start-the-devilbox`
+- [Agentic tools toggle](/getting-started/agentic-tools-toggle/)
+- [Docker Compose override file](/configuration-files/docker-compose-override-yml/)
 
 </div>
 
 ## Configure additional container
 
-The additional container also provide many configuration options just as
-the default ones do. That includes, but is not limited to:
-
-- Image version
-- Exposed ports
-- Mount points
-- And various container specific settings
-
-In order to fully customize each container, refer to their own
-documentation section:
+Each optional service can define image versions, exposed ports, mount points,
+and service-specific environment variables. See the dedicated pages for exact
+settings:
 
 <div class="seealso">
 
 \* `custom-container-enable-php-community` \*
 `custom-container-enable-blackfire` \*
 `custom-container-enable-elk-stack` \* `custom-container-enable-mailhog`
-\* `custom-container-enable-ngrok` \*
-`custom-container-enable-python-flask` \*
-`custom-container-enable-rabbitmq` \* `custom-container-enable-solr` \*
+\* `custom-container-enable-meilisearch` \* `custom-container-enable-ngrok`
+\* `custom-container-enable-rabbitmq` \* `custom-container-enable-solr` \*
 `custom-container-enable-varnish`
 
 </div>

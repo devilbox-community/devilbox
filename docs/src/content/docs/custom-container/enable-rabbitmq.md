@@ -1,179 +1,90 @@
 ---
 title: "Enable and configure RabbitMQ"
+description: "Enable RabbitMQ queues in Devilbox with the maintained compose override snippet."
 ---
 
 # Enable and configure RabbitMQ
 
-This section will guide you through getting RabbitMQ integrated into the
-Devilbox.
+RabbitMQ provides AMQP queues for local development of workers, event-driven
+applications, and message retry flows.
 
-<div class="seealso">
+## How it works
 
-\* `rabbitmq github` \*
-`rabbitmq dockerhub`
-\* `custom-container-enable-all-additional-container` \*
-`docker-compose-override-yml-how-does-it-work`
+Devilbox keeps optional integrations as override snippets in the `compose/`
+directory. To enable RabbitMQ, copy its snippet into the project root as
+`docker-compose.override.yml`, then start the stack.
 
-</div>
+## Enable
 
-
-## Overview
-
-### Available overwrites
-
-The Devilbox ships various example configurations to overwrite the
-default stack. Those files are located under `compose/` in the Devilbox
-git directory.
-
-`docker-compose.override.yml-all` has all examples combined in one file
-for easy copy/paste. However, each example also exists in its standalone
-file as shown below:
-
-``` bash
-host> tree -L 1 compose/
-compose/
-├── docker-compose.override.yml-all
-├── docker-compose.override.yml-blackfire
-├── docker-compose.override.yml-elk
-├── docker-compose.override.yml-mailhog
-├── docker-compose.override.yml-meilisearch
-├── docker-compose.override.yml-ngrok
-├── docker-compose.override.yml-php-community
-├── docker-compose.override.yml-python-flask
-├── docker-compose.override.yml-rabbitmq
-├── docker-compose.override.yml-solr
-├── docker-compose.override.yml-varnish
-└── README.md
-
-0 directories, 10 files
-```
-
-<div class="seealso">
-
-`custom-container-enable-all-additional-container`
-
-</div>
-
-### RabbitMQ settings
-
-In case of RabbitMQ, the file is
-`compose/docker-compose.override.yml-rabbitmq`. This file must be copied
-into the root of the Devilbox git directory.
-
-| What | How and where |
-|----|----|
-| Example compose file | `compose/docker-compose.override.yml-all` or `br` `compose/docker-compose.override.yml-rabbitmq` |
-| Container IP address | `172.16.238.210` |
-| Container host name | `rabbit` |
-| Container name | `rabbit` |
-| Mount points | via Docker volumes |
-| Exposed port | `5672` and `15672` (can be changed via `.env`) |
-| Available at | `http://localhost:15672` (Admin WebUI) |
-| Further configuration | none |
-
-### RabbitMQ env variables
-
-Additionally the following `.env` variables can be created for easy
-configuration:
-
-| Variable | Default value | Description |
-|----|----|----|
-| `HOST_PORT_RABBIT` | `5672` | Controls the host port on which RabbitMQ API will be available at. |
-| `HOST_PORT_RABBIT_MGMT` | `15672` | Controls the host port on which RabbitMQ Admin WebUI will be available at. |
-| `RABBIT_SERVER` | `management` | Controls the RabbitMQ version to use. |
-| `RABBIT_DEFAULT_VHOST` | `my-vhost` | Default RabbitMQ vhost name. (not a webserver vhost name) |
-| `RABBIT_DEFAULT_USER` | `guest` | Default username for Admin WebUI. |
-| `RABBIT_DEFAULT_PASS` | `guest` | Default password for Admin WebUI. |
-
-## Instructions
-
-### 1. Copy docker-compose.override.yml
-
-Copy the RabbitMQ Docker Compose overwrite file into the root of the
-Devilbox git directory. (It must be at the same level as the default
-`docker-compose.yml` file).
-
-``` bash
-host> cp compose/docker-compose.override.yml-rabbitmq docker-compose.override.yml
-```
-
-<div class="seealso">
-
-\* `docker-compose-override-yml` \* `add-your-own-docker-image` \*
-`overwrite-existing-docker-image`
-
-</div>
-
-### 2. Adjust `.env` settings (optional)
-
-RabbitMQ is using sane defaults, which can be changed by adding
-variables to the `.env` file and assigning custom values.
-
-Add the following variables to `.env` and adjust them to your needs:
-
-``` bash
-# RabbitMQ version to choose
-#RABBIT_SERVER=3.6
-#RABBIT_SERVER=3.6-management
-#RABBIT_SERVER=3.7
-#RABBIT_SERVER=3.7-management
-#RABBIT_SERVER=latest
-RABBIT_SERVER=management
-
-RABBIT_DEFAULT_VHOST=my_vhost
-RABBIT_DEFAULT_USER=guest
-RABBIT_DEFAULT_PASS=guest
-
-HOST_PORT_RABBIT=5672
-HOST_PORT_RABBIT_MGMT=15672
-```
-
-<div class="seealso">
-
-`env-file`
-
-</div>
-
-### 3. Start the Devilbox
-
-The final step is to start the Devilbox with RabbitMQ.
-
-Let's assume you want to start `php`, `httpd`, `bind`, `rabbit`.
-
-``` bash
-host> docker-compose up -d php httpd bind rabbit
-```
-
-<div class="seealso">
-
-`start-the-devilbox`
-
-</div>
-
-## TL;DR
-
-For the lazy readers, here are all commands required to get you started.
-Simply copy and paste the following block into your terminal from the
-root of your Devilbox git directory:
-
-``` bash
-# Copy compose-override.yml into place
+```bash
 cp compose/docker-compose.override.yml-rabbitmq docker-compose.override.yml
-
-# Create .env variable
-echo "# RabbitMQ version to choose"           >> .env
-echo "#RABBIT_SERVER=3.6"                     >> .env
-echo "#RABBIT_SERVER=3.6-management"          >> .env
-echo "#RABBIT_SERVER=3.7"                     >> .env
-echo "#RABBIT_SERVER=3.7-management"          >> .env
-echo "#RABBIT_SERVER=latest"                  >> .env
-echo "RABBIT_SERVER=management"               >> .env
-echo "RABBIT_DEFAULT_VHOST=my_vhost"          >> .env
-echo "RABBIT_DEFAULT_USER=guest"              >> .env
-echo "RABBIT_DEFAULT_PASS=guest"              >> .env
-echo "HOST_PORT_RABBIT=5672"                  >> .env
-echo "HOST_PORT_RABBIT_MGMT=15672"            >> .env
-
-# Start container
-docker-compose up -d php httpd bind rabbit
+./dvl.sh up
 ```
+
+## Configuration
+
+The snippet defines service `rabbit` with image
+`rabbitmq:${RABBIT_SERVER:-management}`, hostname `rabbit`, IP
+`172.16.238.210`, volume `devilbox-rabbit:/var/lib/rabbitmq`, AMQP port
+`${HOST_PORT_RABBIT:-5672}:5672`, and management port
+`${HOST_PORT_RABBIT_MGMT:-15672}:15672`.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `RABBIT_SERVER` | `management` | RabbitMQ image tag. |
+| `RABBIT_DEFAULT_VHOST` | `my_vhost` | Initial virtual host. |
+| `RABBIT_DEFAULT_USER` | `guest` | Initial user. |
+| `RABBIT_DEFAULT_PASS` | `guest` | Initial password. |
+| `HOST_PORT_RABBIT` | `5672` | Host AMQP port. |
+| `HOST_PORT_RABBIT_MGMT` | `15672` | Host management UI port. |
+
+## Usage
+
+Open the management UI:
+
+```bash
+open http://localhost:15672
+```
+
+Use AMQP from another Devilbox container with this DSN shape:
+
+```text
+amqp://guest:guest@rabbit:5672/my_vhost
+```
+
+Publish and consume a test message with the management API:
+
+```bash
+curl -u guest:guest -H 'content-type:application/json' \
+  -X PUT http://localhost:15672/api/queues/my_vhost/devilbox-test
+curl -u guest:guest -H 'content-type:application/json' \
+  -X POST http://localhost:15672/api/exchanges/my_vhost/amq.default/publish \
+  --data '{"routing_key":"devilbox-test","payload":"hello","payload_encoding":"string"}'
+```
+
+## Disable
+
+```bash
+./dvl.sh down
+rm docker-compose.override.yml
+./dvl.sh up
+```
+
+Remove the data volume if you also want to delete queues and messages:
+
+```bash
+docker volume rm devilbox-rabbit
+```
+
+## Troubleshooting
+
+- If login fails, confirm the configured default user and password in `.env`.
+- If AMQP clients cannot connect from containers, use hostname `rabbit`, not
+  `localhost`.
+- If ports are busy, set `HOST_PORT_RABBIT` or `HOST_PORT_RABBIT_MGMT` to free
+  host ports.
+
+## See also
+
+- [Add your own Docker image](/advanced/add-your-own-docker-image/)
+- [Docker Compose override file](/configuration-files/docker-compose-override-yml/)

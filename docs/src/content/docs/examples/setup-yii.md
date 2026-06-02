@@ -4,26 +4,14 @@ title: "Setup Yii"
 
 # Setup Yii
 
-This example will use `composer` to install Yii from within the Devilbox
-PHP container.
-
-> [!IMPORTANT]
-> Using `composer` requires the underlying file system to support
-> symlinks. If you use **Docker Toolbox** you need to explicitly
-> allow/enable this. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-After completing the below listed steps, you will have a working Yii
-setup ready to be served via http and https.
+This example installs a Yii 2.x application with Composer from inside the
+Devilbox PHP container.
 
 <div class="seealso">
 
 `example yii documentation`
 
 </div>
-
 
 ## Overview
 
@@ -34,32 +22,33 @@ The following configuration will be used:
 | my-yii | /shared/httpd/my-yii | n.a. | loc | <http://my-yii.loc> `br` <https://my-yii.loc> |
 
 > [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+> Inside the Devilbox PHP container, projects are always in `/shared/httpd/`.
+> On your host, projects are stored in `./data/www/` by default. This path can
+> be changed via `env-httpd-datadir`.
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in six steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Yii2 via `composer`
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-wp.loc> in your browser
+1. Start Devilbox
+2. Enter the PHP container
+3. Create a new VirtualHost directory
+4. Install Yii 2.x via Composer
+5. Symlink the webroot directory
+6. Configure DNS and open the site
 
-### 1. Enter the PHP container
+### 1. Start Devilbox
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
+```bash
+host> ./dvl.sh up
+```
 
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
+### 2. Enter the PHP container
 
-``` bash
-host> ./shell.sh
+All work will be done inside the PHP container:
+
+```bash
+host> ./dvl.sh shell
 ```
 
 <div class="seealso">
@@ -69,14 +58,14 @@ host> ./shell.sh
 
 </div>
 
-### 2. Create new vhost directory
+### 3. Create new vhost directory
 
 The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
+available.
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-yii
+```bash
+devilbox@php-8.3 in /shared/httpd $ mkdir my-yii
+devilbox@php-8.3 in /shared/httpd $ cd my-yii
 ```
 
 <div class="seealso">
@@ -85,76 +74,52 @@ devilbox@php-7.0.20 in /shared/httpd $ mkdir my-yii
 
 </div>
 
-### 3. Install Yii2 via `composer`
+### 4. Install Yii 2.x
 
-Navigate into your newly created vhost directory and install Yii2 with
-`composer`.
+Install the Yii 2 basic application template:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-yii
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ composer create-project --prefer-dist --stability=dev yiisoft/yii2-app-basic yii2-dev
+```bash
+devilbox@php-8.3 in /shared/httpd/my-yii $ composer create-project --prefer-dist yiisoft/yii2-app-basic yii2
 ```
 
-How does the directory structure look after installation:
+How the directory structure looks after installation:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ tree -L 1
+```bash
+devilbox@php-8.3 in /shared/httpd/my-yii $ tree -L 1
 .
-└── yii2-dev
+└── yii2
 
 1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 5. Symlink webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+The web server expects every project document root in `<vhost dir>/htdocs/`.
+Yii keeps its entry point in `web/`, so symlink it to `htdocs`:
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ ln -s yii2-dev/web/ htdocs
+```bash
+devilbox@php-8.3 in /shared/httpd/my-yii $ ln -s yii2/web/ htdocs
 ```
 
-How does the directory structure look after symlinking:
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-yii $ tree -L 1
+```bash
+devilbox@php-8.3 in /shared/httpd/my-yii $ tree -L 1
 .
-├── yii2-dev
-└── htdocs -> yii2-dev/web
+├── yii2
+└── htdocs -> yii2/web
 
 2 directories, 0 files
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 6. DNS record and browser
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
+If Auto DNS is configured you can skip the hosts entry. Otherwise add this line
+to your host operating system's hosts file:
 
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
+```bash
 127.0.0.1 my-yii.loc
 ```
+
+Open <http://my-yii.loc> or <https://my-yii.loc> to see the Yii welcome page.
 
 <div class="seealso">
 
@@ -164,18 +129,9 @@ following line to your host operating systems `/etc/hosts` file (or
 
 </div>
 
-### 6. Open your browser
-
-Open your browser at <http://my-yii.loc> or <https://my-yii.loc>
-
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
 ### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
 
 <div class="seealso">
 
@@ -187,9 +143,6 @@ The Devilbox ships most common Web UIs accessible from the intranet.
 
 ### Enhance the Devilbox
 
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
 <div class="seealso">
 
 \* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
@@ -198,25 +151,11 @@ features.
 
 ### Add services
 
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
 <div class="seealso">
 
 - `custom-container-enable-blackfire`
 - `custom-container-enable-rabbitmq`
 - `custom-container-enable-solr`
 - `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
 
 </div>
