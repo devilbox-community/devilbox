@@ -221,6 +221,11 @@ Wrappers for Magento 2 CLI tools.
     - `magento` points to `bin/magento`.
     - `magerun` points to `/usr/local/bin/magerun` (n98-magerun2).
 
+#### Aliases & Migration from `./shell.sh`
+- **Legacy**: `./shell.sh --run "php bin/magento ..."` or `./shell.sh --run "magerun ..."`
+- **Modern**: `dvl magento ...` / `dvl magerun ...`
+- **Improvement**: You no longer need to manually enter the shell or use the `--run` flag. The `dvl` wrapper handles the TTY allocation and working directory mapping.
+
 **Example**:
 ```bash
 dvl magento setup:upgrade
@@ -239,6 +244,11 @@ Runs Composer inside the PHP container.
     - Maps the current directory and sets it as the working directory inside the container.
     - Ensures that `composer.lock` and `vendor/` files created are owned by your host user.
 
+#### Aliases & Migration from `./shell.sh`
+- **Legacy**: `./shell.sh --run "composer install"`
+- **Modern**: `dvl composer install`
+- **Improvement**: Automatically selects the PHP container version defined in your `.devilbox.yaml`, ensuring dependency resolution matches your runtime.
+
 **Example**:
 ```bash
 dvl composer require monolog/monolog
@@ -253,6 +263,11 @@ Runs the Adobe Commerce (Magento) Cloud CLI.
 - **Synopsis**: `dvl cloud <args>`
 - **Behavior**: Uses the pre-installed `magento-cloud` binary. This tool is pre-configured in the `work` flavor images to assist with managing cloud environments from your local machine.
 
+#### Aliases & Migration from `./shell.sh`
+- **Legacy**: `./shell.sh --run "magento-cloud ..."`
+- **Modern**: `dvl cloud ...`
+- **Note**: The alias `magento-cloud` is also supported for parity with the official binary name.
+
 ---
 
 ### `ece-tools` / `cloud-patches`
@@ -260,6 +275,11 @@ Commands for Adobe Commerce Cloud projects.
 
 - **Synopsis**: `dvl ece-tools <args>` / `dvl cloud-patches <args>`
 - **Behavior**: Executes the project-specific binaries found in `./vendor/bin/`. These are critical for managing the Commerce Cloud build/deploy lifecycle locally.
+
+#### Aliases & Migration from `./shell.sh`
+- **Legacy**: `./shell.sh --run "./vendor/bin/ece-tools ..."`
+- **Modern**: `dvl ece-tools ...`
+- **Improvement**: Path resolution is handled automatically; you don't need to be in the project root or specify the `vendor/bin` path.
 
 ---
 
