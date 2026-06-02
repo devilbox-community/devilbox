@@ -1,0 +1,450 @@
+---
+title: DVL CLI Reference
+description: Full command-line reference for the dvl.sh tool — the primary interface for Devilbox management.
+sidebar:
+  order: 10
+---
+
+import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components'
+
+The `dvl` command (provided by `dvl.sh`) is the primary interface for managing your Devilbox environment. It is a high-level bash wrapper around `docker compose` that provides automated workflows for Magento development, database management, and agentic AI tools.
+
+## Global Options
+
+The following flags can be used with the base `dvl` command:
+
+| Flag | Long Form | Description |
+| :--- | :--- | :--- |
+| `-v` | `--version` | Display current CLI version (e.g., `1.2.6`). |
+| `-h` | `--help` | Display the global help message. |
+| `-q` | `--quiet` | Suppress non-error output. |
+| | `--ansi` | Force ANSI color output (useful for CI/logs). |
+| | `--no-ansi` | Disable ANSI color output. |
+
+## Subcommand Reference
+
+### `up` (alias: `start`)
+Starts the designated Devilbox services in detached mode.
+
+- **Synopsis**: `dvl up [services...]`
+- **Behavior**: 
+    - If no services are specified, it starts the list defined in your `DEVILBOX_CONTAINERS` environment variable.
+    - If `DEVILBOX_CONTAINERS` is empty, it falls back to a default stack: `bind httpd php php74 php81 php82 php83 php84 mysql redis opensearch buggregator`.
+- **Exit Codes**: `0` on success, `1` if Docker fails.
+
+**Examples**:
+```bash
+dvl up                # Start full default stack
+dvl up httpd mysql    # Start only web and db
+```
+
+---
+
+### `down` (alias: `stop`)
+Stops all running Devilbox services and removes the containers.
+
+- **Synopsis**: `dvl down`
+- **Behavior**: Executes `docker compose down` followed by `docker compose rm -f` to ensure a completely clean state.
+- **Exit Codes**: `0` on success.
+
+**Example**:
+```bash
+dvl down
+```
+
+---
+
+### `restart`
+Restarts one or more services.
+
+- **Synopsis**: `dvl restart [services...]`
+- **Behavior**: 
+    - If specific services are named, it runs `docker restart` on those containers.
+    - If called without arguments, it performs a full `down` and `up` cycle for the entire stack.
+- **Exit Codes**: `0` on success.
+
+**Examples**:
+```bash
+dvl restart php       # Quick restart of PHP-FPM service
+dvl restart           # Full stack recycle (down then up)
+```
+
+---
+
+### `reset`
+Shutdown and reset everything.
+
+- **Synopsis**: `dvl reset`
+- **Behavior**: A destructive version of `down` that attempts to prune unused Docker resources and stop all Devilbox-managed containers.
+- **Exit Codes**: `0` on success.
+
+<Aside type="caution">
+Use this command with caution as it will stop and remove all Devilbox-managed containers immediately.
+</Aside>
+
+---
+
+### `doctor`
+Performs a health check on your environment.
+
+- **Synopsis**: `dvl doctor`
+- **Behavior**: Executes the `check-config.sh` script to verify:
+    - Docker daemon connectivity.
+    - File and directory permissions.
+    - Environment variable consistency (UID/GID matching).
+    - Network port availability.
+- **Exit Codes**: `0` if healthy, non-zero if issues found.
+
+---
+
+### `init`
+Interactive project initializer.
+
+- **Synopsis**: `dvl init`
+- **Behavior**: Guides you through a series of questions to scaffold a new project or bootstrap an existing one.
+- **Workflow Steps**:
+    1. **Project Name**: Prompts for a lowercase alphanumeric name (e.g., `my-project`).
+    2. **Stack Selection**: Choose from `magento`, `nodejs`, `laravel`, `shopify`, `bigcommerce`, or `phpweb`.
+    3. **Directory Scaffolding**: Automatically creates the directory in `data/www/` if it doesn't exist.
+    4. **Source Code**: Optionally clones a Git repository into the project directory.
+    5. **Configuration**: Generates a `.devilbox.yaml` file tailored to the selected stack.
+- **Scenarios**:
+    - **New Project**: Scaffolds directories, clones a repo (if provided), and generates a `.devilbox.yaml`.
+    - **Existing Project**: Detects your configuration and ensures the environment matches.
+    - **Add App**: Adds a new webapp entry to an existing multi-app configuration.
+- **Supported Stacks**: Magento 2 (Production-grade), Node.js (Reverse Proxy), Laravel, Shopify, BigCommerce, General PHP.
+- **Exit Codes**: `0` on successful scaffold.
+
+**Example**:
+```bash
+dvl init
+# Follow prompts:
+# Name: awesome-shop
+# Stack: magento
+# Repo: https://github.com/my/repo.git
+```
+
+---
+
+### `shell`
+Opens an interactive bash shell inside a PHP container.
+
+- **Synopsis**: `dvl shell [php-version]`
+- **Behavior**: 
+    - **Auto-Detection**: It searches for a `.devilbox.yaml` in the current directory or parent directories to determine the required PHP version.
+    - **Resolution Path**:
+        1. Checks CWD for `.devilbox.yaml`.
+        2. Checks `..` (parent).
+        3. If inside `htdocs` (or defined `HTTPD_DOCROOT_DIR`), checks `../../`.
+    - **Prompt**: If a specific version is detected, it asks for confirmation before entering.
+    - **Identity**: Enters as the `devilbox` user (UID matching your host user).
+    - **Environment**: Loads the full shell login profile (`-l`), giving you access to pre-installed tools like `composer`, `git`, and `wp-cli`.
+- **Exit Codes**: `0` on exit.
+
+**Examples**:
+```bash
+dvl shell             # Auto-detect version or use default PHP
+dvl shell php82       # Force entry into the PHP 8.2 container
+```
+
+---
+
+### `exec`
+Execute a command directly in the main PHP container.
+
+- **Synopsis**: `dvl exec <command...>`
+- **Behavior**: 
+    - Runs the command via `bash -c` inside the container.
+    - **Path Translation**: Automatically maps your current host working directory to the corresponding path inside the container (`/shared/httpd/...`). If you are outside the `data/www` tree, it defaults to the user's home directory inside the container.
+- **Exit Codes**: Returns the exit code of the executed command.
+
+**Example**:
+```bash
+dvl exec "ls -la"
+dvl exec "php -v"
+```
+
+---
+
+### `agent`
+Management command for the Agentic AI-coding container.
+
+- **Synopsis**: `dvl agent <subcommand>`
+- **Subcommands**:
+    - `enable <stack>`: Adds an override layer (e.g., `agentic`) to `.dvl/agent-stacks.list`.
+    - `disable <stack>`: Removes the layer and tears down the associated services.
+    - `list`: Displays which agent stacks are available and which are currently active.
+    - `up`: Starts the layered agent containers using `COMPOSE_FILE` merging.
+    - `down`: Stops the agent containers.
+    - `status` (alias: `ps`): Lists running agent-related containers.
+    - `logs`: Tails logs for the agentic services.
+    - `shell [service]`: Opens a bash shell in the `agentic` container (defaults to `agentic`).
+    - `exec <command>`: Runs a non-interactive command in the `agentic` service.
+    - `auth <tool-slug>`: Triggers the OAuth bridge for tools like `claude-code` or `aider`.
+    - `tools`: Lists available AI CLI tools installed in the image.
+
+See the [DVL Agent Guide](../dvl-agent/) for deep-dive documentation.
+
+---
+
+### `db-import`
+Restores a database backup from the host to the container.
+
+- **Synopsis**: `dvl db-import <filename> <database_name>`
+- **Behavior**: 
+    - **Search Path**: Looks for files in the `./backups` directory on your host.
+    - **Formats**: Supports plain `.sql` and compressed `.sql.gz`.
+    - **Magento Integration**: If it detects a Magento stack (via `.devilbox.yaml`), it triggers an interactive workflow:
+        1. **Update Base URLs**: Offers to set `web/unsecure/base_url` and `web/secure/base_url` to your project's local domain.
+        2. **Scope Handling**: Can update default scope and/or non-default (website/store) scopes.
+        3. **Base Link Cleanup**: Offers to remove `base_link_url` settings which often cause local redirect loops.
+        4. **Cache Flush**: Offers to run `magento cache:flush` immediately after updates.
+- **Technical Detail**: The command uses `zcat` for `.sql.gz` files and pipes directly to the `mysql` binary inside the container, avoiding intermediate file extraction on the host.
+- **Exit Codes**: `0` on success.
+
+**Example**:
+```bash
+dvl db-import production_dump.sql.gz my_local_magento
+```
+
+---
+
+### `magento` / `magerun`
+Wrappers for Magento 2 CLI tools.
+
+- **Synopsis**: `dvl magento <args>` / `dvl magerun <args>`
+- **Behavior**: 
+    - **Flavor Enforcement**: Requires the `work` flavor of the PHP image (contains development tools). If your container is using `slim`, it will offer to switch flavors automatically.
+    - **Optimization**: Runs with `php -dmemory_limit=-1` to prevent OOM errors during compilation or indexer runs.
+    - **Permissions**: Ensures commands run as the `devilbox` user.
+- **Source Resolution**: 
+    - `magento` points to `bin/magento`.
+    - `magerun` points to `/usr/local/bin/magerun` (n98-magerun2).
+
+**Example**:
+```bash
+dvl magento setup:upgrade
+dvl magerun cache:status
+dvl magento indexer:reindex
+```
+
+---
+
+### `composer`
+Runs Composer inside the PHP container.
+
+- **Synopsis**: `dvl composer <args>`
+- **Behavior**: 
+    - Automatically detects the correct PHP version for your project.
+    - Maps the current directory and sets it as the working directory inside the container.
+    - Ensures that `composer.lock` and `vendor/` files created are owned by your host user.
+
+**Example**:
+```bash
+dvl composer require monolog/monolog
+dvl composer install --no-dev
+```
+
+---
+
+### `cloud-cli` (alias: `cloud`, `magento-cloud`)
+Runs the Adobe Commerce (Magento) Cloud CLI.
+
+- **Synopsis**: `dvl cloud <args>`
+- **Behavior**: Uses the pre-installed `magento-cloud` binary. This tool is pre-configured in the `work` flavor images to assist with managing cloud environments from your local machine.
+
+---
+
+### `ece-tools` / `cloud-patches`
+Commands for Adobe Commerce Cloud projects.
+
+- **Synopsis**: `dvl ece-tools <args>` / `dvl cloud-patches <args>`
+- **Behavior**: Executes the project-specific binaries found in `./vendor/bin/`. These are critical for managing the Commerce Cloud build/deploy lifecycle locally.
+
+---
+
+### `sync-env`
+Synchronizes your local environment files with upstream templates.
+
+- **Synopsis**: `dvl sync-env`
+- **Behavior**: 
+    - Diffs your `.env` against `env-example`.
+    - **Preservation**: It automatically preserves critical host-specific variables such as `TLD_SUFFIX`, `NEW_UID`, `NEW_GID`, `HOST_PORT_BIND`, and `MAGENTO_CLOUD_CLI_TOKEN`.
+    - **Interactive**: Displays a diff and prompts for confirmation before applying updates.
+    - **Overrides**: Also checks and syncs `docker-compose.override.yml` if a template is available.
+
+---
+
+### `sync-httpd`
+Batch synchronizes HTTPD/Webserver configurations.
+
+- **Synopsis**: `dvl sync-httpd`
+- **Behavior**: 
+    - Scans every project in `data/www`.
+    - Detects the stack type (Magento, Laravel, etc.).
+    - Updates `backend.cfg` and `nginx.yml` (or `apache24.yml`) to the latest version of the templates.
+    - This is essential when updating Devilbox to a version that includes new vhost generation logic.
+
+---
+
+### `update-docroot`
+Bulk rename of document root directories.
+
+- **Synopsis**: `dvl update-docroot <old_name>`
+- **Behavior**: Useful if you change the global `HTTPD_DOCROOT_DIR` in your `.env` (e.g., from `htdocs` to `pub`) and need to rename all existing directories to match. It performs a safe `mv` across all projects in `data/www`.
+
+---
+
+### `generate-yaml`
+Interactively generates a `.devilbox.yaml` configuration.
+
+- **Synopsis**: `dvl generate-yaml`
+- **Behavior**: 
+    - Verifies you are in the root of a project.
+    - Detects existing stack characteristics.
+    - Writes the configuration file that enables `dvl` auto-detection features.
+
+---
+
+## Internal Detection Logic
+
+### PHP Version Resolution
+When you run a command like `dvl shell`, the CLI follows this search order for a `.devilbox.yaml`:
+1. The current working directory.
+2. The parent directory.
+3. If inside a directory named `htdocs` (or your defined `HTTPD_DOCROOT_DIR`), it checks the parent of `htdocs`.
+
+It uses the `yq` binary to parse the YAML and extract the `.php.version` key. If the version matches your default `PHP_SERVER` in `.env`, it uses the standard `php` container. If it differs, it attempts to use a versioned container (e.g., `php74`, `php82`).
+
+### Container Flavor Management
+Commands like `magento` and `composer` require the `work` flavor of Devilbox PHP images. 
+- **Check**: The CLI runs `docker compose config` and inspects the image name for the `-work-` substring.
+- **Switching**: If a `slim` image is detected, the CLI interactively offers to update your `docker-compose.override.yml`. 
+- **Automation**: If you accept, it uses `sed` to replace the image tag, runs `docker compose pull`, and restarts the service.
+
+---
+
+## Technical Maintenance
+
+### `yq` Binary Management
+The `dvl` command depends on `yq` for all YAML parsing tasks. 
+- **First Run**: If `$DEVILBOX_PATH/.tests/binaries/yq` is missing, the script identifies your OS (`uname`) and architecture (`uname -m`).
+- **Download**: It fetches the latest compatible release from GitHub.
+- **Execution**: The script always uses its internal `yq` binary to ensure consistent behavior across different host environments.
+
+### Docker Compose Compatibility
+The CLI detects your available compose version:
+- It prefers the Go-based `docker compose` plugin.
+- It falls back to the Python-based `docker-compose` if necessary.
+- It wraps all calls in a `BaseComposeCommand` function to handle pathing and environmental context.
+
+---
+
+## Environment Variable Reference
+
+The `dvl` CLI behavior is influenced by several environment variables:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `DEVILBOX_PATH` | Path to your Devilbox installation. | `$HOME/.devilbox` |
+| `DEVILBOX_CONTAINERS` | Services to start by default. | bind httpd php... |
+| `PHP_SERVER` | Default PHP version in `.env`. | `8.1` |
+| `HTTPD_SERVER` | Selected webserver in `.env`. | `nginx-stable` |
+| `HTTPD_DOCROOT_DIR` | Name of the document root folder. | `htdocs` |
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+| :--- | :--- |
+| `0` | Success. |
+| `1` | General error (Docker failure, file not found, command aborted). |
+| `2` | Configuration error (Unknown container flavor or invalid YAML). |
+
+---
+
+## Troubleshooting the CLI
+
+### "Devilbox not found"
+Ensure `DEVILBOX_PATH` is correctly set in your shell profile and points to the directory containing `dvl.sh`.
+
+### "yq: command not found"
+The CLI should download `yq` automatically. If it fails, ensure your machine has `curl` installed and has internet access to GitHub.
+
+### "Command requires work flavor"
+Some commands require the `work` image because they need system packages (like `git`, `ssh`, or `mysql-client`) that are omitted from `slim` images to save space. Accept the prompt to switch flavors or manually update your `.env` / `docker-compose.override.yml`.
+
+### Architecture Mismatch
+If you move a Devilbox installation from an Intel Mac to an M1/M2 Mac, you may need to delete `$DEVILBOX_PATH/.tests/binaries/yq` so the CLI can download the correct `arm64` version.
+
+---
+
+## Aliases & Legacy Support
+
+While `dvl` is the canonical entry point, historical scripts are maintained as thin wrappers:
+
+| Legacy Script | Modern Replacement |
+| :--- | :--- |
+| `./shell.sh` | `dvl shell` |
+| `./db-import.sh` | `dvl db-import` |
+| `./shell.sh --run "..."` | `dvl exec "..."` |
+
+<Aside type="caution">
+Directly calling `docker compose` is possible but discouraged, as it bypasses the flavor-check, user-mapping, and multi-app configuration logic provided by the CLI.
+</Aside>
+
+See also: [Automated Installation](../getting-started/install-script/), [Agentic Intro](../getting-started/agentic/)
+
+---
+
+## Environment Variable Reference
+
+The `dvl` CLI behavior is influenced by several environment variables:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `DEVILBOX_PATH` | Path to your Devilbox installation. | `$HOME/.devilbox` |
+| `DEVILBOX_CONTAINERS` | Services to start by default. | bind httpd php... |
+| `PHP_SERVER` | Default PHP version in `.env`. | `8.1` |
+| `HTTPD_SERVER` | Selected webserver in `.env`. | `nginx-stable` |
+| `HTTPD_DOCROOT_DIR` | Name of the document root folder. | `htdocs` |
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+| :--- | :--- |
+| `0` | Success. |
+| `1` | General error (Docker failure, file not found, command aborted). |
+| `2` | Configuration error (Unknown container flavor or invalid YAML). |
+
+## Dependencies
+
+### `yq` (YAML Processor)
+The CLI requires `yq` for configuration parsing. 
+- On the first run, `dvl` will attempt to download the correct binary for your architecture (Linux/Darwin, amd64/arm64).
+- The binary is stored in `$DEVILBOX_PATH/.tests/binaries/yq`.
+
+### `docker` & `docker compose`
+The CLI assumes a working Docker installation. It supports both the classic `docker-compose` python tool and the modern `docker compose` Go plugin, preferring the latter if available.
+
+---
+
+## Aliases & Legacy Support
+
+While `dvl` is the canonical entry point, historical scripts are maintained as thin wrappers:
+
+| Legacy Script | Modern Replacement |
+| :--- | :--- |
+| `./shell.sh` | `dvl shell` |
+| `./db-import.sh` | `dvl db-import` |
+| `./shell.sh --run "..."` | `dvl exec "..."` |
+
+<Aside type="caution">
+Directly calling `docker compose` is possible but discouraged, as it bypasses the flavor-check, user-mapping, and multi-app configuration logic provided by the CLI.
+</Aside>
+
+See also: [Automated Installation](../getting-started/install-script/), [Agentic Intro](../getting-started/agentic/)
+

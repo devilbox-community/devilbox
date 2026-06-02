@@ -1,0 +1,284 @@
+---
+title: Automated Installation Script
+description: Comprehensive guide to the cross-platform install.sh script for Devilbox.
+sidebar:
+  order: 5
+---
+
+import { Steps, Aside, Tabs, TabItem } from '@astrojs/starlight/components'
+
+The `install.sh` script is the canonical, automated entry point for setting up Devilbox on any supported operating system. It handles dependency verification, repository cloning, environment seeding, and shell integration in a single pass.
+
+## Quick Start
+
+To install Devilbox with default settings to `~/Workspace/devilbox`:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/devilbox-community/devilbox/mainline/install.sh | bash
+```
+
+## Logging & Color Coding
+
+The installer provides semantic feedback using standard ANSI color codes. If `tput` is available and the terminal supports at least 8 colors, the following scheme is used:
+
+- <span style="color:blue">**[INFO]**</span>: General progress updates and environmental data.
+- <span style="color:green">**[SUCCESS]**</span>: Positive confirmation of a completed step or verified prerequisite.
+- <span style="color:yellow">**[WARNING]**</span>: Non-fatal issues (e.g., directory already exists) that may require user attention.
+- <span style="color:red">**[ERROR]**</span>: Fatal errors that cause immediate script termination.
+- <span style="color:purple">**[VERBOSE]**</span>: Deep debugging data, only visible when running with `-v` or `--verbose`.
+
+### Verbose Logging Examples
+
+When running with `--verbose`, you will see additional internal state tracking:
+```bash
+[VERBOSE] Removing existing directory: /Users/user/Workspace/devilbox
+[VERBOSE] Default : bind httpd php php74 php81 php82 php83 php84
+[VERBOSE] Optional: mysql redis opensearch buggregator
+[VERBOSE] Using shell profile: /Users/user/.zprofile
+```
+
+## OS Support Matrix
+
+The installer uses `uname` and `/etc/os-release` parsing to provide tailored installation steps for the following platforms:
+
+<Tabs>
+  <TabItem label="macOS">
+    - **Detection**: `Darwin` family.
+    - **Package Manager**: Homebrew (installed automatically if missing).
+    - **Shell Profile**: `~/.zprofile` (default) or `~/.bash_profile`.
+    - **Symlink**: Created in `/opt/homebrew/bin/dvl` or `/usr/local/bin/dvl`.
+    - **Architecture Support**: Native support for both Intel (x86_64) and Apple Silicon (arm64).
+  </TabItem>
+  <TabItem label="Debian / Ubuntu">
+    - **Includes**: Linux Mint, Pop!_OS, Raspbian, Kali Linux.
+    - **Package Manager**: `apt-get`.
+    - **Dependency Check**: Requires `git`, `curl`, `make`, and `docker-compose-plugin`.
+    - **Shell Profile**: `~/.bashrc` (standard) or `~/.zprofile`.
+  </TabItem>
+  <TabItem label="Arch Linux">
+    - **Includes**: Manjaro, EndeavourOS, Artix, SteamOS.
+    - **Package Manager**: `pacman`.
+    - **Dependency Check**: Requires `git`, `curl`, `make`.
+    - **Shell Profile**: `~/.bashrc`.
+  </TabItem>
+  <TabItem label="Fedora / RHEL">
+    - **Includes**: CentOS, Rocky Linux, AlmaLinux, Oracle Linux.
+    - **Package Manager**: `dnf` (falls back to `yum`).
+    - **Shell Profile**: `~/.bashrc`.
+  </TabItem>
+  <TabItem label="Alpine">
+    - **Package Manager**: `apk`.
+    - **Shell Profile**: `~/.profile`.
+    - **Symlink**: Always created in `~/.local/bin/dvl`.
+    - **Note**: Requires `libc` compatibility layers for some Docker operations.
+  </TabItem>
+  <TabItem label="WSL2">
+    - **Detection**: Verifies `/proc/version` for Microsoft/WSL strings.
+    - **Note**: Requires Docker Desktop WSL2 integration to be enabled for the specific distro.
+    - **Shell Profile**: Typically `~/.bashrc` or `~/.zshrc`.
+    - **Path Handling**: The script correctly translates Windows-style paths if executed from `/mnt/c/`.
+  </TabItem>
+</Tabs>
+
+## CLI Reference
+
+### Usage Synopsis
+```bash
+./install.sh [OPTIONS]
+```
+
+### Options Table
+
+| Flag | Long Form | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-h` | `--help` | Show the help message and exit. | N/A |
+| `-f` | `--force` | Overwrite existing Devilbox directory and skip OS support warnings. | `false` |
+| `-v` | `--verbose` | Enable detailed purple-coded logging for debugging. | `false` |
+| | `--non-interactive` | Disable all prompts. Fails if destructive actions are required without `--force`. | `false` |
+| | `--workspace <path>` | Override the target installation directory. | `$HOME/Workspace` |
+
+### Environment Variables
+You can also control the installer via environment variables, which is useful for CI/CD pipelines:
+
+- `DEVILBOX_NONINTERACTIVE=1`: Equivalent to `--non-interactive`.
+- `DEVILBOX_WORKSPACE=/custom/path`: Equivalent to `--workspace`.
+
+## Internal Implementation Details
+
+### OS Recognition Logic
+The script uses a two-tier detection system:
+1. **Primary**: `uname -s` identifies the kernel (Linux vs Darwin).
+2. **Secondary**: `/etc/os-release` is sourced to identify the distribution via the `ID` and `ID_LIKE` variables.
+
+This allows for granular support. For example, `ID_LIKE=debian` will trigger the same logic as `ID=ubuntu`, ensuring that derivative distributions like Linux Mint or Pop!_OS work seamlessly without manual overrides.
+
+### Prerequisite Deep-Dive
+The script performs the following assertions before proceeding:
+- `command -v git`: Ensures git is reachable.
+- `command -v docker`: Ensures docker is reachable.
+- `docker info`: Ensures the Docker daemon is responding (prevents "socket not found" errors later).
+- **Compose Version**: On non-macOS systems, it verifies that `docker compose` (v2) is available, as v1 (`docker-compose`) is deprecated and lacks support for the modern YAML features used in Devilbox.
+
+### Repository Management & Force Logic
+If the target directory exists and `--force` is **not** set:
+- In interactive mode, the script uses `read -p` to ask for confirmation.
+- If the user denies or is in non-interactive mode, the script exits with status 1 to prevent data loss.
+
+If `--force` **is** set:
+- The script executes `rm -rf "$WORKSPACE_DIR"` immediately after confirmation.
+- It then runs `git clone "$DEVILBOX_REPO" "$WORKSPACE_DIR"`.
+- This ensures that any corrupted or outdated files are completely purged before the new version is pulled.
+
+### Automation & Fallbacks
+- **Non-interactive detection**: If `DEVILBOX_NONINTERACTIVE=1` is found in the environment, the `--non-interactive` flag is automatically enabled. This is ideal for Ansible playbooks or Dockerfiles.
+- **Path normalization**: The script uses `cd "$WORKSPACE_DIR" && pwd` to ensure it works with absolute paths internally, avoiding issues with relative symbolic links.
+
+### Configuration Seeding (Phase 2)
+- **.env initialization**: Copies `env-example` to `.env`. This ensures all default variables are available for the `docker compose` engine.
+- **Compose Layering**: Copies `compose/docker-compose.override.yml-magento2` to the root `docker-compose.override.yml`. This provides a baseline Magento 2 configuration including Redis, Varnish, and Elasticsearch mappings.
+- **UID/GID Mapping**: 
+  - On Linux/macOS, it uses `id -u` and `id -g`.
+  - To ensure cross-platform compatibility, it prefers `perl -i -pe` for regex replacement.
+  - If `perl` is missing, it falls back to a temporary-file `sed` approach: `sed "s/.../.../" .env > .env.tmp && mv .env.tmp .env`.
+  - This mapping is critical for preventing "Permission Denied" errors when your host user attempts to edit files created by a containerized service.
+
+### Container Resolution (Phase 3)
+The script parses `env-example` to identify the source-of-truth for container stacks:
+- It looks for lines starting with `CONTAINERS_CONFIG_DEFAULT=` and `CONTAINERS_CONFIG_OPTIONAL=`.
+- It uses `grep` and `head -n 1` to find the exact definitions.
+- It performs shell-based string manipulation (`#` and `%` prefixes) to strip surrounding quotes and whitespace.
+- The resulting `DEVILBOX_CONTAINERS` variable is what gets exported to your shell profile, ensuring that `dvl up` starts exactly the same services every time.
+
+### Shell Integration (Phase 4)
+The script detects your login shell (`basename "${SHELL}"`) and selects the appropriate profile:
+
+| Shell | Profile File | Syntax |
+| :--- | :--- | :--- |
+| **zsh** | `~/.zprofile` | `export VAR="val"` |
+| **bash (macOS)** | `~/.bash_profile` | `export VAR="val"` |
+| **bash (Linux)** | `~/.bashrc` | `export VAR="val"` |
+| **fish** | `~/.config/fish/config.fish` | `set -gx VAR "val"` |
+| **ash / sh** | `~/.profile` | `export VAR="val"` |
+
+The script ensures the parent directory of the profile exists (e.g., `~/.config/fish`) and uses `touch` to ensure the file exists before grepping it for existing Devilbox entries to avoid duplicates.
+
+### Symlink Strategy (Phase 5)
+The script ensures the `dvl` command is global by creating a symbolic link to `dvl.sh`:
+
+- **macOS**: Targets `/opt/homebrew/bin` (for Apple Silicon) or `/usr/local/bin` (for Intel).
+- **Linux (root-writable)**: Targets `/usr/local/bin`.
+- **Linux (user-only)**: Targets `~/.local/bin`. If this path is used, the script warns the user to ensure it is added to their `$PATH` in their profile.
+- **Alpine**: Always targets `~/.local/bin` to comply with Alpine's security model.
+
+## Troubleshooting Common Issues
+
+### "Docker is not running"
+Ensure Docker Desktop is open and the engine has finished starting. On Linux, ensure the `docker` service is started and your user is in the `docker` group:
+```bash
+sudo systemctl start docker
+sudo usermod -aG docker $USER
+```
+
+### "Permission denied" during symlink creation
+The script attempts to write to `/usr/local/bin`. If your user does not have write access, it will fallback to `~/.local/bin`. If that also fails, you may need to run the script with elevated privileges, though this is generally discouraged.
+
+### "Git not found"
+The script requires Git to clone the repository. Install it via your system package manager:
+- **macOS**: `brew install git`
+- **Ubuntu/Debian**: `sudo apt install git`
+- **Arch**: `sudo pacman -S git`
+- **Fedora**: `sudo dnf install git`
+
+## Technical Truths (Assertions)
+
+The installer guarantees the following state upon successful completion (exit code 0):
+
+- **Repository Integrity**: `DEVILBOX_PATH` exists and contains a valid `.git` directory pointing to the mainline branch.
+- **User Mapping**: `.env` exists and contains the correct `NEW_UID` matching the host user who ran the installer.
+- **Command Availability**: `dvl` command is available on the system `$PATH` and points to the `dvl.sh` script in the workspace.
+- **Profile Persistence**: Shell profile contains the `DEVILBOX_CONTAINERS` and `DEVILBOX_PATH` variables.
+- **Prerequisite Validation**: All baseline build tools (`git`, `curl`, `make`) are verified present on the host.
+- **Exit Safety**: The exit trap ensures that if any command fails (due to `set -e`), the user is notified and the installation is marked as incomplete.
+
+## Manual Installation Alternative
+
+If you prefer not to use the automated script, you can perform the installation steps manually. This is equivalent to what `install.sh` performs internally:
+
+<Steps>
+1. **Clone the repository**:
+   ```bash
+   mkdir -p ~/Workspace
+   git clone https://github.com/devilbox-community/devilbox ~/Workspace/devilbox
+   cd ~/Workspace/devilbox
+   ```
+
+2. **Initialize configuration**:
+   ```bash
+   cp env-example .env
+   cp compose/docker-compose.override.yml-magento2 docker-compose.override.yml
+   ```
+
+3. **Configure permissions**:
+   Open `.env` and update `NEW_UID` and `NEW_GID` with the output of `id -u` and `id -g`.
+
+4. **Register environment variables**:
+   Add the following to your `~/.zshrc` or `~/.bashrc`:
+   ```bash
+   export DEVILBOX_PATH="$HOME/Workspace/devilbox"
+   export DEVILBOX_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 mysql redis opensearch buggregator"
+   ```
+
+5. **Create a global alias or symlink**:
+   ```bash
+   sudo ln -s ~/Workspace/devilbox/dvl.sh /usr/local/bin/dvl
+   chmod +x ~/Workspace/devilbox/dvl.sh
+   ```
+</Steps>
+
+## Security Best Practices
+
+### Running as a Non-root User
+The installer is designed to be run as a standard user. It only requires `sudo` for creating the symlink in `/usr/local/bin`. Avoid running the entire script as `root`, as this will cause the cloned repository and `.env` file to be owned by root, leading to permission issues during normal operation.
+
+### Environmental Isolation
+`DEVILBOX_PATH` and `DEVILBOX_CONTAINERS` are exported to your shell profile. If you manage multiple Devilbox instances, ensure these variables point to the correct instance before running `dvl` commands.
+
+## Frequently Asked Questions
+
+### Can I run the script twice?
+Yes. If you run it without `--force`, it will prompt before overwriting. If you run it with `--force`, it will replace your current installation. Note that your shell profile may end up with duplicate exports if not cleaned up manually.
+
+### What if my OS is not supported?
+If your OS is not in the list, you can try running with `--force`. The script will attempt the installation but may fail at the package manager verification or symlink creation steps. You may need to manually install dependencies like `git` and `make`.
+
+### Why does it need `NEW_UID`?
+Devilbox containers run as the `devilbox` user (typically UID 1000). To avoid permission denied errors when editing files on the host, the containers map their internal user to your host user's UID. This allows shared volumes to maintain correct ownership and ensures that files created inside the container (like logs or media uploads) are editable on the host.
+
+### Does it support fish shell?
+Yes, it specifically detects `fish` and uses `set -gx` syntax for environment variables. It also ensures the configuration is placed in `~/.config/fish/config.fish`, following fish shell standards.
+
+### How do I install to a custom path?
+Use the `--workspace` flag:
+```bash
+./install.sh --workspace /home/user/projects/devilbox
+```
+
+### Can I use this script for automated server setup?
+Absolutely. Use the `--non-interactive` flag along with `--force` to ensure the script runs from start to finish without requiring user input. This is commonly used in cloud-init scripts, Ansible playbooks, or CI/CD pipelines.
+
+### What if I use a custom shell like Zsh but the script detects Bash?
+The script detects the shell currently executing it, but also checks the `$SHELL` environment variable. It will attempt to update the profile for the shell it believes you are using. If it misses your primary shell, you can manually copy the export lines to your preferred profile file.
+
+### Does it install Docker for me?
+No. Docker is a complex system-level dependency with many variations (Docker Desktop, Docker Engine, Docker CE). The script expects Docker to be pre-installed and running.
+
+### How do I upgrade my Devilbox?
+You can run the `install.sh` script again with the `--force` flag to get a fresh clone of the latest version. Alternatively, navigate to your `DEVILBOX_PATH` and run `git pull`.
+
+### Can I change the default containers after installation?
+Yes. Simply update the `DEVILBOX_CONTAINERS` variable in your shell profile and restart your terminal. You can also override this on the fly:
+```bash
+DEVILBOX_CONTAINERS="php mysql" dvl up
+```
+
+See also: [DVL CLI Reference](../../intermediate/dvl-cli/), [Directory Overview](../directory-overview/)

@@ -29,6 +29,7 @@ export default defineConfig({
           label: "Getting started",
           items: [
             { slug: 'getting-started/prerequisites' },
+            { slug: 'getting-started/install-script' },
             { slug: 'getting-started/install-the-devilbox' },
             { slug: 'getting-started/start-the-devilbox' },
             { slug: 'getting-started/devilbox-intranet' },
@@ -37,11 +38,14 @@ export default defineConfig({
             { slug: 'getting-started/enter-the-php-container' },
             { slug: 'getting-started/change-container-versions' },
             { slug: 'getting-started/important' },
+            { slug: 'getting-started/agentic' },
           ],
         },
         {
           label: "Intermediate",
           items: [
+            { slug: 'intermediate/dvl-cli' },
+            { slug: 'intermediate/dvl-agent' },
             { slug: 'intermediate/setup-auto-dns' },
             { slug: 'intermediate/setup-valid-https' },
             { slug: 'intermediate/configure-php-xdebug' },
