@@ -46,8 +46,7 @@ The following configuration will be used:
 <li></li>
 </ul></td>
 <td>loc</td>
-<td><a href="http://my-flask.loc">http://my-flask.loc</a> <a
-href="##SUBST##|br|">|br|</a> <a
+<td><a href="http://my-flask.loc">http://my-flask.loc</a> <br /> <a
 href="https://my-flask.loc">https://my-flask.loc</a></td>
 </tr>
 </tbody>

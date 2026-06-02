@@ -43,8 +43,7 @@ The following configuration will be used:
 <li></li>
 </ul></td>
 <td>loc</td>
-<td><a href="http://my-sphinx.loc">http://my-sphinx.loc</a> <a
-href="##SUBST##|br|">|br|</a> <a
+<td><a href="http://my-sphinx.loc">http://my-sphinx.loc</a> <br /> <a
 href="https://my-sphinx.loc">https://my-sphinx.loc</a></td>
 </tr>
 </tbody>

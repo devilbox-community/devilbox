@@ -44,8 +44,7 @@ The following configuration will be used:
 <li></li>
 </ul></td>
 <td>loc</td>
-<td><a href="http://my-node.loc">http://my-node.loc</a> <a
-href="##SUBST##|br|">|br|</a> <a
+<td><a href="http://my-node.loc">http://my-node.loc</a> <br /> <a
 href="https://my-node.loc">https://my-node.loc</a></td>
 </tr>
 </tbody>

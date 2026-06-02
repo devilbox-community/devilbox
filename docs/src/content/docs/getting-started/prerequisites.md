@@ -31,10 +31,9 @@ and `Docker Compose`. See the matrix below for supported versions:
 </thead>
 <tbody>
 <tr>
-<td><a href="##SUBST##|img_logo_lin|">|img_logo_lin|</a></td>
+<td><img src="https://raw.githubusercontent.com/cytopia/icons/master/64x64/linux.png" alt="Linux" width="64" /></td>
 <td>Any</td>
-<td><a
-href="##SUBST##|ext_lnk_prereq_docker_lin|">|ext_lnk_prereq_docker_lin|</a></td>
+<td><a target="_blank" href="https://docs.docker.com/install/#server">Docker</a></td>
 <td>yes</td>
 </tr>
 <tr>
@@ -44,16 +43,13 @@ href="##SUBST##|ext_lnk_prereq_docker_lin|">|ext_lnk_prereq_docker_lin|</a></td>
 <td></td>
 </tr>
 <tr>
-<td rowspan="2"><a
-href="##SUBST##|img_logo_mac|">|img_logo_mac|</a></td>
+<td rowspan="2"><img src="https://raw.githubusercontent.com/cytopia/icons/master/64x64/osx.png" alt="macOS" width="64" /></td>
 <td rowspan="2">Any</td>
-<td><a
-href="##SUBST##|ext_lnk_prereq_docker_mac|">|ext_lnk_prereq_docker_mac|</a></td>
+<td><a target="_blank" href="https://docs.docker.com/docker-for-mac/install/">Docker for Mac</a></td>
 <td>yes</td>
 </tr>
 <tr>
-<td><a
-href="##SUBST##|ext_lnk_prereq_docker_mac_tb|">|ext_lnk_prereq_docker_mac_tb|</a></td>
+<td><a target="_blank" href="https://docs.docker.com/toolbox/toolbox_install_mac/">Docker Toolbox</a></td>
 <td></td>
 </tr>
 <tr>
@@ -63,28 +59,23 @@ href="##SUBST##|ext_lnk_prereq_docker_mac_tb|">|ext_lnk_prereq_docker_mac_tb|</a
 <td></td>
 </tr>
 <tr>
-<td rowspan="4"><a
-href="##SUBST##|img_logo_win|">|img_logo_win|</a></td>
+<td rowspan="4"><img src="https://raw.githubusercontent.com/cytopia/icons/master/64x64/windows.png" alt="Windows" width="64" /></td>
 <td>Windows 7</td>
-<td><a
-href="##SUBST##|ext_lnk_prereq_docker_win_tb|">|ext_lnk_prereq_docker_win_tb|</a></td>
+<td><a target="_blank" href="https://docs.docker.com/toolbox/toolbox_install_windows/">Docker Toolbox</a></td>
 <td>yes</td>
 </tr>
 <tr>
 <td rowspan="2">Windows 10</td>
-<td><a
-href="##SUBST##|ext_lnk_prereq_docker_win|">|ext_lnk_prereq_docker_win|</a></td>
+<td><a target="_blank" href="https://docs.docker.com/docker-for-windows/install/">Docker for Windows</a></td>
 <td>yes</td>
 </tr>
 <tr>
-<td><a
-href="##SUBST##|ext_lnk_prereq_docker_win_tb|">|ext_lnk_prereq_docker_win_tb|</a></td>
+<td><a target="_blank" href="https://docs.docker.com/toolbox/toolbox_install_windows/">Docker Toolbox</a></td>
 <td></td>
 </tr>
 <tr>
 <td>Windows Server 2016</td>
-<td><a
-href="##SUBST##|ext_lnk_prereq_docker_win_ee|">|ext_lnk_prereq_docker_win_ee|</a></td>
+<td><a target="_blank" href="https://www.docker.com/products/orchestration">Docker EE</a></td>
 <td>yes</td>
 </tr>
 </tbody>
