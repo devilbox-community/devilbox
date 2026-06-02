@@ -25,6 +25,20 @@
 
 
 ###
+### --------------------------------------------------------------
+###  CONTAINERS CONFIG (consumed by install.sh)
+### --------------------------------------------------------------
+###
+### install.sh reads these to compute DEVILBOX_CONTAINERS exported
+### to your shell profile. DEFAULT is always installed; OPTIONAL is
+### appended to preserve the legacy 12-container roster. Edit here
+### to change what install.sh provisions for new clones.
+###
+CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+
+
+###
 ### Show all executed commands in each
 ### docker image during docker-compose up?
 ###
