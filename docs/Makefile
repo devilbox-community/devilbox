@@ -5,7 +5,7 @@ endif
 # -------------------------------------------------------------------------------------------------
 # Default configuration
 # -------------------------------------------------------------------------------------------------
-.PHONY: help build autobuild linkcheck linkcheck2
+.PHONY: help build autobuild linkcheck
 NODE_IMAGE := node:lts-alpine
 DOCKER_RUN := docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD):/docs -w /docs
 
@@ -18,7 +18,6 @@ help:
 	@echo "build            Build static documentation site (Astro Starlight) into ./dist"
 	@echo "autobuild        Continuously rebuild and serve at http://0.0.0.0:4321"
 	@echo "linkcheck        Build + run cytopia/linkcheck against ./dist"
-	@echo "linkcheck2       Legacy RST include linkchecker (removed after D2.1)"
 
 
 # -------------------------------------------------------------------------------------------------
@@ -33,6 +32,3 @@ autobuild:
 
 linkcheck: build
 	docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD)/dist:/data cytopia/linkcheck -l -k -r 60 -t 30 -e html
-
-linkcheck2:
-	docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD):/data cytopia/linkcheck -l -k -r 60 -t 30 -e rst -c '200,204,403' _includes/

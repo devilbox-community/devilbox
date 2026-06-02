@@ -20,7 +20,6 @@ You can build the documentation locally before pushing to ensure everything look
 ```sh
 cd docs/
 make linkcheck
-make linkcheck2
 ```
 
 ### How to build and error-check
