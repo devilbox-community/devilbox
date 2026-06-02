@@ -4,255 +4,123 @@ title: "Setup ExpressionEngine"
 
 # Setup ExpressionEngine
 
-This example will use `curl` to install ExpressionEngine from within the
-Devilbox PHP container.
-
-After completing the below listed steps, you will have a working
-ExpressionEngine setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example expressionengine documentation`
-
-</div>
-
+This example installs ExpressionEngine inside the Devilbox PHP container, creates a MySQL database, and serves the CMS through the standard Devilbox `htdocs` document root.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-ee` | `/shared/httpd/my-ee` | `my_ee` | `lvh.me` | <http://my-ee.lvh.me> / <https://my-ee.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-ee | /shared/httpd/my-ee | my_ee | loc | <http://my-ee.loc> `br` <https://my-ee.loc> |
+Projects live in `/shared/httpd/` inside the PHP container and in `./data/www/` on the host.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox installed with PHP 8.3 or PHP 8.4 available.
+- HTTPD, MySQL, and Bind services enabled.
+- An ExpressionEngine download URL or release archive from your ExpressionEngine account.
+
+Start the stack:
+
+```bash
+./dvl.sh up php httpd mysql bind
+```
 
 ## Walk through
 
-It will be ready in eight simple steps:
+It will be ready in eight steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Download and extract ExpressionEngine
-4.  Symlink webroot directory
-5.  Add MySQL Database
-6.  Setup DNS record
-7.  Install ExpressionEngine
-8.  View your site
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Download and extract ExpressionEngine.
+4. Link the webroot to `htdocs`.
+5. Add a MySQL database.
+6. Verify DNS.
+7. Run the installer.
+8. View the site and control panel.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-ee
+```bash
+mkdir -p /shared/httpd/my-ee
+cd /shared/httpd/my-ee
 ```
-
-<div class="seealso">
-
-`env-tld-suffix`
-
-</div>
 
 ### 3. Download and extract ExpressionEngine
 
-Navigate into your newly created vhost directory and install
-ExpressionEngine.
+Download the current ExpressionEngine release archive from the official source, then place it in the vhost directory as `ee.zip`:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-ee
-devilbox@php-7.0.20 in /shared/httpd/my-ee $ curl 'https://expressionengine.com/?ACT=243' -H 'Referer: https://expressionengine.com/' --compressed -o ee.zip
-devilbox@php-7.0.20 in /shared/httpd/my-ee $ mkdir ee
-devilbox@php-7.0.20 in /shared/httpd/my-ee $ unzip ee.zip -d ee
+```bash
+mkdir ee
+unzip ee.zip -d ee
 ```
 
-How does the directory structure look after installation:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-ee $ tree -L 1
+```bash
+tree -L 1
 .
 ├── ee
 └── ee.zip
-
-1 directory, 1 file
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+ExpressionEngine can be served from the extracted directory unless you move its public entrypoint elsewhere:
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-ee $ ln -s ee/ htdocs
+```bash
+ln -s ee htdocs
 ```
 
-How does the directory structure look after symlinking it:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-ee $ tree -L 1
+```bash
+tree -L 1
 .
 ├── ee
 ├── ee.zip
 └── htdocs -> ee
-
-2 directories, 1 file
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Add the MySQL database
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. Add MySQL Database
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-ee $ mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_ee CHARACTER SET utf8 COLLATE utf8_unicode_ci;'
+```bash
+mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_ee CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
-> [!NOTE]
-> \* Remember the database name you create here. It will be needed again
-> during the installation process.
+Remember the database name and credentials for the browser installer.
 
-### 6. DNS record
+### 6. Verify DNS
 
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-ee.loc
-```
-
-<div class="seealso">
-
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
-
-</div>
+`my-ee.lvh.me` resolves to `127.0.0.1` by default. For a custom suffix, add an equivalent hosts-file entry.
 
 ### 7. Install ExpressionEngine
 
-Point your browser to <http://my-ee.loc/admin.php> or
-<https://my-ee.loc/admin.php> and follow the on-screen instructions to
-install ExpressionEngine.
+Open <http://my-ee.lvh.me/admin.php> or <https://my-ee.lvh.me/admin.php> and follow the installer.
 
-> [!IMPORTANT]
-> Once the Installation Wizard is finished, you should rename or remove
-> the system/ee/installer/ directory from your install directory if it
-> was not done by the install wizard.
+Use these database values:
 
-<div class="seealso">
+- Host: `127.0.0.1`
+- Database: `my_ee`
+- User: `root`
+- Password: your MySQL password from `.env`
 
-`example expressionengine instal documentation`
+:::caution
+After the installer finishes, remove or rename the installer directory if ExpressionEngine does not do it automatically.
+:::
 
-</div>
+### 8. View your site
 
-### 8. View Your Site
-
-All set now, you can visit your site's homepage by opening
-<http://my-ee.loc> or <https://my-ee.loc> in your browser.
-
-Your control panel will also be available by opening
-<http://my-ee.loc/admin.php> or <https://my-ee.loc/admin.php> in your
-browser.
-
-> [!NOTE]
-> \* If you chose not to install the default theme, your site’s homepage
-> will appear blank because no templates or content has been created
-> yet. \* If you’re new to ExpressionEngine, get started with the
-> `example expressionengine primer`
+Open <http://my-ee.lvh.me> or <https://my-ee.lvh.me>. The control panel remains available at `/admin.php`.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Use the Devilbox intranet database tools to inspect `my_ee`.
+- Configure trusted HTTPS before production-like testing.
+- Add cache or queue services only when your ExpressionEngine project requires them.

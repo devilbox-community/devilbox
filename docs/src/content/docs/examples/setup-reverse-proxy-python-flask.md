@@ -4,504 +4,170 @@ title: "Setup reverse proxy Python Flask"
 
 # Setup reverse proxy Python Flask
 
-This example will walk you through adding a version specific Python
-Flask docker container, creating a simple Flask hello world application
-and have its requirements specified in `requirements.txt` automatically
-installed. Once setup, your application will be ready via
-`docker-compose up`, proxied to the web server and can be reached via
-valid HTTPS.
-
-> [!NOTE]
-> This example is using an additional Docker image, so you are able to
-> specify any Python version you like and even be able to add multiple
-> Docker images with different versions.
-
+This example adds a Python 3.12 Flask service with a Devilbox Docker Compose override, then proxies the project virtual host to the Flask container.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-flask` | `/shared/httpd/my-flask` | none | `lvh.me` | <http://my-flask.lvh.me> / <https://my-flask.lvh.me> |
 
-<table style="width:98%;">
-<colgroup>
-<col style="width: 12%" />
-<col style="width: 22%" />
-<col style="width: 11%" />
-<col style="width: 10%" />
-<col style="width: 40%" />
-</colgroup>
-<thead>
-<tr>
-<th>Project name</th>
-<th>VirtualHost directory</th>
-<th>Database</th>
-<th>TLD_SUFFIX</th>
-<th>Project URL</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>my-flask</td>
-<td>/shared/httpd/my-flask</td>
-<td><ul>
-<li></li>
-</ul></td>
-<td>loc</td>
-<td><a href="http://my-flask.loc">http://my-flask.loc</a> <br /> <a
-href="https://my-flask.loc">https://my-flask.loc</a></td>
-</tr>
-</tbody>
-</table>
+The Flask application listens on port `3000`. The reverse-proxy templates forward traffic to the Flask backend defined by the compose override.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Required configuration
 
-The following Devilbox configuration is required:
+| Service | Notes |
+| --- | --- |
+| Webserver | Reverse-proxy vhost-gen templates must be copied into the project. |
+| Python Flask | The Flask compose override must be active. |
+| `.env` | `FLASK_PROJECT=my-flask` and `PYTHON_VERSION=3.12` must be set. |
 
-| Service      | Implications                                        |
-|--------------|-----------------------------------------------------|
-| Webserver    | Reverse proxy vhost-gen template need to be applied |
-| Python Flask | Docker Compose override file must be applied.       |
-| `.env`       | `FLASK_PROJECT` variable must be declared and set.  |
-| `.env`       | `PYTHON_VERSION` variable can be declared and set.  |
+Start from a stopped stack when adding the override:
 
-Additionally we will set the listening port of the Flask appliation to
-`3000`.
-
-<div class="seealso">
-
-For a detailed overview about the Compose file see:
-`custom-container-enable-python-flask`
-
-</div>
+```bash
+./dvl.sh down
+```
 
 ## Walk through
 
-It will be ready in ten simple steps:
+It will be ready in ten steps:
 
-1.  Configure Python Flask project name and versoin
-2.  Enter the PHP container
-3.  Create a new VirtualHost directory
-4.  Create Flask hello world application
-5.  Symlink *virtual* docroot directory
-6.  Add reverse proxy vhost-gen config files
-7.  Copy Python Flask compose file
-8.  Setup DNS record
-9.  Restart the Devilbox
-10. Visit <http://my-flask.loc> in your browser
+1. Configure Flask project name and Python version.
+2. Enter the PHP container.
+3. Create a new virtual host directory.
+4. Create the Flask application.
+5. Link a placeholder docroot.
+6. Add reverse-proxy vhost-gen config files.
+7. Enable the Flask compose override.
+8. Verify DNS.
+9. Start Devilbox.
+10. Open the project in a browser.
 
-### 1. Configure Python Flask project name and version
+### 1. Configure Flask project and Python version
 
-The Python Flask container will only serve a single project. In order
-for it to know where to find your project, you will have to add an
-environment variable (`FLASK_PROJECT`), telling it what the directory
-name of your project is.
+Add the variables to the end of `.env`:
 
-Additionally you can define the Python version (`PYTHON_VERSION`) under
-which you want to run your Flask project.
-
-<div class="seealso">
-
-Available Python versions can be seen here:
-<https://github.com/devilbox/docker-python-flask>
-
-</div>
-
-Add the following variable to the very end of your `.env` file:
-
-``` bash
+```bash
 FLASK_PROJECT=my-flask
-
-#PYTHON_VERSION=2.7
-#PYTHON_VERSION=3.5
-#PYTHON_VERSION=3.6
-#PYTHON_VERSION=3.7
-PYTHON_VERSION=3.8
+PYTHON_VERSION=3.12
 ```
 
 ### 2. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
+Start the base services before creating files, then enter the PHP container:
 
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh up php httpd bind
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 3. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 3. Create new VirtualHost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-flask
+```bash
+mkdir -p /shared/httpd/my-flask
+cd /shared/httpd/my-flask
 ```
 
-<div class="seealso">
+### 4. Create the Flask application
 
-`env-tld-suffix`
+Create the application source:
 
-</div>
-
-### 4. Create Flask hello world application
-
-#### 4.1 Add your code
-
-``` bash
-# Navigate to your project directory
-devilbox@php-7.0.20 in /shared/httpd $ cd my-flask
-
-# Create a directory which will hold the source code
-devilbox@php-7.0.20 in /shared/httpd/my-flask $ mkdir app
-
-# Create the main.py file with your favourite editor
-devilbox@php-7.0.20 in /shared/httpd/my-flask/app $ vi main.py
+```bash
+mkdir app
+vi app/main.py
 ```
 
-``` python
+```python
 """Flask example application."""
 from flask import Flask
 
 app = Flask(__name__)
 
+
 @app.route("/")
 def index():
     """Serve the default index page."""
-    return "Hello World!"
+    return "Hello from Flask on Python 3.12!"
 
 
 if __name__ == "__main__":
-    """Ensure Flask listens on all interfaces."""
-    app.run(host='0.0.0.0')
+    app.run(host="0.0.0.0", port=3000)
 ```
 
-#### 4.2 Add dependencies
+Add dependencies:
 
-You can optionally add a `requirements.txt` file which will be read
-during startup. The Python Flask container will then automatically
-install all Python libraries specified in that file.
-
-``` bash
-# Navigate to your project directory
-devilbox@php-7.0.20 in /shared/httpd $ cd my-flask
-
-# Create and open the file with your favourite editor
-devilbox@php-7.0.20 in /shared/httpd/my-flask $ vi requirements.txt
+```bash
+cat > requirements.txt <<'REQ'
+Flask>=3.0,<4.0
+REQ
 ```
 
-``` ini
-requests
+### 5. Link a placeholder docroot
+
+```bash
+ln -s app htdocs
 ```
 
-### 5. Symlink *virtual* docroot directory
+### 6. Add reverse-proxy vhost-gen config files
 
-``` bash
-# Navigate to your project directory
-devilbox@php-7.0.20 in /shared/httpd $ cd my-flask
+Leave the shell and copy templates from the Devilbox directory:
 
-# Create the docroot directory
-devilbox@php-7.0.20 in /shared/httpd/my-flask $ ln -s app htdocs
+```bash
+exit
+cd /path/to/devilbox
+mkdir -p data/www/my-flask/.devilbox
+cp cfg/vhost-gen/apache22.yml-example-rproxy data/www/my-flask/.devilbox/apache22.yml
+cp cfg/vhost-gen/apache24.yml-example-rproxy data/www/my-flask/.devilbox/apache24.yml
+cp cfg/vhost-gen/nginx.yml-example-rproxy data/www/my-flask/.devilbox/nginx.yml
 ```
 
-<div class="seealso">
+Edit each template to forward to the Flask backend and port `3000`. If your override keeps the historical static backend IP, the Apache templates should contain:
 
-`env-httpd-docroot-dir`
-
-</div>
-
-### 6. Add reverse proxy vhost-gen config files
-
-#### 6.1 Create vhost-gen template directory
-
-Before we can copy the vhost-gen templates, we must create the
-`.devilbox` template directory inside the project directory.
-
-``` bash
-# Navigate to your project directory
-devilbox@php-7.0.20 in /shared/httpd $ cd my-flask
-
-# Create the .devilbox template directory
-devilbox@php-7.0.20 in /shared/httpd/my-flask $ mkdir .devilbox
+```apache
+ProxyPass / http://172.16.238.250:3000/
+ProxyPassReverse / http://172.16.238.250:3000/
 ```
 
-<div class="seealso">
+The Nginx template should contain:
 
-`env-httpd-template-dir`
-
-</div>
-
-#### 6.2 Copy vhost-gen templates
-
-Now we can copy and adjust the vhost-gen reverse proxy files for Apache
-2.2, Apache 2.4 and Nginx.
-
-The reverse vhost-gen templates are available in `cfg/vhost-gen`:
-
-``` bash
-host> tree -L 1 cfg/vhost-gen/
-
-cfg/vhost-gen/
-├── apache22.yml-example-rproxy
-├── apache22.yml-example-vhost
-├── apache24.yml-example-rproxy
-├── apache24.yml-example-vhost
-├── nginx.yml-example-rproxy
-├── nginx.yml-example-vhost
-└── README.md
-
-0 directories, 7 files
+```nginx
+location / {
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_pass http://172.16.238.250:3000;
+}
 ```
 
-For this example we will copy all `*-example-rproxy` files into
-`data/www/my-flask/.devilbox/` (Inside container:
-`/shared/httpd/my-flask/.devilbox`) to ensure this will work with all
-web servers.
+If you customize the compose service name or network, use that backend instead of the static IP.
 
-``` bash
-host> cd /path/to/devilbox
-host> cp cfg/vhost-gen/apache22.yml-example-rproxy data/www/my-flask/.devilbox/apache22.yml
-host> cp cfg/vhost-gen/apache24.yml-example-rproxy data/www/my-flask/.devilbox/apache24.yml
-host> cp cfg/vhost-gen/nginx.yml-example-rproxy data/www/my-flask/.devilbox/nginx.yml
+### 7. Enable the Flask compose override
+
+Copy the Flask override into place or merge it with your existing override:
+
+```bash
+cp compose/docker-compose.override.yml-python-flask.yml docker-compose.override.yml
 ```
 
-#### 6.3 Adjust ports and backend
+:::caution
+If `docker-compose.override.yml` already contains local changes, merge the Flask service instead of overwriting the file.
+:::
 
-By default, all vhost-gen templates will forward requests to port `8000`
-into the PHP container. Our current example however uses port `3000` and
-backend IP `172.16.238.250` (as defined in the Flask docker compose
-override file), so we must change that accordingly for all three
-templates.
+### 8. Verify DNS
 
-##### 6.3.1 Adjust Apache 2.2 template
+`my-flask.lvh.me` resolves to localhost by default. Add a hosts entry only for custom suffixes.
 
-Open the `apache22.yml` vhost-gen template in your project:
+### 9. Start Devilbox
 
-``` bash
-host> cd /path/to/devilbox
-host> vi data/www/my-flask/.devilbox/apache22.yml
-```
-
-Find the two lines with `ProxyPass` and `ProxyPassReverse` and change
-the port from `8000` to `3000` as well as the backend server from `php`
-to `172.16.238.250`.
-
-``` yaml
-# ... more lines above ... #
-
-###
-### Basic vHost skeleton
-###
-vhost: |
-  <VirtualHost __DEFAULT_VHOST__:__PORT__>
-      ServerName   __VHOST_NAME__
-
-      CustomLog  "__ACCESS_LOG__" combined
-      ErrorLog   "__ERROR_LOG__"
-
-      # Reverse Proxy definition (Ensure to adjust the port, currently '8000')
-      ProxyRequests On
-      ProxyPreserveHost On
-      ProxyPass / http://172.16.238.250:3000/
-      ProxyPassReverse / http://172.16.238.250:3000/
-
-# ... more lines below ... #
-```
-
-##### 6.3.2 Adjust Apache 2.4 template
-
-Open the `apache24.yml` vhost-gen template in your project:
-
-``` bash
-host> cd /path/to/devilbox
-host> vi data/www/my-flask/.devilbox/apache24.yml
-```
-
-Find the two lines with `ProxyPass` and `ProxyPassReverse` and change
-the port from `8000` to `3000`
-
-``` yaml
-# ... more lines above ... #
-
-###
-### Basic vHost skeleton
-###
-vhost: |
-  <VirtualHost __DEFAULT_VHOST__:__PORT__>
-      ServerName   __VHOST_NAME__
-
-      CustomLog  "__ACCESS_LOG__" combined
-      ErrorLog   "__ERROR_LOG__"
-
-      # Reverse Proxy definition (Ensure to adjust the port, currently '8000')
-      ProxyRequests On
-      ProxyPreserveHost On
-      ProxyPass / http://172.16.238.250:3000/
-      ProxyPassReverse / http://172.16.238.250:3000/
-
-# ... more lines below ... #
-```
-
-##### 6.3.3 Adjust Nginx template
-
-Open the `nginx.yml` vhost-gen template in your project:
-
-``` bash
-host> cd /path/to/devilbox
-host> vi data/www/my-flask/.devilbox/nginx.yml
-```
-
-Find the lines with `proxy-pass` and change the port from `8000` to
-`3000`
-
-``` yaml
-# ... more lines above ... #
-
-###
-### Basic vHost skeleton
-###
-vhost: |
-  server {
-      listen       __PORT____DEFAULT_VHOST__;
-      server_name  __VHOST_NAME__;
-
-      access_log   "__ACCESS_LOG__" combined;
-      error_log    "__ERROR_LOG__" warn;
-
-      # Reverse Proxy definition (Ensure to adjust the port, currently '8000')
-      location / {
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_pass http://172.16.238.250:3000;
-      }
-
-# ... more lines below ... #
-```
-
-### 7. Copy Python Flask compose file
-
-Python Flask comes with its own Docker container and can be added to the
-Devilbox stack via the `docker-compose.override.yml` file. A fully
-functional template already exists in the `compose/` directory. All you
-will have to do is copy it over.
-
-``` bash
-host> cd /path/to/devilbox
-host> cp compose/docker-compose.override.yml-python-flask.yml docker-compose.override.yml
-```
-
-<div class="seealso">
-
-`docker-compose-override-yml`
-
-</div>
-
-### 8. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-flask.loc
-```
-
-<div class="seealso">
-
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
-
-</div>
-
-### 9. Restart the Devilbox
-
-Now for those changes to take affect, you will have to restart the
-Devilbox.
-
-``` bash
-host> cd /path/to/devilbox
-
-# Stop the Devilbox
-host> docker-compose down
-host> docker-compose rm -f
-
-# Start the Devilbox
-host> docker-compose up -d php httpd bind flask1
+```bash
+./dvl.sh up php httpd bind flask1
 ```
 
 ### 10. Open your browser
 
-All set now, you can visit <http://my-flask.loc> or
-<https://my-flask.loc> in your browser. The Python Flask application has
-been started up automatically and the reverse proxy will direct all
-requests to it.
+Visit <http://my-flask.lvh.me> or <https://my-flask.lvh.me>. The web server proxies the request to the Flask application on port `3000`.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Keep `requirements.txt` pinned for reproducible local builds.
+- Use a dedicated compose override per Python service when running multiple Flask apps.
+- Configure HTTPS trust before testing browser integrations.

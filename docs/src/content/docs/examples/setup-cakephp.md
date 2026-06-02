@@ -4,258 +4,136 @@ title: "Setup CakePHP"
 
 # Setup CakePHP
 
-This example will use `composer` to install CakePHP from within the
-Devilbox PHP container.
+This example installs a modern CakePHP 5 application with Composer from inside the Devilbox PHP container. The project is served through the standard Devilbox virtual host layout over HTTP and HTTPS.
 
-> [!IMPORTANT]
-> Using `composer` requires the underlying file system to support
-> symlinks. If you use **Docker Toolbox** you need to explicitly
-> allow/enable this. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-After completing the below listed steps, you will have a working CakePHP
-setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example cakephp documentation`
-
-</div>
-
+After completing the steps below, `my-cake.lvh.me` will serve the CakePHP application from `data/www/my-cake/htdocs`.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-cake` | `/shared/httpd/my-cake` | `my_cake` | `lvh.me` | <http://my-cake.lvh.me> / <https://my-cake.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-cake | /shared/httpd/my-cake | my_cake | loc | <http://my-cake.loc> `br` <https://my-cake.loc> |
+Inside the PHP container, web projects live in `/shared/httpd/`. On the host, the same files are stored below `./data/www/` in the Devilbox checkout unless you changed `HTTPD_DOCROOT_DIR` or the web data directory.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+:::tip
+Use `./dvl.sh shell` for an interactive container session, or `./dvl.sh exec "command"` for a single command from the host.
+:::
+
+## Prerequisites
+
+- Devilbox installed and configured from `env-example`.
+- Docker Compose v2 available through Docker.
+- The default PHP stack available. `env-example` includes current PHP 8 containers; the 8.3 container is a safe default for CakePHP version 5.
+- `mysql` running for the database.
+
+Start the required services from the Devilbox directory:
+
+```bash
+./dvl.sh up php httpd mysql bind
+```
 
 ## Walk through
 
-It will be ready in eight simple steps:
+It will be ready in eight steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install CakePHP via `composer`
-4.  Symlink webroot directory
-5.  Add MySQL database
-6.  Configure datbase connection
-7.  Setup DNS record
-8.  Visit <http://my-cake.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install CakePHP 5 with Composer.
+4. Link the CakePHP webroot to `htdocs`.
+5. Add a MySQL database.
+6. Configure the database connection.
+7. Verify DNS.
+8. Open the project in a browser.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-cake
+```bash
+mkdir -p /shared/httpd/my-cake
+cd /shared/httpd/my-cake
 ```
 
-<div class="seealso">
+The directory name becomes the virtual host name: `my-cake.lvh.me` when `TLD_SUFFIX=lvh.me`.
 
-`env-tld-suffix`
+### 3. Install CakePHP 5
 
-</div>
-
-### 3. Install CakePHP
-
-Navigate into your newly created vhost directory and install CakePHP
-with `composer`.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-cake
-devilbox@php-7.0.20 in /shared/httpd/my-cake $ composer create-project --prefer-dist cakephp/app cakephp
+```bash
+composer create-project --prefer-dist cakephp/app:^5.0 cakephp
 ```
 
-How does the directory structure look after installation:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-cake $ tree -L 1
+```bash
+tree -L 1
 .
 └── cakephp
-
-1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+The web server serves `<vhost>/htdocs`, while CakePHP keeps its entrypoint in `webroot/`.
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-cake $ ln -s cakephp/webroot/ htdocs
+```bash
+ln -s cakephp/webroot htdocs
 ```
 
-How does the directory structure look after symlinking:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-cake $ tree -L 1
+```bash
+tree -L 1
 .
 ├── cakephp
 └── htdocs -> cakephp/webroot
-
-2 directories, 0 files
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Add the MySQL database
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. Add MySQL Database
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-cake $ mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_cake;'
+```bash
+mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_cake CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
-### 6. Configure database connection
+### 6. Configure the database connection
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-cake $ vi cakephp/config/app.php
-```
+Edit `cakephp/config/app_local.php` and set the default datasource:
 
-``` php
+```php
 <?php
-  'Datasources' => [
+return [
+    'Datasources' => [
         'default' => [
-            'className' => 'Cake\Database\Connection',
-            'driver' => 'Cake\Database\Driver\Mysql',
-            'persistent' => false,
             'host' => '127.0.0.1',
-            /**
-             * CakePHP will use the default DB port based on the driver selected
-             * MySQL on MAMP uses port 8889, MAMP users will want to uncomment
-             * the following line and set the port accordingly
-             */
-            //'port' => 'non_standard_port_number',
             'username' => 'root',
             'password' => 'secret',
             'database' => 'my_cake',
-            'encoding' => 'utf8',
+            'encoding' => 'utf8mb4',
             'timezone' => 'UTC',
-            'flags' => [],
-            'cacheMetadata' => true,
-?>
+        ],
+    ],
+];
 ```
 
-### 7. DNS record
+Use your actual MySQL root password from `.env` if it differs.
 
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
+### 7. Verify DNS
 
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
+With the default `lvh.me` suffix, no hosts-file entry is required because `*.lvh.me` resolves to `127.0.0.1`. If you use a custom suffix, add an `/etc/hosts` entry such as:
 
-``` bash
-127.0.0.1 my-cake.loc
+```bash
+127.0.0.1 my-cake.example
 ```
-
-<div class="seealso">
-
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
-
-</div>
 
 ### 8. Open your browser
 
-All set now, you can visit <http://my-cake.loc> or <https://my-cake.loc>
-in your browser.
+Visit <http://my-cake.lvh.me> or <https://my-cake.lvh.me>.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Use Adminer or phpMyAdmin from the Devilbox intranet to inspect `my_cake`.
+- Enable valid local HTTPS if your browser warns about the certificate.
+- Add cache, queue, or search services only when the application needs them.

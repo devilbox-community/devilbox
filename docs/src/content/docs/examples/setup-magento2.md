@@ -4,257 +4,139 @@ title: "Setup Magento 2"
 
 # Setup Magento 2
 
-This example will use `git` and `composer` to install Magento 2 from
-within the Devilbox PHP container.
-
-> [!IMPORTANT]
-> Using `composer` requires the underlying file system to support
-> symlinks. If you use **Docker Toolbox** you need to explicitly
-> allow/enable this. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-After completing the below listed steps, you will have a working Magento
-2 setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example magento2 documentation`
-
-</div>
-
+This example installs Magento Open Source 2.4.7 or newer inside Devilbox. It uses Composer in the PHP container, creates a MySQL database, and serves Magento through Devilbox's virtual host layout.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-magento` | `/shared/httpd/my-magento` | `my_magento` | `lvh.me` | <http://my-magento.lvh.me> / <https://my-magento.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-magento | /shared/httpd/my-magento | my_magento | loc | <http://my-magento.loc> `br` <https://my-magento.loc> |
-
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+Projects live in `/shared/httpd/` in the container and `./data/www/` on the host.
 
 ## Requirements
 
-This example requires to use **Apache 2.4**, as Magento does a lot of
-`.htaccess` magic by default and these files are not interpreted by
-**Nginx**.
+- Devilbox with PHP 8.3 available; PHP 8.4 compatibility depends on the Magento patch level.
+- The PHP image flavor must include Composer and build tools.
+- MySQL and a search service supported by your Magento version.
+- Adobe Commerce Marketplace credentials if Composer asks for `repo.magento.com` authentication.
 
-If you still want to use Nginx instead, you will have to overwrite your
-vhost configuration to ensure the `.htaccess` rules are glued into your
-Nginx vhost configuration.
+:::caution
+Magento 2.4.7+ has stricter PHP and OpenSearch/Elasticsearch requirements than old 2.2 examples. Confirm the exact Magento patch release support matrix before choosing PHP 8.4.
+:::
 
-<div class="seealso">
+Start the required stack:
 
-- `vhost-gen-customize-specific-virtual-host`
-- <https://magento.stackexchange.com/questions/121758/how-to-configure-nginx-for-magento-2#121769>
-
-</div>
+```bash
+./dvl.sh up php httpd mysql redis opensearch bind
+```
 
 ## Walk through
 
-It will be ready in eight simple steps:
+It will be ready in eight steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Magento 2 via `git` and `composer`
-4.  Symlink webroot directory
-5.  Add MySQL database
-6.  Setup DNS record
-7.  Visit <http://my-magento.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install Magento with Composer.
+4. Link the Magento document root.
+5. Add the MySQL database.
+6. Run the Magento installer.
+7. Verify DNS.
+8. Open the storefront.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.1.20 in /shared/httpd $ mkdir my-magento
+```bash
+mkdir -p /shared/httpd/my-magento
+cd /shared/httpd/my-magento
 ```
 
-<div class="seealso">
+### 3. Install Magento 2.4.7+
 
-`env-tld-suffix`
+Use Composer's project template for the desired patch version:
 
-</div>
-
-### 3. Install Magento 2
-
-Navigate into your newly created vhost directory and install Magento 2
-with `git`.
-
-``` bash
-devilbox@php-7.1.20 in /shared/httpd $ cd my-magento
-
-# Download Magento 2 via git
-devilbox@php-7.1.20 in /shared/httpd/my-magento $ git clone https://github.com/magento/magento2
-
-# Checkout the latest stable git tag
-devilbox@php-7.1.20 in /shared/httpd/my-magento $ cd magento2
-devilbox@php-7.1.20 in /shared/httpd/my-magento/magento2 $ git checkout 2.2.5
-
-# Install dependencies with Composer
-devilbox@php-7.1.20 in /shared/httpd/my-magento/magento2 $ composer install
+```bash
+composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition=2.4.7-p4 magento2
 ```
 
-How does the directory structure look after installation:
+Expected structure:
 
-``` bash
-devilbox@php-7.1.20 in /shared/httpd/my-magento $ tree -L 1
+```bash
+tree -L 1
 .
 └── magento2
-
-1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
+Magento 2.4 uses `pub/` as the public document root:
 
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.1.20 in /shared/httpd/my-magento $ ln -s magento2/ htdocs
+```bash
+ln -s magento2/pub htdocs
 ```
 
-How does the directory structure look after symlinking:
+Expected structure:
 
-``` bash
-devilbox@php-7.1.20 in /shared/httpd/my-magento $ tree -L 1
+```bash
+tree -L 1
 .
 ├── magento2
-└── htdocs -> magento2
-
-2 directories, 0 files
+└── htdocs -> magento2/pub
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Add the MySQL database
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. Add MySQL Database
-
-``` bash
-devilbox@php-7.1.20 in /shared/httpd/my-magento $ mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_magento;'
+```bash
+mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_magento CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
-### 7. DNS record
+### 6. Run the Magento installer
 
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
+From `/shared/httpd/my-magento/magento2`, run:
 
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-magento.loc
+```bash
+php -dmemory_limit=-1 bin/magento setup:install \
+  --base-url=http://my-magento.lvh.me/ \
+  --db-host=127.0.0.1 \
+  --db-name=my_magento \
+  --db-user=root \
+  --db-password='' \
+  --admin-firstname=Admin \
+  --admin-lastname=User \
+  --admin-email=admin@example.com \
+  --admin-user=admin \
+  --admin-password='Admin123!Admin123!' \
+  --language=en_US \
+  --currency=USD \
+  --timezone=UTC \
+  --use-rewrites=1 \
+  --search-engine=opensearch \
+  --opensearch-host=opensearch \
+  --opensearch-port=9200
 ```
 
-<div class="seealso">
+Use your actual MySQL password if configured.
 
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
+:::tip
+The DVL CLI also provides Magento-aware wrappers. From the project directory, `./dvl.sh exec "php -dmemory_limit=-1 bin/magento cache:flush"` keeps execution inside the correct PHP container.
+:::
 
-</div>
+### 7. Verify DNS
+
+`my-magento.lvh.me` resolves to localhost by default. Add a hosts entry only when using a custom suffix.
 
 ### 8. Open your browser
 
-All set now, you can visit <http://my-magento.loc> or
-<https://my-magento.loc> in your browser and follow the installation
-steps.
-
-> [!IMPORTANT]
-> Use `127.0.0.1` for the MySQL database hostname.
+Visit <http://my-magento.lvh.me> or <https://my-magento.lvh.me> and use the generated admin URL shown by `setup:install` for the back office.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Run `bin/magento deploy:mode:set developer` for local development.
+- Use Redis and OpenSearch containers when testing production-like behavior.
+- Configure trusted HTTPS and Xdebug after the storefront loads.

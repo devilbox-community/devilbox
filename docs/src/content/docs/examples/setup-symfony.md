@@ -4,211 +4,115 @@ title: "Setup Symfony"
 
 # Setup Symfony
 
-This example will use `symfony` to install Symfony from within the
-Devilbox PHP container.
-
-After completing the below listed steps, you will have a working Symfony
-setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example symfony documentation`
-
-</div>
-
+This example installs Symfony 7 inside the Devilbox PHP container and serves `public/` through the standard Devilbox `htdocs` document root.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-symfony` | `/shared/httpd/my-symfony` | optional | `lvh.me` | <http://my-symfony.lvh.me> / <https://my-symfony.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-symfony | /shared/httpd/my-symfony | n.a. | loc | <http://my-symfony.loc> `br` <https://my-symfony.loc> |
+Projects live in `/shared/httpd/` in the PHP container and in `./data/www/` on the host.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox with PHP 8.3 or PHP 8.4 available from `env-example`.
+- Composer available in the PHP container.
+- HTTPD and Bind services.
+
+Start the stack:
+
+```bash
+./dvl.sh up php httpd bind
+```
+
+:::caution
+Symfony 7 requires modern PHP. Do not use old PHP 7 containers for this example.
+:::
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in six steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Symfony
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-symfony.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install Symfony 7.
+4. Link `public/` to `htdocs`.
+5. Verify DNS.
+6. Open the project.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.2.29 in /shared/httpd $ mkdir my-symfony
+```bash
+mkdir -p /shared/httpd/my-symfony
+cd /shared/httpd/my-symfony
 ```
 
-<div class="seealso">
+### 3. Install Symfony 7
 
-`env-tld-suffix`
+Use Composer for a web application skeleton:
 
-</div>
-
-### 3. Install Symfony
-
-Navigate into your newly created vhost directory and install Symfony
-with `symfony` cli.
-
-``` bash
-devilbox@php-7.2.29 in /shared/httpd $ cd my-symfony
-devilbox@php-7.2.29 in /shared/httpd/my-symfony $ symfony new symfony
+```bash
+composer create-project symfony/skeleton:^7.0 symfony
+cd symfony
+composer require webapp
 ```
 
-How does the directory structure look after installation:
+Expected structure from `/shared/httpd/my-symfony`:
 
-``` bash
-devilbox@php-7.2.29 in /shared/httpd/my-symfony $ tree -L 1
+```bash
+tree -L 1
 .
 └── symfony
-
-1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
-
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.2.29 in /shared/httpd/my-symfony $ ln -s symfony/public/ htdocs
+```bash
+cd /shared/httpd/my-symfony
+ln -s symfony/public htdocs
 ```
 
-How does the directory structure look after symlinking:
+Expected structure:
 
-``` bash
-devilbox@php-7.2.29 in /shared/httpd/my-sw $ tree -L 1
+```bash
+tree -L 1
 .
 ├── symfony
 └── htdocs -> symfony/public
-
-2 directories, 0 files
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Verify DNS
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-symfony.loc
-```
-
-<div class="seealso">
-
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
-
-</div>
+`my-symfony.lvh.me` resolves to localhost by default. Add a hosts entry only when using a custom suffix.
 
 ### 6. Open your browser
 
-Open your browser at <http://my-symfony.loc> or <https://my-symfony.loc>
+Visit <http://my-symfony.lvh.me> or <https://my-symfony.lvh.me>.
+
+## Optional database setup
+
+If your Symfony app needs MySQL, start MySQL and create a database:
+
+```bash
+./dvl.sh up mysql
+./dvl.sh exec "mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_symfony CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'"
+```
+
+Then set `DATABASE_URL` in `symfony/.env.local`:
+
+```ini
+DATABASE_URL="mysql://root:password@127.0.0.1:3306/my_symfony?serverVersion=8.0&charset=utf8mb4"
+```
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Run Symfony console commands with `./dvl.sh exec "php bin/console"` from the project directory.
+- Add MySQL, Redis, or Messenger transports only when the application requires them.
+- Configure local HTTPS trust for browser testing.

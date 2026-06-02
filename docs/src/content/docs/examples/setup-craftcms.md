@@ -4,289 +4,123 @@ title: "Setup CraftCMS"
 
 # Setup CraftCMS
 
-This example will use `composer` to install CraftCMS from within the
-Devilbox PHP container.
-
-> [!IMPORTANT]
-> Using `composer` requires the underlying file system to support
-> symlinks. If you use **Docker Toolbox** you need to explicitly
-> allow/enable this. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-After completing the below listed steps, you will have a working
-CraftCMS setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example craftcms documentation`
-
-</div>
-
+This example installs a current Craft CMS project with Composer inside the Devilbox PHP container and serves it through the `htdocs` virtual host document root.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-craft` | `/shared/httpd/my-craft` | `my_craft` | `lvh.me` | <http://my-craft.lvh.me> / <https://my-craft.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-craft | /shared/httpd/my-craft | my_craft | loc | <http://my-craft.loc> `br` <https://my-craft.loc> |
+Projects live in `/shared/httpd/` in the PHP container and in `./data/www/` on the host.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox installed with the PHP 8.3 or PHP 8.4 container enabled.
+- MySQL, HTTPD, and Bind available.
+- Composer available in the PHP container.
+
+Start the required services:
+
+```bash
+./dvl.sh up php httpd mysql bind
+```
+
+:::tip
+For a single command from the host, run `./dvl.sh exec "php -v"`. For interactive setup wizards, use `./dvl.sh shell`.
+:::
 
 ## Walk through
 
-It will be ready in eight simple steps:
+It will be ready in eight steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install CraftCMS via `composer`
-4.  Symlink webroot directory
-5.  Add MySQL database
-6.  Setup DNS record
-7.  Run setup wizard
-8.  Visit <http://my-craft.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install Craft CMS.
+4. Link `web/` to `htdocs`.
+5. Add the MySQL database.
+6. Verify DNS.
+7. Run the setup wizard.
+8. Open the site.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-craft
+```bash
+mkdir -p /shared/httpd/my-craft
+cd /shared/httpd/my-craft
 ```
 
-<div class="seealso">
+### 3. Install Craft CMS
 
-`env-tld-suffix`
-
-</div>
-
-### 3. Install CraftCMS
-
-Navigate into your newly created vhost directory and install CraftCMS
-with `composer`.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-craft
-devilbox@php-7.0.20 in /shared/httpd/my-craft $ composer create-project craftcms/craft craftcms
+```bash
+composer create-project craftcms/craft craftcms
 ```
 
-How does the directory structure look after installation:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-craft $ tree -L 1
+```bash
+tree -L 1
 .
 └── craftcms
-
-1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
-
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-craft $ ln -s craftcms/web/ htdocs
+```bash
+ln -s craftcms/web htdocs
 ```
 
-How does the directory structure look after symlinking:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-craft $ tree -L 1
+```bash
+tree -L 1
 .
 ├── craftcms
 └── htdocs -> craftcms/web
-
-2 directories, 0 files
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Add the MySQL database
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. Add MySQL Database
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-craft $ mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_craft CHARACTER SET utf8 COLLATE utf8_unicode_ci;'
+```bash
+mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_craft CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
-### 6. DNS record
+### 6. Verify DNS
 
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
+With the default `lvh.me` suffix, `my-craft.lvh.me` resolves automatically. Add a hosts entry only if you use a custom suffix.
 
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
+### 7. Run the setup wizard
 
-``` bash
-127.0.0.1 my-craft.loc
+Use the Craft CLI wizard:
+
+```bash
+php craftcms/craft setup
 ```
 
-<div class="seealso">
+Suggested answers:
 
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
+- Database driver: `mysql`
+- Database server: `127.0.0.1`
+- Database port: `3306`
+- Database username: `root`
+- Database password: your MySQL password from `.env`
+- Database name: `my_craft`
+- Site URL: `http://my-craft.lvh.me`
 
-</div>
-
-### 7. Run setup wizard
-
-After everything is setup, you need to run the setup wizard. CraftCMS
-bundles a commandline tool that you can use.
-
-#### 7.1 Via command line tool
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-craft $ php craftcms/craft setup
-
-Which database driver are you using? [mysql,pgsql,?]: mysql
-Database server name or IP address: [localhost] 127.0.0.1
-Database port: [3306]
-Database username: [root]
-Database password:
-Database name: my_craft
-Database table prefix:
-Testing database credentials... success!
-Saving database credentials to your .env file... done
-
-Install Craft now? (yes|no) [yes]:
-
-Username: [admin]
-Email: admin@devilbox.org
-Password:
-Confirm:
-Site name: craftcms
-Site URL: [@web] my-craft.loc
-Site language: [en-US]
-
-...
-
-*** installed Craft successfully (time: 14.660s)
-```
-
-#### 7.2 Via browser
-
-If you do not feel too comfortable on the command line, you can also run
-the setup wizard via the browser. See their official documentation for
-screenshots.
-
-<div class="seealso">
-
-`example craftcms documentation`
-
-</div>
-
-To open the setup wizard, visit: <http://my-craft.loc/admin/install> or
-<https://my-craft.loc/admin/install>
-
-- Driver: `MySQL`
-- Server: `127.0.0.1`
-- Port: `3306`
-- Username: `root`
-- Password: your MySQL password
-- Database Name: `my-craft`
-- Prefix: leave empty
-
-> [!IMPORTANT]
-> When chosing the Database server, use `127.0.0.1` as the hostname.
+You can also open <http://my-craft.lvh.me/admin/install> or <https://my-craft.lvh.me/admin/install> and complete the browser wizard with the same values.
 
 ### 8. Open your browser
 
-All set now, you can visit <http://my-craft.loc> or
-<https://my-craft.loc> in your browser.
+Visit <http://my-craft.lvh.me> or <https://my-craft.lvh.me>.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Use the Devilbox intranet database tools to inspect `my_craft`.
+- Configure local HTTPS trust for the admin panel.
+- Add Redis or queue services only when the Craft project requires them.

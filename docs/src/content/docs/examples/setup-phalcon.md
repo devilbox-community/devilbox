@@ -4,239 +4,116 @@ title: "Setup Phalcon"
 
 # Setup Phalcon
 
-This example will use `phalcon` to install Phalcon from within the
-Devilbox PHP container.
-
-After completing the below listed steps, you will have a working Phalcon
-setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example phalcon documentation`
-
-</div>
-
+This example creates a Phalcon 5 application inside Devilbox and links its `public/` directory to the virtual host document root.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-phalcon` | `/shared/httpd/my-phalcon` | optional | `lvh.me` | <http://my-phalcon.lvh.me> / <https://my-phalcon.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-phalcon | /shared/httpd/my-phalcon | n.a. | loc | <http://my-phalcon.loc> `br` <https://my-phalcon.loc> |
+Projects live in `/shared/httpd/` inside the PHP container and in `./data/www/` on the host.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox with PHP 8.3 or PHP 8.4 available.
+- A PHP container image or project setup that includes the Phalcon extension and Phalcon Developer Tools for Phalcon 5.
+- HTTPD and Bind services.
+
+Start the stack:
+
+```bash
+./dvl.sh up php httpd bind
+```
+
+:::caution
+Phalcon requires a PHP extension, not only Composer packages. Confirm `php -m | grep phalcon` inside the selected PHP container before generating the project.
+:::
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in seven steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Phalcon
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-phalcon.loc> in your browser
-7.  (Nginx) Create custom vhost config file
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Check Phalcon tooling.
+4. Create the Phalcon project.
+5. Link `public/` to `htdocs`.
+6. Verify DNS.
+7. Open the project.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-phalcon
+```bash
+mkdir -p /shared/httpd/my-phalcon
+cd /shared/httpd/my-phalcon
 ```
 
-<div class="seealso">
+### 3. Check Phalcon tooling
 
-`env-tld-suffix`
-
-</div>
-
-### 3. Install Phalcon
-
-Navigate into your newly created vhost directory and install Phalcon
-with `phalcon` cli.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-phalcon
-devilbox@php-7.0.20 in /shared/httpd/my-phalcon $ phalcon project phalconphp
+```bash
+php -m | grep -i phalcon
+phalcon --version
 ```
 
-How does the directory structure look after installation:
+Install or enable the extension and developer tools if those checks fail.
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-phalcon $ tree -L 1
+### 4. Create the Phalcon project
+
+```bash
+phalcon project phalconphp
+```
+
+Expected structure:
+
+```bash
+tree -L 1
 .
 └── phalconphp
-
-1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 5. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
-
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-phalcon $ ln -s phalconphp/public/ htdocs
+```bash
+ln -s phalconphp/public htdocs
 ```
 
-How does the directory structure look after symlinking:
+### 6. Verify DNS
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-phalcon $ tree -L 1
-.
-├── phalconphp
-└── htdocs -> phalconphp/public
+`my-phalcon.lvh.me` resolves to localhost with the default suffix. For another suffix, add a hosts-file entry.
 
-2 directories, 0 files
+### 7. Open your browser
+
+Visit <http://my-phalcon.lvh.me> or <https://my-phalcon.lvh.me>.
+
+## Nginx routing note
+
+If routes fail under Nginx, create `data/www/my-phalcon/.devilbox/nginx.yml` from `cfg/vhost-gen/nginx.yml-example-vhost` and adapt the `try_files` rule for Phalcon:
+
+```nginx
+try_files $uri $uri/ /index.php?_url=$uri&$args;
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+Validate the YAML before restarting:
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-phalcon.loc
+```bash
+yamllint data/www/my-phalcon/.devilbox/nginx.yml
 ```
 
-<div class="seealso">
+Restart with:
 
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
-
-</div>
-
-### 6. Open your browser
-
-Open your browser at <http://my-phalcon.loc> or <https://my-phalcon.loc>
-
-### 7. Create custom vhost config file (Nginx Only)
-
-By default routes will not work if using Nginx. To fix this, you will
-need to create a custom vhost configuration.
-
-In your project folder, you will need to create a folder called
-.devilbox unless you changed
-<span class="title-ref">HTTPD_TEMPLATE_DIR</span> in your .env
-
-Copy the default nginx config from
-./cfg/vhost-gen/nginx.yml-example-vhost to
-./data/www/my-project/.devilbox/nginx.yml
-
-Carefully edit the nginx.yml file and change:
-
-`try_files $uri $uri/ /index.php$is_args$args;` to
-`try_files $uri $uri/ /index.php?_url=$uri&$args;`
-
-and
-
-`location ~ \.php?$ {` to `location ~ [^/]\.php(/|$) {`
-
-save the file as nginx.yml and ensure not to use any tabs in the file or
-devilbox will not use the custom configuration. You can use
-`yamllint nginx.yml` whilst inside the Devilbox shell to check the file
-before restarting devilbox.
+```bash
+./dvl.sh restart
+```
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Add MySQL or Redis only if the generated application needs them.
+- Configure HTTPS trust for browser testing.
+- Use `./dvl.sh exec "php -m"` for quick extension checks.

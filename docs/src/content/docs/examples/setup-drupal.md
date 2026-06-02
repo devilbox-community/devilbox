@@ -4,215 +4,118 @@ title: "Setup Drupal"
 
 # Setup Drupal
 
-This example will use `drush` to install Drupal from within the Devilbox
-PHP container.
-
-After completing the below listed steps, you will have a working Drupal
-setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example drupal documentation`
-
-</div>
-
+This example installs Drupal 10 or 11 with Composer inside the Devilbox PHP container. The modern Drupal project template places the web entrypoint in `web/`, which is linked to Devilbox's `htdocs` directory.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-drupal` | `/shared/httpd/my-drupal` | `my_drupal` | `lvh.me` | <http://my-drupal.lvh.me> / <https://my-drupal.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-drupal | /shared/httpd/my-drupal | my_drupal | loc | <http://my-drupal.loc> `br` <https://my-drupal.loc> |
+Inside the container, projects are stored in `/shared/httpd/`; on the host, use `./data/www/`.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+:::caution
+Drupal 11 requires newer PHP versions than old Drupal 8/9 examples. Use the PHP 8.3 or PHP 8.4 containers from `env-example`.
+:::
+
+## Prerequisites
+
+- Devilbox with PHP 8.3+ and Composer.
+- MySQL, HTTPD, and Bind services.
+- Docker Compose v2 via Docker.
+
+Start the stack:
+
+```bash
+./dvl.sh up php httpd mysql bind
+```
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in seven steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Drupal via `drush`
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-drupal.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install Drupal with Composer.
+4. Link `web/` to `htdocs`.
+5. Add a MySQL database.
+6. Verify DNS.
+7. Open the Drupal installer.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-drupal
+```bash
+mkdir -p /shared/httpd/my-drupal
+cd /shared/httpd/my-drupal
 ```
-
-<div class="seealso">
-
-`env-tld-suffix`
-
-</div>
 
 ### 3. Install Drupal
 
-Navigate into your newly created vhost directory and install Drupal with
-`drush`.
+For Drupal 10 LTS-style compatibility:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-drupal
-devilbox@php-7.0.20 in /shared/httpd/my-drupal $ drush dl drupal
+```bash
+composer create-project drupal/recommended-project:^10 drupal
 ```
 
-How does the directory structure look after installation:
+For a new Drupal 11 project on PHP 8.3+:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-drupal $ tree -L 1
+```bash
+composer create-project drupal/recommended-project:^11 drupal
+```
+
+Expected structure:
+
+```bash
+tree -L 1
 .
-└── drupal-8.3.3
-
-1 directory, 0 files
+└── drupal
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
-
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-drupal $ ln -s drupal-8.3.3/ htdocs
+```bash
+ln -s drupal/web htdocs
 ```
 
-How does the directory structure look after symlinking:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-drupal $ tree -L 1
+```bash
+tree -L 1
 .
-├── drupal-8.3.3
-└── htdocs -> CodeIgniter-3.1.8
-
-2 directories, 0 fils
+├── drupal
+└── htdocs -> drupal/web
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Add the MySQL database
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-drupal.loc
+```bash
+mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_drupal CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
-<div class="seealso">
+### 6. Verify DNS
 
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
+`my-drupal.lvh.me` resolves to `127.0.0.1`. For a custom suffix, add an equivalent hosts-file record.
 
-</div>
+### 7. Open the Drupal installer
 
-### 6. Open your browser
+Visit <http://my-drupal.lvh.me> or <https://my-drupal.lvh.me> and follow the installer.
 
-Open your browser at <http://my-drupal.loc> or <https://my-drupal.loc>
-and follow the Drupal installation steps.
+Use these database values:
 
-> [!NOTE]
-> When asked about MySQL hostname, choose `127.0.0.1`.
+- Database type: `MySQL, MariaDB, Percona Server, or equivalent`
+- Database name: `my_drupal`
+- Database username: `root`
+- Database password: your `.env` value
+- Advanced host: `127.0.0.1`
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Install Drush per project with `composer require drush/drush` when needed.
+- Use `./dvl.sh exec "vendor/bin/drush status"` from the Drupal project directory for non-interactive checks.
+- Configure HTTPS and Xdebug after the installer completes.

@@ -4,215 +4,123 @@ title: "Setup Laravel"
 
 # Setup Laravel
 
-This example will use `laravel` to install Laravel from within the
-Devilbox PHP container.
-
-After completing the below listed steps, you will have a working Laravel
-setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example laravel documentation`
-
-</div>
-
+This example installs a current Laravel 11 or 12 application inside the Devilbox PHP container and serves `public/` through the standard Devilbox `htdocs` document root.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-laravel` | `/shared/httpd/my-laravel` | `my_laravel` | `lvh.me` | <http://my-laravel.lvh.me> / <https://my-laravel.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-laravel | /shared/httpd/my-laravel | n.a. | loc | <http://my-laravel.loc> `br` <https://my-laravel.loc> |
+Inside the container, projects are in `/shared/httpd/`; on the host, they are under `./data/www/`.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox with PHP 8.3 or PHP 8.4 available from `env-example`.
+- Composer available in the PHP container.
+- HTTPD, MySQL, and Bind services.
+
+Start the stack:
+
+```bash
+./dvl.sh up php httpd mysql bind
+```
+
+:::tip
+If you created a global `dvl` symlink with `install.sh`, the examples work with `dvl shell` and `dvl exec` as well. The local `./dvl.sh` form is shown for clarity.
+:::
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in eight steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Install Laravel
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-laravel.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Install Laravel.
+4. Link `public/` to `htdocs`.
+5. Add a MySQL database.
+6. Configure `.env`.
+7. Verify DNS.
+8. Open the project.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-laravel
+```bash
+mkdir -p /shared/httpd/my-laravel
+cd /shared/httpd/my-laravel
 ```
-
-<div class="seealso">
-
-`env-tld-suffix`
-
-</div>
 
 ### 3. Install Laravel
 
-Navigate into your newly created vhost directory and install Laravel
-with `laravel` cli.
+For Laravel 11:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-laravel
-devilbox@php-7.0.20 in /shared/httpd/my-laravel $ laravel new laravel-project
+```bash
+composer create-project laravel/laravel:^11.0 laravel-project
 ```
 
-How does the directory structure look after installation:
+For Laravel 12 on a compatible PHP runtime:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-laravel $ tree -L 1
+```bash
+composer create-project laravel/laravel:^12.0 laravel-project
+```
+
+Expected structure:
+
+```bash
+tree -L 1
 .
 └── laravel-project
-
-1 directory, 0 files
 ```
 
-### 4. Symlink webroot
+### 4. Link the webroot
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
-
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-laravel $ ln -s laravel-project/public/ htdocs
+```bash
+ln -s laravel-project/public htdocs
 ```
 
-How does the directory structure look after symlinking:
+### 5. Add the MySQL database
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-laravel $ tree -L 1
-.
-├── laravel-project
-└── htdocs -> laravel-project/public
-
-2 directories, 0 files
+```bash
+mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_laravel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 6. Configure Laravel
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
+Edit `laravel-project/.env`:
 
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-laravel.loc
+```ini
+APP_URL=http://my-laravel.lvh.me
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=my_laravel
+DB_USERNAME=root
+DB_PASSWORD=
 ```
 
-This will ensure that your host operating system's browser will direct
-any calls on `http://my-laravel.loc` or `https://my-laravel.loc` to the
-Devilbox which is listening on `127.0.0.1`.
+Then generate the application key if Composer did not already do it:
 
-<div class="seealso">
+```bash
+cd laravel-project
+php artisan key:generate
+```
 
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
+### 7. Verify DNS
 
-</div>
+`my-laravel.lvh.me` resolves to `127.0.0.1`. Add a hosts-file record only for custom suffixes.
 
-### 6. Open your browser
+### 8. Open your browser
 
-Open your browser at <http://my-laravel.loc> or <https://my-laravel.loc>
+Visit <http://my-laravel.lvh.me> or <https://my-laravel.lvh.me>.
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Run Artisan commands with `./dvl.sh exec "php artisan"` from the Laravel project directory.
+- Use Adminer or phpMyAdmin from the Devilbox intranet to inspect `my_laravel`.
+- Add Redis, queues, or mail services only when your app needs them.

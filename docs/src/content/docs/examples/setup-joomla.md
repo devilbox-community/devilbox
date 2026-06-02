@@ -4,215 +4,111 @@ title: "Setup Joomla"
 
 # Setup Joomla
 
-This example will use `wget` to install Joomla from within the Devilbox
-PHP container.
-
-After completing the below listed steps, you will have a working Joomla
-setup ready to be served via http and https.
-
-<div class="seealso">
-
-`example joomla documentation`
-
-</div>
-
+This example installs Joomla 5 inside Devilbox and serves it through the standard `htdocs` document root.
 
 ## Overview
 
-The following configuration will be used:
+| Project name | Container path | Database | TLD_SUFFIX | Project URL |
+| --- | --- | --- | --- | --- |
+| `my-joomla` | `/shared/httpd/my-joomla` | `my_joomla` | `lvh.me` | <http://my-joomla.lvh.me> / <https://my-joomla.lvh.me> |
 
-| Project name | VirtualHost directory | Database | TLD_SUFFIX | Project URL |
-|----|----|----|----|----|
-| my-joomla | /shared/httpd/my-joomla | n.a. | loc | <http://my-joomla.loc> `br` <https://my-joomla.loc> |
+Projects live in `/shared/httpd/` inside the container and in `./data/www/` on the host.
 
-> [!NOTE]
-> \* Inside the Devilbox PHP container, projects are always in
-> `/shared/httpd/`. \* On your host operating system, projects are by
-> default in `./data/www/` inside the Devilbox git directory. This path
-> can be changed via `env-httpd-datadir`.
+## Prerequisites
+
+- Devilbox with PHP 8.3 or PHP 8.4 available.
+- HTTPD, MySQL, and Bind services.
+- Docker Compose v2 through Docker.
+
+Start the stack:
+
+```bash
+./dvl.sh up php httpd mysql bind
+```
 
 ## Walk through
 
-It will be ready in six simple steps:
+It will be ready in seven steps:
 
-1.  Enter the PHP container
-2.  Create a new VirtualHost directory
-3.  Download and extract Joomla
-4.  Symlink webroot directory
-5.  Setup DNS record
-6.  Visit <http://my-joomla.loc> in your browser
+1. Enter the PHP container.
+2. Create a new virtual host directory.
+3. Download and extract Joomla 5.
+4. Link the document root.
+5. Add a MySQL database.
+6. Verify DNS.
+7. Open the Joomla installer.
 
 ### 1. Enter the PHP container
 
-All work will be done inside the PHP container as it provides you with
-all required command line tools.
-
-Navigate to the Devilbox git directory and execute `shell.sh` (or
-`shell.bat` on Windows) to enter the running PHP container.
-
-``` bash
-host> ./shell.sh
+```bash
+./dvl.sh shell php83
 ```
 
-<div class="seealso">
+### 2. Create the vhost directory
 
-\* `enter-the-php-container` \* `work-inside-the-php-container` \*
-`available-tools`
-
-</div>
-
-### 2. Create new vhost directory
-
-The vhost directory defines the name under which your project will be
-available. `br` ( `<vhost dir>.TLD_SUFFIX` will be
-the final URL ).
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ mkdir my-joomla
+```bash
+mkdir -p /shared/httpd/my-joomla
+cd /shared/httpd/my-joomla
 ```
 
-<div class="seealso">
+### 3. Download and extract Joomla 5
 
-`env-tld-suffix`
+Download the current Joomla 5 full package from the official Joomla downloads page, then extract it into `joomla`:
 
-</div>
-
-### 3. Download and extract Joomla
-
-Navigate into your newly created vhost directory and install Joomla.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd $ cd my-joomla
-devilbox@php-7.0.20 in /shared/httpd/my-joomla $ wget -O joomla.tar.gz https://downloads.joomla.org/cms/joomla3/3-8-0/joomla_3-8-0-stable-full_package-tar-gz?format=gz
-devilbox@php-7.0.20 in /shared/httpd/my-joomla $ mkdir joomla
-devilbox@php-7.0.20 in /shared/httpd/my-joomla $ tar xvfz joomla.tar.gz -C joomla/
+```bash
+mkdir joomla
+unzip Joomla_5-Stable-Full_Package.zip -d joomla
 ```
 
-How does the directory structure look after installation:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-joomla $ tree -L 1
+```bash
+tree -L 1
 .
-├── joomla.tar.gz
+├── Joomla_5-Stable-Full_Package.zip
 └── joomla
-
-1 directory, 1 file
 ```
 
-### 4. Symlink webroot
+### 4. Link the document root
 
-Symlinking the actual webroot directory to `htdocs` is important. The
-web server expects every project's document root to be in
-`<vhost dir>/htdocs/`. This is the path where it will serve the files.
-This is also the path where your frameworks entrypoint (usually
-`index.php`) should be found.
-
-Some frameworks however provide its actual content in nested directories
-of unknown levels. This would be impossible to figure out by the web
-server, so you manually have to symlink it back to its expected path.
-
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-joomla $ ln -s joomla/ htdocs
+```bash
+ln -s joomla htdocs
 ```
 
-How does the directory structure look after symlinking it:
+Expected structure:
 
-``` bash
-devilbox@php-7.0.20 in /shared/httpd/my-joomla $ tree -L 1
+```bash
+tree -L 1
 .
-├── joomla.tar.gz
+├── Joomla_5-Stable-Full_Package.zip
 ├── joomla
 └── htdocs -> joomla
-
-2 directories, 1 file
 ```
 
-As you can see from the above directory structure, `htdocs` is available
-in its expected path and points to the frameworks entrypoint.
+### 5. Add the MySQL database
 
-> [!IMPORTANT]
-> When using **Docker Toolbox**, you need to **explicitly allow** the
-> usage of **symlinks**. See below for instructions:
->
-> - Docker Toolbox and
->   `howto-docker-toolbox-and-the-devilbox-windows-symlinks`
-
-### 5. DNS record
-
-If you **have** Auto DNS configured already, you can skip this section,
-because DNS entries will be available automatically by the bundled DNS
-server.
-
-If you **don't have** Auto DNS configured, you will need to add the
-following line to your host operating systems `/etc/hosts` file (or
-`C:\Windows\System32\drivers\etc` on Windows):
-
-``` bash
-127.0.0.1 my-joomla.loc
+```bash
+mysql -u root -h 127.0.0.1 -p -e 'CREATE DATABASE my_joomla CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
-<div class="seealso">
+### 6. Verify DNS
 
-- `howto-add-project-hosts-entry-on-mac`
-- `howto-add-project-hosts-entry-on-win`
-- `setup-auto-dns`
+`my-joomla.lvh.me` resolves automatically to localhost. Add a hosts entry only when using a custom suffix.
 
-</div>
+### 7. Open the Joomla installer
 
-### 6. Open your browser
+Visit <http://my-joomla.lvh.me> or <https://my-joomla.lvh.me> and follow the installer.
 
-All set now, you can visit <http://my-joomla.loc> or
-<https://my-joomla.loc> in your browser.
+Use these database values:
+
+- Database type: `MySQLi`
+- Host: `127.0.0.1`
+- User: `root`
+- Database name: `my_joomla`
+- Password: your `.env` value
 
 ## Next steps
 
-Once everything is installed and setup correctly, you might be
-interested in a few follow-up topics.
-
-### Use bundled batteries
-
-The Devilbox ships most common Web UIs accessible from the intranet.
-
-<div class="seealso">
-
-\* `devilbox-intranet-adminer` \* `devilbox-intranet-phpmyadmin` \*
-`devilbox-intranet-phppgadmin` \* `devilbox-intranet-phpredmin` \*
-`devilbox-intranet-phpmemcachedadmin`
-
-</div>
-
-### Enhance the Devilbox
-
-Go ahead and make the Devilbox more smoothly by setting up its core
-features.
-
-<div class="seealso">
-
-\* `setup-valid-https` \* `setup-auto-dns` \* `configure-php-xdebug`
-
-</div>
-
-### Add services
-
-In case your framework/CMS requires it, attach caching, queues, database
-or performance tools.
-
-<div class="seealso">
-
-- `custom-container-enable-blackfire`
-- `custom-container-enable-rabbitmq`
-- `custom-container-enable-solr`
-- `custom-container-enable-varnish`
-
-</div>
-
-### Container tools
-
-Stay inside the container and use what's available.
-
-<div class="seealso">
-
-- `available-tools`
-- `source-code-analysis`
-
-</div>
+- Remove the installation directory if Joomla prompts for manual cleanup.
+- Configure valid local HTTPS.
+- Use Adminer or phpMyAdmin from the Devilbox intranet for database checks.
