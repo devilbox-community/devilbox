@@ -1,0 +1,47 @@
+---
+title: Devilbox
+description: Modern Docker-based PHP development stack with first-class agentic coding tools
+template: splash
+hero:
+  tagline: PHP development meets agentic coding — out of the box.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Quick start
+      link: /getting-started/install-script/
+      icon: right-arrow
+      variant: primary
+    - text: dvl.sh CLI reference
+      link: /intermediate/dvl-cli/
+      icon: external
+      variant: minimal
+    - text: GitHub
+      link: https://github.com/devilbox-community/devilbox
+      icon: external
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## What you get
+<CardGrid>
+  <Card title="Multi-PHP" icon="setting">
+    PHP 7.4, 8.1, 8.2, 8.3, 8.4 side-by-side. Switch with one env var.
+  </Card>
+  <Card title="Agentic Tools" icon="rocket">
+    Claude Code, OpenCode, Codex, Cursor Agent, Gemini, GitHub Copilot — pre-installed.
+  </Card>
+  <Card title="Cross-platform install" icon="laptop">
+    One script for macOS, Linux, WSL2. <code>curl | bash</code> and you're running.
+  </Card>
+  <Card title="dvl.sh CLI" icon="document">
+    First-class CLI for every workflow. <code>./dvl.sh up</code>, <code>./dvl.sh agent</code>, <code>./dvl.sh magento</code>.
+  </Card>
+</CardGrid>
+
+## Get started
+<CardGrid>
+  <LinkCard title="Install" href="/getting-started/install-script/" description="curl + bash, 5 min" />
+  <LinkCard title="dvl.sh CLI" href="/intermediate/dvl-cli/" description="Every subcommand documented" />
+  <LinkCard title="Agentic" href="/getting-started/agentic/" description="Browser-OAuth, persistent across volume wipes" />
+  <LinkCard title="Hermes Workspace" href="/intermediate/hermes-workspace/" description="Multi-repo dev environment" />
+</CardGrid>

@@ -13,10 +13,14 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^5.0.0",
-    "@astrojs/starlight": "^0.30.0",
     "@astrojs/mdx": "^4.0.0",
+    "@astrojs/starlight": "^0.30.0",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "astro": "^5.0.0",
     "astro-mermaid": "^1.0.0",
+    "playwright": "^1.60.0",
+    "rehype-mermaid": "^3.0.0",
     "sharp": "^0.33.0"
   }
 }

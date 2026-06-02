@@ -1,0 +1,91 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* Devilbox brand palette — Elegant 2026 style */
+:root {
+  --sl-color-accent-low: #2d0a0a;
+  --sl-color-accent: #c41e3a;
+  --sl-color-accent-high: #f5a3a3;
+  --sl-color-bg: #0d0d10;
+  --sl-color-bg-nav: #131318;
+  --sl-color-bg-sidebar: #131318;
+  --sl-color-text: #e0e0e4;
+  
+  --sl-font: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  --sl-font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+}
+
+/* Light mode complement */
+:root[data-theme='light'] {
+  --sl-color-accent-low: #f8dbdb;
+  --sl-color-accent: #b01b34;
+  --sl-color-accent-high: #5a0f1b;
+  --sl-color-bg: #fafafa;
+  --sl-color-bg-nav: #f0f0f4;
+  --sl-color-bg-sidebar: #f0f0f4;
+  --sl-color-text: #1a1a20;
+}
+
+body {
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Tabular numerals for code */
+code, pre, kbd, table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle 2026 details */
+.expressive-code, .astro-code, pre {
+  border-radius: 8px !important;
+}
+
+/* Soft shadow on cards */
+.sl-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: var(--sl-color-bg-nav);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sl-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='light'] .sl-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='light'] .sl-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Sticky sidebar with blur */
+sidebar {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(19, 19, 24, 0.8) !important;
+}
+
+[data-theme='light'] sidebar {
+  background-color: rgba(240, 240, 244, 0.8) !important;
+}
+
+/* Subtle accent on hero tagline */
+.hero .tagline {
+  color: var(--sl-color-accent-high);
+  font-weight: 500;
+}
