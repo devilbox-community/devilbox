@@ -1,46 +1,80 @@
 ---
 title: "Enable all additional container"
-sidebar:
-  order: 1
 ---
 
 # Enable all additional container
 
-Devilbox no longer enables optional services by copying a manually authored `docker-compose.override.yml` into the project root. The supported source of truth is `env-example` and the `CONTAINERS_CONFIG_OPTIONAL` value that `install.sh` uses to build `DEVILBOX_CONTAINERS`.
+Besides providing basic LAMP/MEAN stack container, which are well
+integrated into the Devilbox intranet, the Devilbox also ships
+additional pre-configured container that can easily be enabled.
 
-## Current optional roster
+<div class="seealso">
 
-The current optional roster in `env-example` is:
+`docker-compose-override-yml-how-does-it-work`
 
-```dotenv
-CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
-CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+</div>
+
+
+## Available additional container
+
+The following table shows you the currently additional available
+container:
+
+| Container                           | Name      | Hostname  | IP Address     |
+|-------------------------------------|-----------|-----------|----------------|
+| PHP Community                       | php       | php       | 172.16.238.10  |
+| Blackfire                           | blackfire | blackfire | 172.16.238.200 |
+| MailHog                             | mailhog   | mailhog   | 172.16.238.201 |
+| Ngrok                               | ngrok     | ngrok     | 172.16.238.202 |
+| RabbitMQ                            | rabbit    | rabbit    | 172.16.238.210 |
+| Solr                                | solr      | solr      | 172.16.238.220 |
+| Varnish                             | varnish   | varnish   | 172.16.238.230 |
+| HAProxy (SSL offloader for Varnish) | haproxy   | haproxy   | 172.16.238.231 |
+| ELK: Elastic Search                 | elastic   | elastic   | 172.16.238.240 |
+| ELK: Logstash                       | logstash  | logstash  | 172.16.238.241 |
+| ELK: Kibana                         | kibana    | kibana    | 172.16.238.242 |
+| Python Flask                        | flask1    | flask1    | 172.16.238.250 |
+
+## Enable all additional container
+
+Copy `docker-compose.override.yml-all` into the root of the Devilbox git
+directory.
+
+``` bash
+host> cp compose/docker-compose.override.yml-all docker-compose.override.yml
 ```
 
-These slugs are the supported optional containers for new installs. Historical custom-container pages for Blackfire, MailHog, Meilisearch, Ngrok, PHP Community, Solr, and Varnish are preserved for URL stability, but those slugs are not part of the current optional roster.
+That's it, if you `docker-compose up`, all container will be started.
+This however is not adviced as it will eat up a lot of resources. You
+are better off by selectively specifying the container you want to run.
 
-## Enable all current optionals
+<div class="seealso">
 
-Copy `env-example` to `.env` if you do not already have one, then keep the full comma-separated optional list in `.env`:
+`start-the-devilbox`
 
-```dotenv
-CONTAINERS_CONFIG_OPTIONAL=php74,php81,php82,php83,php84,redis,opensearch,buggregator
-```
+</div>
 
-Restart the stack with the modern wrapper:
+## Configure additional container
 
-```bash
-./dvl.sh up
-```
+The additional container also provide many configuration options just as
+the default ones do. That includes, but is not limited to:
 
-The wrapper reads the container set provisioned by `install.sh`. If you already installed Devilbox before changing `.env`, re-run the installer or update `DEVILBOX_CONTAINERS` in your shell profile so it matches the current default plus optional list.
+- Image version
+- Exposed ports
+- Mount points
+- And various container specific settings
 
-:::caution
-Enabling every optional container is convenient for smoke testing but usually unnecessary for day-to-day development. Keep the list limited to services your project actually uses.
-:::
+In order to fully customize each container, refer to their own
+documentation section:
 
-## Pattern reference
+<div class="seealso">
 
-The environment-variable pattern mirrors the runtime toggle documented in [Agentic tool toggles](/getting-started/agentic-tools-toggle/): defaults are declared once, optional slugs are comma-separated, and the active set is computed from configuration instead of copy-pasted override files.
+\* `custom-container-enable-php-community` \*
+`custom-container-enable-blackfire` \*
+`custom-container-enable-elk-stack` \* `custom-container-enable-mailhog`
+\* `custom-container-enable-ngrok` \*
+`custom-container-enable-python-flask` \*
+`custom-container-enable-rabbitmq` \* `custom-container-enable-solr` \*
+`custom-container-enable-varnish`
 
-For the authoritative container list, read `env-example` in the Devilbox repository root.
+</div>

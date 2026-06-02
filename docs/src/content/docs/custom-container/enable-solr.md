@@ -1,35 +1,164 @@
 ---
-title: Enable and configure Solr (deprecated)
-description: This integration is no longer part of the optional container roster.
-sidebar:
-  order: 7
-  badge:
-    text: Deprecated
-    variant: danger
+title: "Enable and configure Solr"
 ---
 
-# Enable and configure Solr (deprecated)
+# Enable and configure Solr
 
-:::danger[Deprecated]
-Solr is not listed in the current `CONTAINERS_CONFIG_OPTIONAL` roster in `env-example`.
-:::
+This section will guide you through getting Solr integrated into the
+Devilbox.
 
-## Why?
+<div class="seealso">
 
-The historical Solr page described copying `compose/docker-compose.override.yml-solr` into the project root and setting Solr variables in `.env`. Devilbox now documents supported optional containers through `CONTAINERS_CONFIG_OPTIONAL`, and `solr` is not present in the current optional roster.
+\* `solr github` \*
+`solr dockerhub` \*
+`custom-container-enable-all-additional-container` \*
+`docker-compose-override-yml-how-does-it-work`
 
-The compose snippet still exists for reference, but it is not activated by the maintained optional-container mechanism.
+</div>
 
-## Migration
 
-If your project needs Solr, define it with the project:
+## Overview
 
-1. Add a `solr` service to `docker-compose.override.yml`.
-2. Pin the Solr image tag and core name.
-3. Store cores in a named volume or project-owned directory.
-4. Publish `8983` only when you need host access to the Admin UI.
-5. Start Devilbox with `./dvl.sh up`.
+### Available overwrites
 
-## Replacement pattern
+The Devilbox ships various example configurations to overwrite the
+default stack. Those files are located under `compose/` in the Devilbox
+git directory.
 
-Use `CONTAINERS_CONFIG_OPTIONAL` only for the slugs listed in `env-example`. For search backends, use [Add your own Docker image](/advanced/add-your-own-docker-image/) and keep schema, core, and image choices under project control.
+`docker-compose.override.yml-all` has all examples combined in one file
+for easy copy/paste. However, each example also exists in its standalone
+file as shown below:
+
+``` bash
+host> tree -L 1 compose/
+compose/
+├── docker-compose.override.yml-all
+├── docker-compose.override.yml-blackfire
+├── docker-compose.override.yml-elk
+├── docker-compose.override.yml-mailhog
+├── docker-compose.override.yml-meilisearch
+├── docker-compose.override.yml-ngrok
+├── docker-compose.override.yml-php-community
+├── docker-compose.override.yml-python-flask
+├── docker-compose.override.yml-rabbitmq
+├── docker-compose.override.yml-solr
+├── docker-compose.override.yml-varnish
+└── README.md
+
+0 directories, 10 files
+```
+
+<div class="seealso">
+
+`custom-container-enable-all-additional-container`
+
+</div>
+
+### Solr settings
+
+In case of Solr, the file is `compose/docker-compose.override.yml-solr`.
+This file must be copied into the root of the Devilbox git directory.
+
+| What | How and where |
+|----|----|
+| Example compose file | `compose/docker-compose.override.yml-all` or `br` `compose/docker-compose.override.yml-solr` |
+| Container IP address | `172.16.238.220` |
+| Container host name | `solr` |
+| Container name | `solr` |
+| Mount points | via Docker volumes |
+| Exposed port | `8983` (can be changed via `.env`) |
+| Available at | `http://localhost:8983` (API and Admin WebUI) |
+| Further configuration | none |
+
+### Solr env variables
+
+Additionally the following `.env` variables can be created for easy
+configuration:
+
+| Variable | Default value | Description |
+|----|----|----|
+| `HOST_PORT_SOLR` | `8983` | Controls the host port on which Solr API and WebUIwill be available at. |
+| `SOLR_SERVER` | `latest` | Controls the Solr version to use. |
+| `SOLR_CORE_NAME` | `devilbox` | Default Solr core name |
+
+## Instructions
+
+### 1. Copy docker-compose.override.yml
+
+Copy the Solr Docker Compose overwrite file into the root of the
+Devilbox git directory. (It must be at the same level as the default
+`docker-compose.yml` file).
+
+``` bash
+host> cp compose/docker-compose.override.yml-solr docker-compose.override.yml
+```
+
+<div class="seealso">
+
+\* `docker-compose-override-yml` \* `add-your-own-docker-image` \*
+`overwrite-existing-docker-image`
+
+</div>
+
+### 2. Adjust `.env` settings (optional)
+
+Solr is using sane defaults, which can be changed by adding variables to
+the `.env` file and assigning custom values.
+
+Add the following variables to `.env` and adjust them to your needs:
+
+``` bash
+# Solr version to choose
+#SOLR_SERVER=5
+#SOLR_SERVER=6
+#SOLR_SERVER=7
+SOLR_SERVER=latest
+
+SOLR_CORE_NAME=devilbox
+HOST_PORT_SOLR=8983
+```
+
+<div class="seealso">
+
+`env-file`
+
+</div>
+
+### 3. Start the Devilbox
+
+The final step is to start the Devilbox with Solr.
+
+Let's assume you want to start `php`, `httpd`, `bind`, `solr`.
+
+``` bash
+host> docker-compose up -d php httpd bind solr
+```
+
+<div class="seealso">
+
+`start-the-devilbox`
+
+</div>
+
+## TL;DR
+
+For the lazy readers, here are all commands required to get you started.
+Simply copy and paste the following block into your terminal from the
+root of your Devilbox git directory:
+
+``` bash
+# Copy compose-override.yml into place
+cp compose/docker-compose.override.yml-solr docker-compose.override.yml
+
+# Create .env variable
+echo "# Solr version to choose"         >> .env
+echo "#SOLR_SERVER=5"                   >> .env
+echo "#SOLR_SERVER=6"                   >> .env
+echo "#SOLR_SERVER=7"                   >> .env
+echo "SOLR_SERVER=latest"               >> .env
+echo "SOLR_CORE_NAME=devilbox"          >> .env
+echo "HOST_PORT_SOLR=8983"              >> .env
+
+# Start container
+docker-compose up -d php httpd bind solr
+```
