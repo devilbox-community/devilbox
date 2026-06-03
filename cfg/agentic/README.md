@@ -11,9 +11,8 @@ settings survive container recreation and `docker compose down -v`.
 | `cline/` | `/home/devilbox/.config/cline` | Cline configuration. |
 | `codex/` | `/home/devilbox/.codex` | OpenAI Codex login and API-key state. |
 | `continue/` | `/home/devilbox/.continue` | Continue configuration. |
-| `copilot/` | `/home/devilbox/.config/gh` | GitHub CLI and Copilot extension auth. |
+| `copilot/` | `/home/devilbox/.config/copilot` | GitHub Copilot CLI auth. |
 | `crush/` | `/home/devilbox/.config/crush` | Crush CLI configuration. |
-| `cursor/` | `/home/devilbox/.cursor` | Cursor Agent configuration. |
 | `goose/` | `/home/devilbox/.config/goose` | Goose provider and session configuration. |
 | `kilocode/` | `/home/devilbox/.kilocode` | Kilo Code runtime auth/config state. |
 | `kimi/` | `/home/devilbox/.kimi` | Kimi Code runtime login/API-key state. |

@@ -33,12 +33,11 @@ services:
       - ${DEVILBOX_PATH}/cfg/agentic/claude:/home/devilbox/.claude:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/opencode:/home/devilbox/.config/opencode:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/codex:/home/devilbox/.codex:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic/copilot:/home/devilbox/.config/gh:rw${MOUNT_OPTIONS}
+      - ${DEVILBOX_PATH}/cfg/agentic/copilot:/home/devilbox/.config/copilot:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/aider:/home/devilbox/.aider:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/goose:/home/devilbox/.config/goose:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/cline:/home/devilbox/.config/cline:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/continue:/home/devilbox/.continue:rw${MOUNT_OPTIONS}
-      - ${DEVILBOX_PATH}/cfg/agentic/cursor:/home/devilbox/.cursor:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/llm:/home/devilbox/.config/io.datasette.llm:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/crush:/home/devilbox/.config/crush:rw${MOUNT_OPTIONS}
       - ${DEVILBOX_PATH}/cfg/agentic/openclaude:/home/devilbox/.openclaude:rw${MOUNT_OPTIONS}

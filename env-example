@@ -1201,7 +1201,10 @@ AGENTIC_HTTPD_DATADIR=${HOST_PATH_HTTPD_DATADIR}
 ### Comma-separated tool slugs. ENABLE adds to the image default list; DISABLE
 ### removes from the final set (DISABLE wins on collision). No "all"/wildcard.
 ### Authoritative defaults live in /opt/agentic-tools/_defaults.yml inside the
-### image. See docker-agentic/agentic_tools/_defaults.yml for the source list.
+### image. Wave 11 ships 29 tools: 12 default-enabled and 17 installed-only.
+### The old gh-copilot slug is now copilot; cursor has been removed.
+### Example: AGENTIC_TOOLS_ENABLE=aider,qoder
+### Example: AGENTIC_TOOLS_DISABLE=copilot
 ###
 AGENTIC_TOOLS_ENABLE=
 AGENTIC_TOOLS_DISABLE=

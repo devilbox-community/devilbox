@@ -1,8 +1,8 @@
 # cfg/agentic/copilot
 
-Persistent storage for: gh CLI hosts.yml (covers gh-copilot extension).
+Persistent storage for the standalone GitHub Copilot CLI.
 
-**Container mount:** `/home/devilbox/.config/gh`
+**Container mount:** `/home/devilbox/.config/copilot`
 **Image:** `devilboxcommunity/agentic`
 **Activated by:** copying `compose/docker-compose.override.yml-agentic` to the
 Devilbox root (or via `dvl agent enable`).
