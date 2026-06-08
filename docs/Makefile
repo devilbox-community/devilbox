@@ -25,11 +25,10 @@ help:
 # -------------------------------------------------------------------------------------------------
 
 build:
-	rm -rf dist .astro
-	$(DOCKER_RUN) $(NODE_IMAGE) sh -c "npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro build"
+	$(DOCKER_RUN) $(NODE_IMAGE) sh -c "rm -rf dist .astro && npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro build"
 
 build-ci:
-	rm -rf dist .astro
+	rm -rf dist .astro 2>/dev/null || true
 	npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro build --sitemap false
 
 autobuild:
