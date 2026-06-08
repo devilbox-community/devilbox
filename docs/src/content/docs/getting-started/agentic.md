@@ -86,4 +86,4 @@ Most agents require a one-time OAuth or API key handshake. Devilbox uses a host-
 
 This will trigger a browser window on your host machine to complete the authentication process.
 
-See also: [DVL Agent Guide](../../intermediate/dvl-agent/), [Installation Script](./install-script/)
+See also: [DVL Agent Guide](../../intermediate/dvl-agent/), [Installation Script](../install-script/)
