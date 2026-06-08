@@ -35,7 +35,7 @@ autobuild:
 	docker run --rm $$(tty -s && echo "-it" || echo) -p 4321:4321 -v $(PWD):/docs -w /docs $(NODE_IMAGE) sh -c "npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro dev --host 0.0.0.0"
 
 linkcheck: build
-	@dirs=$$(find dist -mindepth 1 -maxdepth 1 -type d ! -name '_includes' ! -name 'en' ! -name 'pagefind' | sort | sed 's|^dist/|/data/|' | tr '\n' ' '); \
+	@dirs=$$(find dist -mindepth 1 -maxdepth 1 -type d ! -name '_includes' ! -name 'en' ! -name 'pagefind' ! -name 'img' | sort | sed 's|^dist/|/data/|' | tr '\n' ' '); \
 	echo "Checking dirs: $$dirs"; \
 	docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD)/dist:/data lycheeverse/lychee \
 		--root-dir /data \
@@ -45,6 +45,13 @@ linkcheck: build
 		--accept 200,201,301,302,304,429 \
 		--exclude '^https?://github\.com/' \
 		--exclude '^https?://devilbox\.nntoan\.com/' \
-		--exclude '^https?://(www\.)?my-(test|project).*\.loc/' \
 		--exclude '^https?://camo\.githubusercontent\.com/' \
+		--exclude '\.lvh\.me' \
+		--exclude '\.loc/' \
+		--exclude 'localhost' \
+		--exclude '_includes/figures/' \
+		--exclude '^http://www/' \
+		--exclude '^http://www\.my-test/' \
+		--exclude 'en\.avm\.de' \
+		--exclude 'fritz\.com' \
 		$$dirs

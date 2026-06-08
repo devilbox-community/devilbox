@@ -120,4 +120,4 @@ dvl agent shell
 opencode "Monitor test coverage for the new API"
 ```
 
-See also: [Agentic Onboarding](../getting-started/agentic/), [DVL CLI Reference](../intermediate/dvl-cli/)
+See also: [Agentic Onboarding](../../getting-started/agentic/), [DVL CLI Reference](../dvl-cli/)
