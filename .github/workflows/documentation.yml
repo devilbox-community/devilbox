@@ -77,7 +77,7 @@ jobs:
           retries: 5
           workdir: "${{ github.workspace }}/docs/"
           command: |
-            make build
+            make build-ci
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

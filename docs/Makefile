@@ -27,6 +27,9 @@ help:
 build:
 	$(DOCKER_RUN) $(NODE_IMAGE) sh -c "npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro build"
 
+build-ci:
+	npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro build --sitemap false
+
 autobuild:
 	docker run --rm $$(tty -s && echo "-it" || echo) -p 4321:4321 -v $(PWD):/docs -w /docs $(NODE_IMAGE) sh -c "npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro dev --host 0.0.0.0"
 
