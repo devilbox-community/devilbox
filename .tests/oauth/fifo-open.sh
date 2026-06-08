@@ -28,7 +28,8 @@ printf 'cmd.exe %s\n' "$*" >>"${DVL_OAUTH_OPEN_LOG}"
 MOCK
 chmod +x "${mockbin}/open" "${mockbin}/xdg-open" "${mockbin}/cmd.exe"
 
-export DEVILBOX_PATH="$(pwd)"
+DEVILBOX_PATH="$(pwd)"
+export DEVILBOX_PATH
 export DVL_OAUTH_FIFO_DIR="${fifo_dir}"
 export DVL_OAUTH_OPEN_LOG="${tmpdir}/open.log"
 export PATH="${mockbin}:${PATH}"
