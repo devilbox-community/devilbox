@@ -49,9 +49,12 @@ linkcheck: build
 		--exclude '\.lvh\.me' \
 		--exclude '\.loc/' \
 		--exclude 'localhost' \
+		--exclude '127\.0\.0\.1' \
 		--exclude '_includes/figures/' \
 		--exclude '^http://www/' \
 		--exclude '^http://www\.my-test/' \
+		--exclude '^http://www\.project-' \
 		--exclude 'en\.avm\.de' \
 		--exclude 'fritz\.com' \
+		--exclude 'configure-php-xdebug' \
 		$$dirs
