@@ -11,25 +11,29 @@ environment-file pattern used elsewhere in the stack.
 
 ## Overview
 
-The toggle source of truth is
-`../docker-agentic/agentic_tools/_defaults.yml`.
+Each agent tool declares its default-enabled status in its own `options.yml`
+file under `../docker-agentic/agentic_tools/<slug>/options.yml`. The effective
+default-on set is the union of every tool with `default_enabled: true`.
 
-It declares default-on slugs:
+Default-on agent tools:
 
-```yaml
-enabled_by_default:
-  - claude-code
-  - opencode
-  - codex
-  - cursor
-  - codewhale
-  - reasonix
-  - hermes
-  - openclaw
-  - pi-coding-agent
-  - gh-copilot
-  - gemini
-```
+- `claude-code`
+- `codex`
+- `copilot`
+- `droid`
+- `gemini`
+- `kilo-code`
+- `kimi`
+- `kiro`
+- `opencode`
+- `pi-coding-agent`
+- `qwen-code`
+- `reasonix`
+
+Default-on extra tools (built into the `:work` image):
+
+- `openspec`
+- `speckit`
 
 The runtime variables in `env-example` are:
 
@@ -68,7 +72,7 @@ images or extra tools.
 
 At container startup, `20-agentic-toggle.sh`:
 
-1. Reads `/opt/agentic-tools/_defaults.yml`.
+1. Reads each `/opt/agentic-tools/<slug>/options.yml` to discover default-enabled slugs.
 2. Parses `AGENTIC_TOOLS_ENABLE` as comma-separated slugs.
 3. Parses `AGENTIC_TOOLS_DISABLE` as comma-separated slugs.
 4. Normalizes values to lowercase and trims whitespace.
@@ -80,41 +84,29 @@ At container startup, `20-agentic-toggle.sh`:
 It is idempotent. It does not delete non-symlink files. It only removes symlinks
 that point back into `/opt/agentic-tools`.
 
-## Default tool list
+## Default tool list (agent tools — per-agent images)
 
-The table below reflects `_defaults.yml` and each tool's `install.yml` package
-or command shape.
-
-| Slug | Category | npm? | Install method |
+| Slug | Image tag | Binary | Install method |
 | --- | --- | --- | --- |
-| `claude-code` | Coding agent | Package field is `@anthropic-ai/claude-code`, installed by custom script. | `custom` installer using `https://claude.ai/install.sh`. |
-| `opencode` | Coding agent | Package field is `opencode-ai`, installed by custom script. | `custom` installer using `https://opencode.ai/install`. |
-| `codex` | Coding agent | Package field is `@openai/codex`, installed by custom script. | `custom` installer using `https://chatgpt.com/codex/install.sh`. |
-| `cursor` | Coding agent | Package field is `cursor-agent`, installed by custom script. | `custom` installer for Cursor Agent. |
-| `codewhale` | Coding agent | No npm install path in renderer; package field is `codewhale`. | `custom`. |
-| `reasonix` | Reasoning agent | No npm install path in renderer; package field is `reasonix`. | `custom`. |
-| `hermes` | Coding agent | No npm install path in renderer; package field is `hermes`. | `custom`. |
-| `openclaw` | Coding agent | No npm install path in renderer; package field is `openclaw`. | `custom`. |
-| `pi-coding-agent` | Coding agent | Package field is `@earendil-works/pi-coding-agent`, installed by custom script. | `custom`. |
-| `gh-copilot` | GitHub assistant | Uses GitHub CLI extension path, not npm. | `custom` with `gh copilot --help`; pre-installs `gh` if needed. |
-| `gemini` | Coding agent | Package field is `@google/gemini-cli`, installed by custom script. | `custom`. |
+| `claude-code` | `:claude-code` | `claude` | `custom` via `https://claude.ai/install.sh` |
+| `codex` | `:codex` | `codex` | `custom` via `https://chatgpt.com/codex/install.sh` |
+| `copilot` | `:copilot` | `copilot` | `custom` using `gh copilot` extension |
+| `droid` | `:droid` | `droid` | `custom` via Factory.ai installer |
+| `gemini` | `:gemini` | `gemini` | `npm` package `@google/gemini-cli` |
+| `kilo-code` | `:kilo-code` | `kilo` | `npm` package `@kilocode/cli` |
+| `kimi` | `:kimi` | `kimi` | `custom` via Kimi Code installer |
+| `kiro` | `:kiro` | `kiro-cli` | `custom` via `.deb` package |
+| `opencode` | `:opencode` | `opencode` | `custom` via `https://opencode.ai/install` |
+| `pi-coding-agent` | `:pi-coding-agent` | `pi` | `custom` via `https://pi.dev/install.sh` |
+| `qwen-code` | `:qwen-code` | `qwen` | `npm` package `@qwen-code/qwen-code` |
+| `reasonix` | `:reasonix` | `reasonix` | `npm` package `reasonix` |
 
-## Optional tool list
+## Default tool list (extra tools — built into `:work` image)
 
-Optional tools are installed in the image but absent from `_defaults.yml`. They
-are not symlinked into `/usr/local/bin` unless explicitly enabled. The `multica`
-tool also declares `enabled_by_default: false` in its `options.yml`.
-
-| Slug | Category | npm? | Install method |
-| --- | --- | --- | --- |
-| `aider` | Coding assistant | No; Python package `aider-chat`. | `pip` via `pipx install aider-chat`. |
-| `cline` | Editor companion | No; placeholder CLI wrapper. | `custom`. |
-| `continue` | Coding assistant | Package field is `@continuedev/cli`, installed by custom script. | `custom` using `https://continue.dev/install.sh`. |
-| `crush` | Coding agent | No; release package or Go fallback. | `custom`, with `.deb` download and Go fallback. |
-| `goose` | Coding agent | No; release installer. | `curl` using Block Goose CLI installer. |
-| `llm` | LLM utility | No; Python package `llm`. | `pip` via `pipx install llm`. |
-| `multica` | Managed agents CLI | No; release binary installer. | `custom`; explicitly off by default. |
-| `qwen-code` | Coding agent | No npm fallback in the current installer. | `custom` release download. |
+| Slug | Binary | Install method |
+| --- | --- | --- |
+| `openspec` | `openspec` | `npm install -g @fission-ai/openspec` |
+| `speckit` | `specify` | `pipx install specify-cli` |
 
 ## How to enable tools
 
@@ -145,7 +137,7 @@ binary under `/opt/agentic-tools/<slug>/bin`.
 Add comma-separated slugs to `.env`:
 
 ```dotenv
-AGENTIC_TOOLS_DISABLE=pi-coding-agent,hermes
+AGENTIC_TOOLS_DISABLE=pi-coding-agent,reasonix
 ```
 
 Restart the stack. The synchronizer removes matching `/usr/local/bin` symlinks
@@ -158,7 +150,7 @@ entrypoints from the active tool set.
 
 The implementation order in `20-agentic-toggle.sh` is:
 
-1. Start with `_defaults.yml`.
+1. Start with default-enabled slugs from each tool's `options.yml`.
 2. Add `AGENTIC_TOOLS_ENABLE`.
 3. Sort and deduplicate.
 4. Remove `AGENTIC_TOOLS_DISABLE`.
@@ -192,19 +184,20 @@ AGENTIC_TOOLS_DISABLE=
 Result:
 
 - All defaults remain active.
-- `aider` becomes active if its installed binary exists.
-- `goose` becomes active if its installed binary exists.
+- `aider` and `goose` become active if their installed binaries exist
+  (these are host-side or separately installed tools — they reference config
+  mounts under `cfg/agentic/` but are not shipped in the Docker image).
 
 ### Example 2: Keep a smaller default set
 
 ```dotenv
-AGENTIC_TOOLS_DISABLE=pi-coding-agent,hermes,reasonix
+AGENTIC_TOOLS_DISABLE=pi-coding-agent,reasonix
 ```
 
 Result:
 
 - Default tools are still the base.
-- `pi-coding-agent`, `hermes`, and `reasonix` are removed from the final active
+- `pi-coding-agent` and `reasonix` are removed from the final active
   set.
 - Their files remain in `/opt/agentic-tools`.
 
@@ -265,7 +258,7 @@ If `command -v` returns nothing, the symlink is not active in `/usr/local/bin`.
 
 ### The slug is installed but disabled
 
-Check whether it is in `_defaults.yml`. If not, add it:
+Check whether it has `default_enabled: true` in its `options.yml`. If not, add it:
 
 ```dotenv
 AGENTIC_TOOLS_ENABLE=slug-name
@@ -279,8 +272,8 @@ Remove it from `AGENTIC_TOOLS_DISABLE`. Disable wins on collision.
 
 ### The slug spelling is wrong
 
-Use exact slugs. Examples include `claude-code`, `gh-copilot`,
-`pi-coding-agent`, `qwen-code`, and `multica`.
+Use exact slugs. Examples include `claude-code`, `copilot`,
+`pi-coding-agent`, and `opencode`.
 
 There is no wildcard support and no automatic fuzzy matching.
 

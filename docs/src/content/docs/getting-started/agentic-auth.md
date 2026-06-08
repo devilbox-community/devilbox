@@ -78,32 +78,40 @@ inside Devilbox-controlled bind mounts.
 
 ## Per-tool authentication table
 
-The default-on tool list comes from
-`../docker-agentic/agentic_tools/_defaults.yml`.
+The default-on tool list comes from each tool's `options.yml`
+under `../docker-agentic/agentic_tools/<slug>/options.yml`.
+
+### Agent tools (per-agent images — 12 tools)
 
 | Tool slug | Auth method | Browser? | Persisted to |
 | --- | --- | --- | --- |
 | `claude-code` | Claude Code OAuth or Anthropic account login through the CLI. | Yes, through host bridge when browser login is used. | `cfg/agentic/claude` mounted at `/home/devilbox/.claude`. |
-| `opencode` | Provider credentials configured by OpenCode; often API-key based. | Sometimes, depending on provider. | `cfg/agentic/opencode` mounted at `/home/devilbox/.config/opencode`. |
 | `codex` | OpenAI Codex login or OpenAI API key configuration. | Optional; API key flows can be terminal-only. | `cfg/agentic/codex` mounted at `/home/devilbox/.codex`. |
-| `cursor` | Cursor Agent login/configuration. | Usually browser-based for account login. | `cfg/agentic/cursor` mounted at `/home/devilbox/.cursor`. |
-| `codewhale` | Tool-specific account or token setup. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
-| `reasonix` | Tool-specific account or token setup. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
-| `hermes` | Hermes provider setup and keys via Hermes config. | Optional; provider setup can be CLI-driven. | No dedicated persistent mount until a config path is confirmed. |
-| `openclaw` | OpenClaw provider/account setup. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
-| `pi-coding-agent` | Pi Coding Agent account or API credential setup. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
-| `gh-copilot` | GitHub CLI authentication plus Copilot extension. | Yes for `gh auth login`; device/browser flow. | `cfg/agentic/copilot` mounted at `/home/devilbox/.config/gh`. |
+| `copilot` | GitHub CLI authentication plus Copilot extension. | Yes for `gh auth login`; device/browser flow. | `cfg/agentic/copilot` mounted at `/home/devilbox/.config/gh`. |
+| `droid` | Factory.ai account or API key. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
 | `gemini` | Gemini CLI OAuth or Google API key. | Yes for OAuth; no for API-key-only setup. | No dedicated persistent mount until a config path is confirmed. |
+| `kilo-code` | Tool-specific account or API key. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
+| `kimi` | Kimi Code credentials via Moonshot AI. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
+| `kiro` | AWS credentials for Q Developer. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
+| `opencode` | Provider credentials configured by OpenCode; often API-key based. | Sometimes, depending on provider. | `cfg/agentic/opencode` mounted at `/home/devilbox/.config/opencode`. |
+| `pi-coding-agent` | Pi Coding Agent account or API credential setup. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
+| `qwen-code` | Tool-specific account or API key. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
+| `reasonix` | Tool-specific account or token setup. | Tool dependent. | No dedicated persistent mount until a config path is confirmed. |
 
-Optional tools use the same persistence model. The agentic compose file includes
-mounts for additional common config roots:
+### Extra tools (built into `:work` image)
+
+| Tool slug | Auth method | Browser? | Persisted to |
+| --- | --- | --- | --- |
+| `openspec` | No authentication required; ships with the image. | No. | `cfg/agentic/openspec` for project specs. |
+| `speckit` | GitHub token via `SPECIFY_AUTH_TOKEN` env var or `gh` CLI auth. | No. | `cfg/agentic/speckit` for spec state. |
+
+Host-side tools use shared config mounts for convenience:
 
 - `cfg/agentic/aider` -> `/home/devilbox/.aider`
 - `cfg/agentic/goose` -> `/home/devilbox/.config/goose`
 - `cfg/agentic/cline` -> `/home/devilbox/.config/cline`
 - `cfg/agentic/continue` -> `/home/devilbox/.continue`
 - `cfg/agentic/llm` -> `/home/devilbox/.config/io.datasette.llm`
-- `cfg/agentic/crush` -> `/home/devilbox/.config/crush`
 
 ## Persistent volumes and bind mounts
 
@@ -182,16 +190,16 @@ If the CLI reads environment variables, put non-secret examples in your team
 docs and keep real keys out of git.
 
 </TabItem>
-<TabItem label="Gemini OAuth">
+<TabItem label="Reasonix">
 
 ```bash
 ./dvl.sh agent enable agentic
 ./dvl.sh agent up
-./dvl.sh agent auth gemini
+./dvl.sh agent auth reasonix
 ```
 
-Use the host browser for Google OAuth when prompted. If you use a Google API key
-instead, configure it through the Gemini CLI's supported key mechanism.
+If reasonix requires an API key or account token, configure it through its CLI setup
+flow. Persistent state lives under `cfg/agentic/reasonix`.
 
 </TabItem>
 <TabItem label="GitHub Copilot">
@@ -199,7 +207,7 @@ instead, configure it through the Gemini CLI's supported key mechanism.
 ```bash
 ./dvl.sh agent enable agentic
 ./dvl.sh agent up
-./dvl.sh agent auth gh-copilot
+./dvl.sh agent auth copilot
 ```
 
 GitHub CLI state persists in `cfg/agentic/copilot`, mounted at
@@ -237,7 +245,7 @@ You omitted the slug. Use one of the slugs from:
 ./dvl.sh agent tools
 ```
 
-Examples: `claude-code`, `codex`, `gemini`, `gh-copilot`.
+Examples: `claude-code`, `codex`, `copilot`.
 
 ### `OAuth bridge not installed`
 

@@ -330,8 +330,7 @@ logs as documented in upstream `SELF_HOSTING.md`.
 ### Agent daemon reports no CLIs
 
 The upstream CLI docs expect at least one supported agent CLI on `PATH`, such as
-`claude`, `codex`, `copilot`, `opencode`, `openclaw`, `hermes`, `gemini`, `pi`,
-or `cursor-agent`. Enable the agentic tool container or install a CLI in the
+`claude`, `codex`, `copilot`, `opencode`, `pi`, or `reasonix`. Enable the agentic tool container or install a CLI in the
 daemon runtime.
 
 ### Data disappeared

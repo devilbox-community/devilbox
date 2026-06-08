@@ -71,7 +71,7 @@ dvl agent exec "claude --version"
 Triggers the OAuth bridge for a specific tool. This uses a host-side script to handle browser interaction.
 ```bash
 dvl agent auth claude-code
-dvl agent auth gh-copilot
+dvl agent auth copilot
 ```
 
 ### `tools`

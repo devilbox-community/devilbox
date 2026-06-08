@@ -14,33 +14,50 @@ AI development tools belong in your development environment, not just on your ho
 - **Isolation**: Tool dependencies don't clutter your host OS.
 - **Context**: Agents see the same `/shared/httpd` workspace as your PHP container.
 
-## Default Tools
+## Agent tools (per-agent images)
 
-The `devilboxcommunity/agentic` image ships with a comprehensive suite of AI agents and coding tools enabled by default:
+The `devilboxcommunity/agentic` project provides dedicated per-agent Docker images, each shipping a single AI coding CLI on top of the shared `:work` runtime. All 12 agents are enabled by default and auto-discovered by CI.
 
-- **Claude Code**: Anthropic's CLI agent for coding tasks.
-- **OpenCode**: The open-source agentic framework.
-- **Codex**: OpenAI's power-user coding interface.
-- **Cursor Agent**: The CLI companion to the Cursor editor.
-- **Codewhale**: Deep-context codebase analysis.
-- **Reasonix**: Logic-heavy reasoning agent.
-- **Hermes Agent**: High-throughput task automation.
-- **OpenClaw**: Open-source alternative to proprietary coding assistants.
-- **Pi Coding Agent**: Specialized mathematical and algorithmic assistant.
-- **GitHub Copilot**: Official CLI for Copilot interactions.
-- **Gemini**: Google's multimodal AI integration.
+| Agent | Image tag | Binary | Description |
+|-------|-----------|--------|-------------|
+| **Claude Code** | `:claude-code` | `claude` | Anthropic's CLI agent for coding tasks |
+| **Codex** | `:codex` | `codex` | OpenAI's power-user coding interface |
+| **GitHub Copilot** | `:copilot` | `copilot` | Official CLI for Copilot interactions |
+| **Droid** | `:droid` | `droid` | Factory.ai's agentic CLI |
+| **Gemini** | `:gemini` | `gemini` | Google's multimodal AI CLI |
+| **Kilo Code** | `:kilo-code` | `kilo` | Lightweight agentic coding CLI |
+| **Kimi** | `:kimi` | `kimi` | Moonshot AI's coding assistant |
+| **Kiro** | `:kiro` | `kiro-cli` | AWS Q Developer CLI agent |
+| **OpenCode** | `:opencode` | `opencode` | The open-source agentic framework |
+| **Pi Coding Agent** | `:pi-coding-agent` | `pi` | Specialized mathematical and algorithmic assistant |
+| **Qwen Code** | `:qwen-code` | `qwen` | Alibaba's Qwen coding agent |
+| **Reasonix** | `:reasonix` | `reasonix` | Logic-heavy reasoning agent |
+
+## Extra tools (built into the work image)
+
+These shared spec/workflow utilities are installed in the `:work` base image and available to all per-agent images.
+
+| Tool | Binary | Purpose |
+|------|--------|---------|
+| **OpenSpec** | `openspec` | Spec-driven development workflow |
+| **SpecKit** | `specify` | GitHub Spec Kit bootstrap CLI |
 
 ## Persistence Layout
 
-Configuration for these tools is stored in the `cfg/` directory of your Devilbox installation, ensuring settings and sessions survive container restarts and updates.
+Configuration for agent tools and extras is stored in the `cfg/` directory of your Devilbox installation, ensuring settings and sessions survive container restarts and updates.
 
 ```text
 devilbox/
 ├── cfg/
 │   └── agentic/
 │       ├── claude/        # ~/.claude configs
-│       ├── opencode/      # opencode state
-│       ├── copilot/       # GitHub credentials
+│       ├── codex/         # Codex state
+│       ├── copilot/       # GitHub Copilot credentials
+│       ├── opencode/      # OpenCode state
+│       ├── pi/            # Pi Coding Agent configs
+│       ├── reasonix/      # Reasonix state
+│       ├── openspec/      # OpenSpec workspace
+│       ├── speckit/       # SpecKit state
 │       └── ...            # Other tool-specific mounts
 └── data/
     └── www/               # Shared with /shared/httpd
@@ -55,8 +72,8 @@ You can customize which tools are active using environment variables in your `.e
 
 Example:
 ```dotenv
-AGENTIC_TOOLS_DISABLE=pi-coding-agent,hermes
-AGENTIC_TOOLS_ENABLE=cline,continue
+AGENTIC_TOOLS_DISABLE=pi-coding-agent,reasonix
+AGENTIC_TOOLS_ENABLE=openspec,speckit
 ```
 
 ## Authenticating Tools

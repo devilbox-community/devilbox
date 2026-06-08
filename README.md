@@ -46,7 +46,7 @@ Email interception and popular development tools will be at your service as well
 All created projects (frontend or backend) will be able to communicate with one another to support the emulation of a complete microservice architecture or an API landscape.
 <br/>
 <br/>
-**[NEW] Agentic Service:** Opt-in to the `agentic` developer environment to use 19 pre-configured AI coding agents (aider, claude-code, opencode, gemini, etc.). Enable it via `./dvl.sh agent enable` and see `dvl.sh agent help` for more. Individual tools can be toggled via `AGENTIC_TOOLS_ENABLE/DISABLE` (see [documentation](../docker-agentic/README.md#enabledisable-toggle)). Integration details: [compose/docker-compose.override.yml-agentic](compose/docker-compose.override.yml-agentic).
+**[NEW] Agentic Service:** Opt-in to the `agentic` developer environment to use 12 pre-configured AI coding agents (claude-code, codex, copilot, droid, gemini, kilo-code, kimi, kiro, opencode, pi-coding-agent, qwen-code, reasonix) plus shared tools openspec and speckit. Enable it via `./dvl.sh agent enable agentic` and see `dvl.sh agent help` for more. Individual tools can be toggled via `AGENTIC_TOOLS_ENABLE/DISABLE` (see [Agentic Onboarding docs](docs/src/content/docs/getting-started/agentic/)). Integration details: [compose/docker-compose.override.yml-agentic](compose/docker-compose.override.yml-agentic).
 <br/>
 <br/>
 **Available Architectures:** `amd64`, `arm64`<br/>
