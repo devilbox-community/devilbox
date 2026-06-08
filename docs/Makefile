@@ -5,7 +5,7 @@ endif
 # -------------------------------------------------------------------------------------------------
 # Default configuration
 # -------------------------------------------------------------------------------------------------
-.PHONY: help build autobuild linkcheck
+.PHONY: help build autobuild linkcheck linkcheck-only
 NODE_IMAGE := node:lts-alpine
 DOCKER_RUN := docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD):/docs -w /docs
 
@@ -35,6 +35,8 @@ autobuild:
 	docker run --rm $$(tty -s && echo "-it" || echo) -p 4321:4321 -v $(PWD):/docs -w /docs $(NODE_IMAGE) sh -c "npm ci --cache .cache/npm --prefer-offline --no-audit --no-fund && npx astro dev --host 0.0.0.0"
 
 linkcheck: build
+
+linkcheck-only:
 	@dirs=$$(find dist -mindepth 1 -maxdepth 1 -type d ! -name '_includes' ! -name 'en' ! -name 'pagefind' ! -name 'img' | sort | sed 's|^dist/|/data/|' | tr '\n' ' '); \
 	echo "Checking dirs: $$dirs"; \
 	docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD)/dist:/data lycheeverse/lychee \

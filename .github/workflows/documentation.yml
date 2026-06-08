@@ -26,47 +26,13 @@ on:
 # What to run
 # -------------------------------------------------------------------------------------------------
 jobs:
-  docs:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - build
-          - linkcheck
-
-    name: "[Docs ${{ matrix.target }}]"
-    steps:
-
-      # ------------------------------------------------------------
-      # Checkout repository
-      # ------------------------------------------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check documentation
-        uses: devilbox-community/github-actions/.github/actions/shell-command-retry-action@master
-        with:
-          retries: 5
-          workdir: "${{ github.workspace }}/docs/"
-          command: |
-            make ${{ matrix.target }}
-
 
   # ------------------------------------------------------------------------------------------------
-  # Deploy built docs to GitHub Pages (mainline pushes only)
+  # Build once, cache dist/ as artifact
   # ------------------------------------------------------------------------------------------------
-  deploy:
-    needs: docs
+  build:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/mainline'
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    name: "[Docs deploy to GitHub Pages]"
+    name: "[Docs build]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,6 +44,61 @@ jobs:
           workdir: "${{ github.workspace }}/docs/"
           command: |
             make build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-dist
+          path: docs/dist/
+          retention-days: 1
+
+
+  # ------------------------------------------------------------------------------------------------
+  # Linkcheck against cached dist/
+  # ------------------------------------------------------------------------------------------------
+  linkcheck:
+    needs: build
+    runs-on: ubuntu-latest
+    name: "[Docs linkcheck]"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-dist
+          path: docs/dist/
+
+      - name: Run linkcheck
+        uses: devilbox-community/github-actions/.github/actions/shell-command-retry-action@master
+        with:
+          retries: 5
+          workdir: "${{ github.workspace }}/docs/"
+          command: |
+            make linkcheck-only
+
+
+  # ------------------------------------------------------------------------------------------------
+  # Deploy cached dist/ to GitHub Pages (mainline pushes only)
+  # ------------------------------------------------------------------------------------------------
+  deploy:
+    needs: [build, linkcheck]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/mainline'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    name: "[Docs deploy to GitHub Pages]"
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-dist
+          path: docs/dist/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
