@@ -134,7 +134,7 @@ class Httpd extends BaseClass implements BaseInterface
 		}
 
 		// Silence errors and try to connect
-		$url = 'http://'.$hostname.'/'.$GLOBALS['DEVILBOX_API_PAGE'];
+		$url = 'http://'.$hostname.$this->getPort().'/'.$GLOBALS['DEVILBOX_API_PAGE'];
 		$ch = curl_init($url);
 		curl_setopt($ch, CURLOPT_NOBODY, true);
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
