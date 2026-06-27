@@ -16,6 +16,7 @@
 # Ignore variable data
 /.env
 /backups/*
+*-bak*
 
 # Ignore Data dirs
 /data/www/*
@@ -136,6 +137,9 @@
 /cfg/php-startup-8.2/*.sh
 /cfg/php-startup-8.3/*.sh
 /cfg/php-startup-8.4/*.sh
+# Ignore my local scripts...
+/*php*.sh
+/star*.sh
 
 # Ignore custom Varnish configs
 /cfg/varnish-4/*.vcl

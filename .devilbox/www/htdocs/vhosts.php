@@ -53,7 +53,7 @@
 															</button>
 														</div>
 														<div class="modal-body">
-															<?php $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>
+															<?php $url = 'http://httpd'; ?>
 															<?php $src = file_get_contents($url.'/vhost.d/' . $vHost['name'] . '.conf'); ?>
 															<?php //$src = htmlentities($src); ?>
 															<?php $src = str_replace('<', '&lt;', $src); ?>
@@ -170,7 +170,7 @@
 									<td><?php echo $daemon['tool']; ?></td>
 									<td><?php echo $daemon['addr']; ?></td>
 									<td><?php echo $daemon['port']; ?></td>
-									<td>php (172.16.238.10)</td>
+									<td><?php echo gethostname(); ?> (<?php echo isset($_SERVER['SERVER_ADDR']) ? $_SERVER['SERVER_ADDR'] : 'unknown'; ?>)</td>
 								</tr>
 							<?php endforeach; ?>
 						</tbody>
@@ -195,26 +195,32 @@
 				var xhttp = new XMLHttpRequest();
 
 				xhttp.onreadystatechange = function() {
-					var error = '';
 					var el_valid;
 					var el_href;
 
-					if (this.readyState == 4 && this.status == 200 || this.status == 426) {
+					if (this.readyState == 4 && (this.status == 200 || this.status == 426)) {
 						el_valid = document.getElementById('valid-' + vhost);
 						el_href = document.getElementById('href-' + vhost);
-						error = this.responseText;
 
-						if (error.length && error.match(/^error/)) {
+						try {
+							var data = JSON.parse(this.responseText);
+
+							if (data.status === 'error') {
+								el_valid.className += ' bg-danger';
+								el_valid.innerHTML = 'ERR';
+								el_href.innerHTML = data.message;
+							} else if (data.status === 'warning') {
+								el_valid.className += ' bg-warning';
+								el_valid.innerHTML = 'WARN';
+								el_href.innerHTML = data.message;
+								checkDns(vhost);
+							} else {
+								checkDns(vhost);
+							}
+						} catch (e) {
 							el_valid.className += ' bg-danger';
 							el_valid.innerHTML = 'ERR';
-							el_href.innerHTML = error;
-						} else if (error.length && error.match(/^warning/)) {
-							el_valid.className += ' bg-warning';
-							el_valid.innerHTML = 'WARN';
-							el_href.innerHTML = error.replace('warning', '');
-							checkDns(vhost);
-						} else {
-							checkDns(vhost);
+							el_href.innerHTML = 'Invalid response';
 						}
 					}
 				};
@@ -240,43 +246,34 @@
 				// Timeout after XXX seconds and mark it invalid DNS
 				xhttp.timeout = <?php echo loadClass('Helper')->getEnv('DNS_CHECK_TIMEOUT');?>000;
 
-				xhttp.onreadystatechange = function(e) {
+				xhttp.onreadystatechange = function() {
 					var el_valid = document.getElementById('valid-' + vhost);
 					var el_href = document.getElementById('href-' + vhost);
-					var error = this.responseText;
 
 					if (this.readyState == 4 && (this.status == 200 || this.status == 426)) {
-						clearTimeout(xmlHttpTimeout);
 						el_valid.className += ' bg-success';
 						if (el_valid.innerHTML != 'WARN') {
 							el_valid.innerHTML = 'OK';
 						}
-						//el_href.innerHTML = '(<a target="_blank" href="'+proto+'//localhost/devilbox-project/'+name+'">ext</a>) <a target="_blank" href="'+proto+'//'+name+port+'">'+name+port+'</a>' + el_href.innerHTML;
 						el_href.innerHTML = '<a target="_blank" href="'+proto+'//'+name+port+'">'+name+port+'</a>';
-					} else {
-						//console.log(vhost);
 					}
-				}
-				xhttp.open('POST', proto+'//'+name+port+'/devilbox-api/status.json', true);
-				xhttp.send();
-
-				// Timeout to abort in 1 second
-				var xmlHttpTimeout = setTimeout(ajaxTimeout, <?php echo loadClass('Helper')->getEnv('DNS_CHECK_TIMEOUT');?>000);
-				function ajaxTimeout(e) {
+				};
+				xhttp.ontimeout = function() {
 					var el_valid = document.getElementById('valid-' + vhost);
 					var el_href = document.getElementById('href-' + vhost);
-					var error = this.responseText;
 
 					el_valid.className += ' bg-danger';
 					el_valid.innerHTML = 'ERR';
 					el_href.innerHTML = 'No Host DNS record found. Add the following to <code>/etc/hosts</code>:<br/><code>127.0.0.1 '+vhost+'.<?php echo loadClass('Httpd')->getTldSuffix();?></code>';
-				}
+				};
+				xhttp.open('GET', proto+'//'+name+port+'/devilbox-api/status.json', true);
+				xhttp.send();
 
 			}
 
 			var vhosts = document.getElementsByName('vhost[]');
 
-			for (i = 0; i < vhosts.length; i++) {
+			for (var i = 0; i < vhosts.length; i++) {
 				updateStatus(vhosts[i].value);
 			}
 		})();
