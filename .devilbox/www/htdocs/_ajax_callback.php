@@ -27,7 +27,14 @@ if (loadClass('Helper')->isLoggedIn()) {
 	// ?vhost=
 	//
 	else if (isset($_GET['vhost'])) {
-		echo loadClass('Httpd')->checkVirtualHost($_GET['vhost']);
+		$vhostResult = loadClass('Httpd')->checkVirtualHost($_GET['vhost']);
+		if (strlen($vhostResult) === 0) {
+			echo json_encode(array('status' => 'ok', 'message' => ''));
+		} else if (strpos($vhostResult, 'error') === 0) {
+			echo json_encode(array('status' => 'error', 'message' => substr($vhostResult, 10)));
+		} else {
+			echo json_encode(array('status' => 'warning', 'message' => substr($vhostResult, 12)));
+		}
 	}
 
 

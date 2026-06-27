@@ -138,6 +138,8 @@ class Httpd extends BaseClass implements BaseInterface
 		$ch = curl_init($url);
 		curl_setopt($ch, CURLOPT_NOBODY, true);
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 		curl_exec($ch);
 		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		curl_close($ch);
@@ -212,6 +214,10 @@ class Httpd extends BaseClass implements BaseInterface
 		}
 
 		$fp = fopen($file, 'r');
+		if ($fp === false) {
+			loadClass('Logger')->error('Could not open backend config: ' . $file);
+			return 'default';
+		}
 		$cont = stream_get_contents($fp);
 		fclose($fp);
 
@@ -223,13 +229,12 @@ class Httpd extends BaseClass implements BaseInterface
 		// conf:<type>:<proto>:<server>:<port>
 		$arr = explode(':', $cont);
 
+		// conf:<type>:<proto>:<addr>:<port>
+		// Note: <addr> may contain ':' for IPv6 addresses (e.g., [::1])
+		$port = array_pop($arr);
 		$type = $arr[1];
 		$prot = $arr[2];
-		$addr = '';  // this may contain ':' itself due to IPv6 addresses
-		for ($i=3; $i<(count($arr)-1); $i++) {
-			$addr .= $arr[$i];
-		}
-		$port = $arr[count($arr) - 1];
+		$addr = implode(':', array_slice($arr, 3));
 
 		return $prot.'://'.$addr.':'.$port;
 	}
