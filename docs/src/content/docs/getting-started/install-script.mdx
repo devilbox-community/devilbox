@@ -32,8 +32,8 @@ The installer provides semantic feedback using standard ANSI color codes. If `tp
 When running with `--verbose`, you will see additional internal state tracking:
 ```bash
 [VERBOSE] Removing existing directory: /Users/user/Workspace/devilbox
-[VERBOSE] Default : bind httpd php php74 php81 php82 php83 php84
-[VERBOSE] Optional: mysql redis opensearch buggregator
+[VERBOSE] Default : bind httpd php mysql
+[VERBOSE] Optional: php74 php81 php82 php83 php84 php85 redis opensearch buggregator
 [VERBOSE] Using shell profile: /Users/user/.zprofile
 ```
 
@@ -225,7 +225,7 @@ If you prefer not to use the automated script, you can perform the installation 
    Add the following to your `~/.zshrc` or `~/.bashrc`:
    ```bash
    export DEVILBOX_PATH="$HOME/Workspace/devilbox"
-   export DEVILBOX_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 mysql redis opensearch buggregator"
+   export DEVILBOX_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 php85 mysql redis opensearch buggregator"
    ```
 
 5. **Create a global alias or symlink**:

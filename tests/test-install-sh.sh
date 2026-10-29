@@ -102,8 +102,8 @@ assert_file_exists "${ENV_EXAMPLE}" "env-example exists"
 assert_grep_count '^CONTAINERS_CONFIG_DEFAULT=' "${ENV_EXAMPLE}" 1 "CONTAINERS_CONFIG_DEFAULT defined"
 assert_grep_count '^CONTAINERS_CONFIG_OPTIONAL=' "${ENV_EXAMPLE}" 1 "CONTAINERS_CONFIG_OPTIONAL defined"
 
-# 3. Container roster parity (12 legacy tokens)
-print_h_sub "3. Container roster parity (12 legacy tokens)"
+# 3. Container roster parity (13 legacy tokens)
+print_h_sub "3. Container roster parity (13 legacy tokens)"
 _default_line="$(grep -E '^CONTAINERS_CONFIG_DEFAULT=' "${ENV_EXAMPLE}" | head -n1)"
 _optional_line="$(grep -E '^CONTAINERS_CONFIG_OPTIONAL=' "${ENV_EXAMPLE}" | head -n1)"
 _default_val="${_default_line#CONTAINERS_CONFIG_DEFAULT=}"
@@ -117,10 +117,10 @@ _optional_val="${_optional_val%\'}"; _optional_val="${_optional_val#\'}"
 _combined="${_default_val} ${_optional_val}"
 # tokenize on whitespace, sort unique
 _actual_sorted="$(printf '%s\n' ${_combined} | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')"
-_expected_sorted="$(printf '%s\n' bind httpd php mysql php74 php81 php82 php83 php84 redis opensearch buggregator | sort -u | tr '\n' ' ')"
+_expected_sorted="$(printf '%s\n' bind httpd php mysql php74 php81 php82 php83 php84 php85 redis opensearch buggregator | sort -u | tr '\n' ' ')"
 
 if [ "${_actual_sorted}" = "${_expected_sorted}" ]; then
-	pass "Container roster matches exactly (12 unique tokens)"
+	pass "Container roster matches exactly (13 unique tokens)"
 else
 	fail "Container roster mismatch.
   expected: ${_expected_sorted}

@@ -170,7 +170,7 @@ share with a team.
 
 ```dotenv
 CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
-CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 php85 redis opensearch buggregator"
 ```
 
 The installer reads those values to export `DEVILBOX_CONTAINERS` into

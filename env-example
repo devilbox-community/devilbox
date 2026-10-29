@@ -31,11 +31,11 @@
 ###
 ### install.sh reads these to compute DEVILBOX_CONTAINERS exported
 ### to your shell profile. DEFAULT is always installed; OPTIONAL is
-### appended to preserve the legacy 12-container roster. Edit here
+### appended to preserve the legacy 13-container roster. Edit here
 ### to change what install.sh provisions for new clones.
 ###
 CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
-CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 php85 redis opensearch buggregator"
 
 
 ###
@@ -309,6 +309,7 @@ PHP_SERVER=8.1
 #PHP_SERVER=8.2
 #PHP_SERVER=8.3
 #PHP_SERVER=8.4
+#PHP_SERVER=8.5
 
 
 ###

@@ -45,8 +45,8 @@ Always-provisioned containers read by `install.sh`; default lean stack for DNS, 
 ### CONTAINERS_CONFIG_OPTIONAL
 Optional containers appended by `install.sh` to preserve the broader roster for new clones.
 - Type: `string list`
-- Default: `"php74 php81 php82 php83 php84 redis opensearch buggregator"`
-- Example: `CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"`
+- Default: `"php74 php81 php82 php83 php84 php85 redis opensearch buggregator"`
+- Example: `CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 php85 redis opensearch buggregator"`
 - Notes: Remove names before install when you do not want those containers exported.
 ## Core settings
 

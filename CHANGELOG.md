@@ -5,6 +5,16 @@ Make sure to have a look at [UPDATING.md](https://github.com/cytopia/devilbox/bl
 
 ## Unreleased
 
+### Added
+- Added PHP 8.5
+
+### Changed
+- Updated php-fpm images to `0.161` (PHP 8.4.27 / 8.5.12; PHP 8.1+ on Debian bookworm, 7.4/8.0 on bullseye)
+- `dvl up` without `DEVILBOX_CONTAINERS` now starts the full default list (adds `php84` and `php85`); re-sync `docker-compose.override.yml` (`dvl update`) or set `DEVILBOX_CONTAINERS`
+
+### Fixed
+- `.gitignore` ignored `cfg/php-ini-8.4/*.conf` instead of `cfg/php-fpm-8.4/*.conf`
+
 
 ## Release v3.0.1 (2025-07-17)
 

@@ -33,7 +33,7 @@ CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
 The installer also appends the optional roster to preserve the broader legacy start set:
 
 ```bash
-CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 php85 redis opensearch buggregator"
 ```
 
 Together, those values become `DEVILBOX_CONTAINERS` in your shell profile. `dvl up` starts that list when no services are passed.

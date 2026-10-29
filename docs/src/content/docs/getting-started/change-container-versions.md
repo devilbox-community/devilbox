@@ -66,8 +66,9 @@ The default PHP service uses `PHP_SERVER`. The current selectable values are:
 | `8.2` | available |
 | `8.3` | available |
 | `8.4` | available |
+| `8.5` | available |
 
-Example: switch the default PHP service to 8.4.
+Example: switch the default PHP service to 8.5.
 
 ```bash
 dvl down
@@ -81,7 +82,8 @@ Edit `.env` so only one `PHP_SERVER` assignment is active:
 #PHP_SERVER=8.1
 #PHP_SERVER=8.2
 #PHP_SERVER=8.3
-PHP_SERVER=8.4
+#PHP_SERVER=8.4
+PHP_SERVER=8.5
 ```
 
 Start again:
@@ -92,7 +94,7 @@ dvl exec "php -v"
 ```
 
 :::tip
-If your installation includes versioned PHP services such as `php74`, `php81`, `php82`, `php83`, and `php84`, use `dvl shell php84` to enter a specific version without changing the default `php` service.
+If your installation includes versioned PHP services such as `php74`, `php81`, `php82`, `php83`, `php84`, and `php85`, use `dvl shell php85` to enter a specific version without changing the default `php` service.
 :::
 
 ## HTTPD versions

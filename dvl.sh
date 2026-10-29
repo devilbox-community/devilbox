@@ -207,7 +207,7 @@ YQ_BINARY="$DEVILBOX_PATH/.tests/binaries/yq"
 
 # Read-only variables
 readonly VERSION="1.2.6"
-readonly DEFAULT_DVL_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 mysql redis opensearch buggregator"
+readonly DEFAULT_DVL_CONTAINERS="bind httpd php php74 php81 php82 php83 php84 php85 mysql redis opensearch buggregator"
 
 function main {
   if [[ $# -eq 0 ]] ; then
@@ -312,7 +312,7 @@ function __get_default_containers {
   if [[ ! -z "$DEVILBOX_CONTAINERS" ]]; then
     printf %s "${DEVILBOX_CONTAINERS}"
   else
-    printf %s "bind httpd php php74 php81 php82 php83 mysql redis opensearch buggregator"
+    printf %s "${DEFAULT_DVL_CONTAINERS}"
   fi
 }
 
@@ -602,12 +602,12 @@ EOL
       local minor="${version_num:1:1}"
       local version="$major.$minor"
       echo "Using version $version derived from container name" >&2
-      current_image="devilboxcommunity/php-fpm:$version-slim-0.155"
+      current_image="devilboxcommunity/php-fpm:$version-slim-0.161"
     else
       # Get default PHP version if container name doesn't contain version
       local default_php="$( "${SCRIPT_PATH}/env-getvar.sh" "PHP_SERVER" )"
       echo "Using default PHP version: $default_php" >&2
-      current_image="devilboxcommunity/php-fpm:$default_php-slim-0.155"
+      current_image="devilboxcommunity/php-fpm:$default_php-slim-0.161"
     fi
     echo "Using derived image: $current_image" >&2
   fi
@@ -1628,7 +1628,7 @@ function InteractiveQuestions {
     7.0|70|7.1|71|7.2|72|7.3|73|7.4|74)
       PHP_VERSION=$(awk '{gsub(/[.]/,"");print $NF}' <<< "php$response")
       ;;
-    8.0|80|8.2|82|8.3|83|8.4|84)
+    8.0|80|8.2|82|8.3|83|8.4|84|8.5|85)
       PHP_VERSION=$(awk '{gsub(/[.]/,"");print $NF}' <<< "php$response")
       ;;
     8.1|81|*)

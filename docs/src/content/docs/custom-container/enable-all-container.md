@@ -84,6 +84,7 @@ agentic optional roster:
 - `php82`
 - `php83`
 - `php84`
+- `php85`
 - `redis`
 - `opensearch`
 - `buggregator`

@@ -152,7 +152,7 @@ printf '%s\n' "$PATH"
 | Variable | Example value | Purpose |
 | --- | --- | --- |
 | `DEVILBOX_PATH` | `$HOME/Workspace/devilbox` | Tells `dvl` where the Devilbox repository lives. |
-| `DEVILBOX_CONTAINERS` | `bind httpd php mysql php74 php81 php82 php83 php84 redis opensearch buggregator` | Defines the services started by `dvl up`. |
+| `DEVILBOX_CONTAINERS` | `bind httpd php mysql php74 php81 php82 php83 php84 php85 redis opensearch buggregator` | Defines the services started by `dvl up`. |
 
 The installer chooses a profile based on your shell:
 

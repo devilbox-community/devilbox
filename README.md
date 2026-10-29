@@ -50,7 +50,7 @@ All created projects (frontend or backend) will be able to communicate with one 
 <br/>
 <br/>
 **Available Architectures:** `amd64`, `arm64`<br/>
-**Available PHP Versions:** `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`<br/>
+**Available PHP Versions:** `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`, `8.5`<br/>
 **Deprecated PHP Version:** `5.6`, `7.0`, `7.1`, `7.2`, `7.3` only available in `0.153` and previous
 
 
@@ -718,6 +718,30 @@ Every single attachable container comes with many different versions. In order t
       <td></td>
       <td></td>
       <td><a target="_blank" title="PHP 8.3"          href="https://github.com/devilbox-community/docker-php-fpm">8.3</a></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td><a target="_blank" title="PHP 8.4"          href="https://github.com/devilbox-community/docker-php-fpm">8.4</a></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td><a target="_blank" title="PHP 8.5"          href="https://github.com/devilbox-community/docker-php-fpm">8.5</a></td>
       <td></td>
       <td></td>
       <td></td>

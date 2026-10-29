@@ -108,7 +108,7 @@ The installer adds Devilbox configuration to the profile for your detected shell
 The profile receives values like these:
 
 ```bash
-export DEVILBOX_CONTAINERS="bind httpd php mysql php74 php81 php82 php83 php84 redis opensearch buggregator"
+export DEVILBOX_CONTAINERS="bind httpd php mysql php74 php81 php82 php83 php84 php85 redis opensearch buggregator"
 export DEVILBOX_PATH="$HOME/Workspace/devilbox"
 ```
 
@@ -126,7 +126,7 @@ The installer reads the default and optional rosters from `env-example`:
 
 ```bash
 CONTAINERS_CONFIG_DEFAULT="bind httpd php mysql"
-CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 redis opensearch buggregator"
+CONTAINERS_CONFIG_OPTIONAL="php74 php81 php82 php83 php84 php85 redis opensearch buggregator"
 ```
 
 It combines those values and exports them as `DEVILBOX_CONTAINERS`. That is the list started by `dvl up` when you do not pass explicit services.
@@ -227,7 +227,7 @@ Add shell profile exports:
 
 ```bash
 export DEVILBOX_PATH="$HOME/Workspace/devilbox"
-export DEVILBOX_CONTAINERS="bind httpd php mysql php74 php81 php82 php83 php84 redis opensearch buggregator"
+export DEVILBOX_CONTAINERS="bind httpd php mysql php74 php81 php82 php83 php84 php85 redis opensearch buggregator"
 ```
 
 Create a symlink or alias for `dvl`:
