@@ -143,9 +143,12 @@ The MySQL-compatible service uses `MYSQL_SERVER`. Current values from `env-examp
 
 | Family | Values |
 | --- | --- |
-| MySQL | `mysql-5.5`, `mysql-5.6`, `mysql-5.7`, `mysql-8.0` |
-| Percona | `percona-5.5`, `percona-5.6`, `percona-5.7`, `percona-8.0` |
-| MariaDB | `mariadb-5.5`, `mariadb-10.0`, `mariadb-10.1`, `mariadb-10.2`, `mariadb-10.3`, `mariadb-10.4`, `mariadb-10.5`, `mariadb-10.6`, `mariadb-10.7`, `mariadb-10.8`, `mariadb-10.9`, `mariadb-10.10`, `mariadb-11.4` |
+| MySQL | `mysql-5.5`, `mysql-5.6`, `mysql-5.7`, `mysql-8.0`, `mysql-8.4`, `mysql-9.7` |
+| Percona | `percona-5.5`, `percona-5.6`, `percona-5.7`, `percona-8.0`, `percona-8.4`, `percona-9.7` |
+| MariaDB | `mariadb-5.5`, `mariadb-10.0`, `mariadb-10.1`, `mariadb-10.2`, `mariadb-10.3`, `mariadb-10.4`, `mariadb-10.5`, `mariadb-10.6`, `mariadb-10.7`, `mariadb-10.8`, `mariadb-10.9`, `mariadb-10.10`, `mariadb-10.11`, `mariadb-11.4`, `mariadb-11.8`, `mariadb-12.3` |
+
+`mysql-9.7` and `percona-9.7` only support the `caching_sha2_password` login method. PHP needs 7.4.4 or newer,
+and the `mysql`/`mysqldump` tools in the PHP container (also used by `dvl.sh`) need the php-fpm image `0.161` or newer.
 
 Default:
 

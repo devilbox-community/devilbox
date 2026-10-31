@@ -5,6 +5,15 @@ Make sure to have a look at [UPDATING.md](https://github.com/cytopia/devilbox/bl
 
 ## Unreleased
 
+### Added
+- MySQL 8.4 and 9.7, MariaDB 10.11, 11.8 and 12.3, Percona 8.4 and 9.7 (`MYSQL_SERVER`). The 9.7 versions need PHP 7.4.4+ and, for the `mysql`/`mysqldump` CLI in the PHP container, php-fpm `0.161`+
+
+### Changed
+- Updated MySQL image version to `0.23` (rebuilt on the latest patch releases, e.g. MySQL 8.0.46)
+
+### Fixed
+- `cfg/mysql-8.0/` and `cfg/percona-8.0/` performance examples used options removed in MySQL 8.0 (`query_cache_*`, `show_compatibility_56`), so the server did not start with them
+
 
 ## Release v3.0.1 (2025-07-17)
 

@@ -333,10 +333,14 @@ HTTPD_SERVER=nginx-stable
 #MYSQL_SERVER=mysql-5.6
 #MYSQL_SERVER=mysql-5.7
 #MYSQL_SERVER=mysql-8.0
+#MYSQL_SERVER=mysql-8.4
+#MYSQL_SERVER=mysql-9.7
 #MYSQL_SERVER=percona-5.5
 #MYSQL_SERVER=percona-5.6
 #MYSQL_SERVER=percona-5.7
 #MYSQL_SERVER=percona-8.0
+#MYSQL_SERVER=percona-8.4
+#MYSQL_SERVER=percona-9.7
 #MYSQL_SERVER=mariadb-5.5
 #MYSQL_SERVER=mariadb-10.0
 #MYSQL_SERVER=mariadb-10.1
@@ -349,7 +353,10 @@ MYSQL_SERVER=mariadb-10.4
 #MYSQL_SERVER=mariadb-10.8
 #MYSQL_SERVER=mariadb-10.9
 #MYSQL_SERVER=mariadb-10.10
+#MYSQL_SERVER=mariadb-10.11
 #MYSQL_SERVER=mariadb-11.4
+#MYSQL_SERVER=mariadb-11.8
+#MYSQL_SERVER=mariadb-12.3
 
 
 ###

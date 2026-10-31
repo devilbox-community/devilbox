@@ -31,15 +31,20 @@ targets in this repository include:
 
 - `cfg/mysql-5.7/`
 - `cfg/mysql-8.0/`
-- `cfg/mysql-8.4/` when present in your checkout
+- `cfg/mysql-8.4/`
+- `cfg/mysql-9.7/`
 - `cfg/percona-5.7/`
 - `cfg/percona-8.0/`
+- `cfg/percona-8.4/`
+- `cfg/percona-9.7/`
 - `cfg/mariadb-10.4/` through newer MariaDB 10.x directories present in `cfg/`
 - `cfg/mariadb-11.4/`
+- `cfg/mariadb-11.8/`
+- `cfg/mariadb-12.3/`
 
 Older directories may still exist for compatibility in some checkouts, but this
-page focuses on the MySQL 5.7, MySQL 8.x, Percona 5.7/8.0 and MariaDB 10.4+
-or 11.x generation used by current `.env` examples.
+page focuses on the MySQL 5.7/8.x/9.x, Percona 5.7/8.x/9.x and MariaDB 10.4+,
+11.x or 12.x generation used by current `.env` examples.
 
 ## Override mechanism
 

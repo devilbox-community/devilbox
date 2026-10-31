@@ -356,7 +356,7 @@ services:
   # MySQL Database
   # ------------------------------------------------------------
   mysql:
-    image: devilboxcommunity/mysql:${MYSQL_SERVER}-0.22
+    image: devilboxcommunity/mysql:${MYSQL_SERVER}-0.23
     hostname: mysql
 
     environment:
@@ -530,6 +530,8 @@ volumes:
   devilbox-mysql-5.6:
   devilbox-mysql-5.7:
   devilbox-mysql-8.0:
+  devilbox-mysql-8.4:
+  devilbox-mysql-9.7:
   devilbox-mariadb-5.5:
   devilbox-mariadb-10.0:
   devilbox-mariadb-10.1:
@@ -542,11 +544,16 @@ volumes:
   devilbox-mariadb-10.8:
   devilbox-mariadb-10.9:
   devilbox-mariadb-10.10:
+  devilbox-mariadb-10.11:
   devilbox-mariadb-11.4:
+  devilbox-mariadb-11.8:
+  devilbox-mariadb-12.3:
   devilbox-percona-5.5:
   devilbox-percona-5.6:
   devilbox-percona-5.7:
   devilbox-percona-8.0:
+  devilbox-percona-8.4:
+  devilbox-percona-9.7:
 
   # ------------------------------------------------------------
   # Postgres

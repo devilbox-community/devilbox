@@ -610,9 +610,9 @@ Every single attachable container comes with many different versions. In order t
       <td></td>
       <td></td>
       <td><a target="_blank" title="PHP 5.6"          href="https://github.com/devilbox/docker-php-fpm"><s>5.6</s></a></td>
-      <td></td>
+      <td><a target="_blank" title="MySQL 8.4"        href="https://github.com/devilbox-community/docker-mysql">8.4</a></td>
       <td><a target="_blank" title="MariaDB 10.3"     href="https://github.com/devilbox/docker-mysql">10.3</a></td>
-      <td></td>
+      <td><a target="_blank" title="PerconaDB 8.4"    href="https://github.com/devilbox-community/docker-mysql">8.4</a></td>
       <td><a target="_blank" title="PgSQL 9.4"        href="https://github.com/docker-library/postgres">9.4</a></td>
       <td><a target="_blank" title="Redis 5.0"        href="https://github.com/docker-library/redis">5.0</a></td>
       <td></td>
@@ -622,9 +622,9 @@ Every single attachable container comes with many different versions. In order t
       <td></td>
       <td></td>
       <td><a target="_blank" title="PHP 7.0"          href="https://github.com/devilbox/docker-php-fpm"><s>7.0</s></a></td>
-      <td></td>
+      <td><a target="_blank" title="MySQL 9.7"        href="https://github.com/devilbox-community/docker-mysql">9.7</a></td>
       <td><a target="_blank" title="MariaDB 10.4"     href="https://github.com/devilbox/docker-mysql">10.4</a></td>
-      <td></td>
+      <td><a target="_blank" title="PerconaDB 9.7"    href="https://github.com/devilbox-community/docker-mysql">9.7</a></td>
       <td><a target="_blank" title="PgSQL 9.5"        href="https://github.com/docker-library/postgres">9.5</a></td>
       <td><a target="_blank" title="Redis 6.0"        href="https://github.com/docker-library/redis">6.0</a></td>
       <td></td>
@@ -707,7 +707,7 @@ Every single attachable container comes with many different versions. In order t
       <td></td>
       <td><a target="_blank" title="PHP 8.2"          href="https://github.com/devilbox/docker-php-fpm">8.2</a><!-- <sup>[2]</sup> --></td>
       <td></td>
-      <td></td>
+      <td><a target="_blank" title="MariaDB 10.11"    href="https://github.com/devilbox-community/docker-mysql">10.11</a></td>
       <td></td>
       <td><a target="_blank" title="PgSQL latest"     href="https://github.com/docker-library/postgres">latest</a></td>
       <td></td>
@@ -719,7 +719,31 @@ Every single attachable container comes with many different versions. In order t
       <td></td>
       <td><a target="_blank" title="PHP 8.3"          href="https://github.com/devilbox-community/docker-php-fpm">8.3</a></td>
       <td></td>
+      <td><a target="_blank" title="MariaDB 11.4"     href="https://github.com/devilbox-community/docker-mysql">11.4</a></td>
       <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td><a target="_blank" title="MariaDB 11.8"     href="https://github.com/devilbox-community/docker-mysql">11.8</a></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td><a target="_blank" title="MariaDB 12.3"     href="https://github.com/devilbox-community/docker-mysql">12.3</a></td>
       <td></td>
       <td></td>
       <td></td>

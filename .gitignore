@@ -69,6 +69,8 @@
 /cfg/mysql-5.6/*.cnf
 /cfg/mysql-5.7/*.cnf
 /cfg/mysql-8.0/*.cnf
+/cfg/mysql-8.4/*.cnf
+/cfg/mysql-9.7/*.cnf
 /cfg/mariadb-5.5/*.cnf
 /cfg/mariadb-10.0/*.cnf
 /cfg/mariadb-10.1/*.cnf
@@ -78,11 +80,19 @@
 /cfg/mariadb-10.5/*.cnf
 /cfg/mariadb-10.6/*.cnf
 /cfg/mariadb-10.7/*.cnf
+/cfg/mariadb-10.8/*.cnf
+/cfg/mariadb-10.9/*.cnf
+/cfg/mariadb-10.10/*.cnf
+/cfg/mariadb-10.11/*.cnf
 /cfg/mariadb-11.4/*.cnf
+/cfg/mariadb-11.8/*.cnf
+/cfg/mariadb-12.3/*.cnf
 /cfg/percona-5.5/*.cnf
 /cfg/percona-5.6/*.cnf
 /cfg/percona-5.7/*.cnf
 /cfg/percona-8.0/*.cnf
+/cfg/percona-8.4/*.cnf
+/cfg/percona-9.7/*.cnf
 
 # Ignore custom PHP.ini configs
 /cfg/php-ini-5.6/*.ini
